@@ -4,9 +4,10 @@
 // 送信失敗時は console.error に残してアプリは落とさない (return void で握りつぶし)。
 // Slack alert / 監視は Day 10 で別途。
 //
-// テンプレ方針 (T3-5 ブランド): 絵文字なし、和の上品さ、装飾は余白・タイポで。
+// ログインメールはサイト共通のゴシック体・ネイビー・紫で統一。
 // HTML + plain text を両方送る (受信側のクライアント・spam フィルタ対応)。
 
+import { renderLoginEmailHtml, renderLoginCodeText } from "./login-email";
 import { Resend } from "resend";
 import {
   EN_FULL_ACCESS_PRICE_USD_CENTS,
@@ -100,6 +101,22 @@ export async function sendMagicLinkEmail(
   } catch (err) {
     console.error("[email] Resend exception:", err);
   }
+}
+
+export async function sendLoginCodeEmail(args: { to: string; url: string; code?: string; locale: EmailLocale; kind: "login" | "welcome" }): Promise<boolean> {
+  const resend = getResendClient();
+  const siteName = args.locale === "ja" ? SITE_NAME : args.locale === "ko" ? KO_SITE_NAME : EN_SITE_NAME;
+  const from = getFromAddress(siteName);
+  if (!resend || !from) return false;
+  try {
+    const result = await resend.emails.send({
+      from, to: args.to,
+      subject: `${siteName} - ${args.locale === "ja" ? args.kind === "welcome" ? "アカウント登録のご案内" : "ログインコード" : "Sign in"}`,
+      html: renderLoginEmailHtml(args.url, args.locale, args),
+      text: renderLoginCodeText(args.url, args.locale, args),
+    });
+    return !result.error;
+  } catch { return false; }
 }
 
 interface SendFriendPerceptionArgs {
@@ -509,61 +526,11 @@ export async function sendDetailedReportEmail(
 }
 
 // =========================================================================
-// テンプレ (絵文字なし、明朝体ベースのインライン CSS で和の上品さ)
+// ログインメール: 全言語共通のサイトブランドデザイン。
 // =========================================================================
 
 function renderHtml(url: string, locale: EmailLocale): string {
-  if (locale === "ko") return renderMagicLinkHtmlKo(url);
-  if (locale === "en") return renderMagicLinkHtmlEn(url);
-  if (locale === "id") return renderMagicLinkHtmlId(url);
-  // インライン CSS のみ (Gmail / iOS Mail / Outlook の互換性確保)。
-  // serif フォント指定で和の質感、十分な余白で読みやすさ。
-  return `<!DOCTYPE html>
-<html lang="ja">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${SITE_NAME} - ログインリンク</title>
-  </head>
-  <body style="margin:0;padding:0;background:#FAF7F2;font-family:'Hiragino Mincho ProN','Yu Mincho',serif;color:#2A2520;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FAF7F2;padding:40px 16px;">
-      <tr>
-        <td align="center">
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E8E1D5;border-radius:12px;padding:40px 32px;">
-            <tr>
-              <td>
-                <p style="margin:0 0 24px;font-size:11px;letter-spacing:0.2em;color:#A89E8E;text-align:center;">WATASHI NO TORISETSU</p>
-                <h1 style="margin:0 0 28px;font-size:22px;font-weight:600;line-height:1.5;text-align:center;color:#2A2520;">ログインリンクをお送りします</h1>
-                <p style="margin:0 0 20px;font-size:15px;line-height:1.85;">
-                  下のボタンから、${SITE_NAME}の自分のデータにアクセスできます。
-                </p>
-                <p style="margin:0 0 32px;text-align:center;">
-                  <a href="${url}" style="display:inline-block;padding:14px 36px;background:#2A2520;color:#FAF7F2;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:0.05em;border-radius:999px;">ログインする</a>
-                </p>
-                <p style="margin:0 0 12px;font-size:13px;line-height:1.85;color:#6B6359;">
-                  このリンクは <strong>1 時間</strong> で失効します。<br />
-                  一度使うと再利用できません。
-                </p>
-                <p style="margin:0 0 24px;font-size:13px;line-height:1.85;color:#6B6359;">
-                  ボタンが押せない場合は、以下の URL をブラウザに貼り付けてください。
-                </p>
-                <p style="margin:0 0 32px;font-size:12px;line-height:1.65;color:#A89E8E;word-break:break-all;">
-                  ${url}
-                </p>
-                <hr style="border:none;border-top:1px solid #E8E1D5;margin:32px 0;" />
-                <p style="margin:0;font-size:12px;line-height:1.8;color:#A89E8E;">
-                  心当たりがない場合は、このメールは無視してください。<br />
-                  第三者があなたのメールアドレスを誤って入力した可能性があります。
-                </p>
-              </td>
-            </tr>
-          </table>
-          <p style="margin:24px 0 0;font-size:11px;color:#A89E8E;">${SITE_NAME}</p>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>`;
+  return renderLoginEmailHtml(url, locale);
 }
 
 function renderText(url: string, locale: EmailLocale): string {
@@ -630,74 +597,6 @@ function renderText(url: string, locale: EmailLocale): string {
     `--`,
     SITE_NAME,
   ].join("\n");
-}
-
-function renderMagicLinkHtmlEn(url: string): string {
-  return `<!DOCTYPE html>
-<html lang="en">
-  <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${EN_SITE_NAME} – Your sign-in link</title></head>
-  <body style="margin:0;padding:0;background:#F8F8FC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2E2E5C;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F8F8FC;padding:40px 16px;"><tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E3E6F5;border-radius:16px;padding:40px 32px;"><tr><td>
-        <p style="margin:0 0 24px;font-size:11px;letter-spacing:0.18em;color:#8A8AA3;text-align:center;">ALICE TEST</p>
-        <h1 style="margin:0 0 24px;font-size:24px;font-weight:800;line-height:1.4;text-align:center;color:#2E2E5C;">Your sign-in link is ready</h1>
-        <p style="margin:0 0 28px;font-size:15px;line-height:1.75;color:#51516E;">Use the button below to access your personality results and saved data.</p>
-        <p style="margin:0 0 30px;text-align:center;"><a href="${url}" style="display:inline-block;padding:14px 34px;background:#5B5BEF;color:#FFFFFF;text-decoration:none;font-size:15px;font-weight:700;border-radius:999px;">Sign in</a></p>
-        <p style="margin:0 0 18px;font-size:13px;line-height:1.75;color:#727287;">This link expires in <strong>one hour</strong> and can only be used once.</p>
-        <p style="margin:0 0 10px;font-size:13px;line-height:1.75;color:#727287;">If the button does not work, copy and paste this URL into your browser:</p>
-        <p style="margin:0 0 28px;font-size:12px;line-height:1.65;color:#8A8AA3;word-break:break-all;">${url}</p>
-        <hr style="border:none;border-top:1px solid #E3E6F5;margin:28px 0;" />
-        <p style="margin:0;font-size:12px;line-height:1.75;color:#8A8AA3;">If you did not request this email, you can safely ignore it.</p>
-      </td></tr></table>
-      <p style="margin:22px 0 0;font-size:11px;color:#8A8AA3;">${EN_SITE_NAME}</p>
-    </td></tr></table>
-  </body>
-</html>`;
-}
-
-function renderMagicLinkHtmlId(url: string): string {
-  return `<!DOCTYPE html>
-<html lang="id">
-  <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${ID_SITE_NAME} – Tautan masuk Anda</title></head>
-  <body style="margin:0;padding:0;background:#F8F8FC;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#2E2E5C;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#F8F8FC;padding:40px 16px;"><tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E3E6F5;border-radius:16px;padding:40px 32px;"><tr><td>
-        <p style="margin:0 0 24px;font-size:11px;letter-spacing:0.18em;color:#8A8AA3;text-align:center;">ALICE PERSONALITIES</p>
-        <h1 style="margin:0 0 24px;font-size:24px;font-weight:800;line-height:1.4;text-align:center;color:#2E2E5C;">Tautan masuk Anda sudah siap</h1>
-        <p style="margin:0 0 28px;font-size:15px;line-height:1.75;color:#51516E;">Gunakan tombol di bawah untuk mengakses hasil kepribadian dan data tersimpan Anda.</p>
-        <p style="margin:0 0 30px;text-align:center;"><a href="${url}" style="display:inline-block;padding:14px 34px;background:#5B5BEF;color:#FFFFFF;text-decoration:none;font-size:15px;font-weight:700;border-radius:999px;">Masuk</a></p>
-        <p style="margin:0 0 18px;font-size:13px;line-height:1.75;color:#727287;">Tautan ini kedaluwarsa dalam <strong>satu jam</strong> dan hanya dapat digunakan sekali.</p>
-        <p style="margin:0 0 10px;font-size:13px;line-height:1.75;color:#727287;">Jika tombol tidak berfungsi, salin URL berikut ke browser:</p>
-        <p style="margin:0 0 28px;font-size:12px;line-height:1.65;color:#8A8AA3;word-break:break-all;">${url}</p>
-        <hr style="border:none;border-top:1px solid #E3E6F5;margin:28px 0;" />
-        <p style="margin:0;font-size:12px;line-height:1.75;color:#8A8AA3;">Jika Anda tidak meminta email ini, Anda dapat mengabaikannya.</p>
-      </td></tr></table>
-      <p style="margin:22px 0 0;font-size:11px;color:#8A8AA3;">${ID_SITE_NAME}</p>
-    </td></tr></table>
-  </body>
-</html>`;
-}
-
-function renderMagicLinkHtmlKo(url: string): string {
-  return `<!DOCTYPE html>
-<html lang="ko">
-  <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><title>${KO_SITE_NAME} - 로그인 링크</title></head>
-  <body style="margin:0;padding:0;background:#FAF7F2;font-family:-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif;color:#2A2520;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FAF7F2;padding:40px 16px;"><tr><td align="center">
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E8E1D5;border-radius:12px;padding:40px 32px;"><tr><td>
-        <p style="margin:0 0 24px;font-size:11px;letter-spacing:0.2em;color:#A89E8E;text-align:center;">WATASHI NO TORISETSU</p>
-        <h1 style="margin:0 0 28px;font-size:22px;font-weight:700;line-height:1.5;text-align:center;color:#2A2520;">로그인 링크를 보내 드립니다</h1>
-        <p style="margin:0 0 20px;font-size:15px;line-height:1.85;">아래 버튼을 눌러 ${KO_SITE_NAME}에 로그인하고 저장된 진단 결과를 확인해 주세요.</p>
-        <p style="margin:0 0 32px;text-align:center;"><a href="${url}" style="display:inline-block;padding:14px 36px;background:#2A2520;color:#FAF7F2;text-decoration:none;font-size:15px;font-weight:700;border-radius:999px;">로그인하기</a></p>
-        <p style="margin:0 0 24px;font-size:13px;line-height:1.85;color:#6B6359;">이 링크는 <strong>1시간</strong> 뒤 만료되며 한 번만 사용할 수 있어요.<br />버튼이 열리지 않으면 아래 주소를 브라우저에 붙여 넣어 주세요.</p>
-        <p style="margin:0 0 32px;font-size:12px;line-height:1.65;color:#A89E8E;word-break:break-all;">${url}</p>
-        <hr style="border:none;border-top:1px solid #E8E1D5;margin:32px 0;" />
-        <p style="margin:0;font-size:12px;line-height:1.8;color:#A89E8E;">요청한 적이 없다면 이 메일을 무시해 주세요.</p>
-      </td></tr></table>
-      <p style="margin:24px 0 0;font-size:11px;color:#A89E8E;">${KO_SITE_NAME}</p>
-    </td></tr></table>
-  </body>
-</html>`;
 }
 
 // =========================================================================

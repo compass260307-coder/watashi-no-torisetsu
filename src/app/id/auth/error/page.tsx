@@ -1,9 +1,8 @@
-import type { Metadata } from "next";
-import { AuthErrorContent } from "@/app/auth/error/AuthErrorContent";
+import { redirect } from "next/navigation";
+import type { LoginParams } from "@/lib/login-recovery";
 
-export const metadata: Metadata = { title: { absolute: "Kesalahan tautan masuk | Alice Test" }, robots: { index: false, follow: false } };
-
-export default async function IndonesianAuthErrorPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function AuthErrorPage({ searchParams }: { searchParams: Promise<LoginParams> }) {
   const params = await searchParams;
-  return <AuthErrorContent reason={typeof params.reason === "string" ? params.reason : undefined} locale="id" />;
+  const reason = typeof params.reason === "string" ? params.reason : "failed";
+  redirect("/id/login?login_error=" + encodeURIComponent(reason));
 }

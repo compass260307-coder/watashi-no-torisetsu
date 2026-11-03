@@ -1,13 +1,9 @@
 import type { Metadata } from "next";
-import LoginPageContent from "@/components/login/LoginPageContent";
-import { localizedAlternates } from "@/lib/locale-seo";
+import LoginEntry from "@/components/login/LoginEntry";
+import type { LoginParams } from "@/lib/login-recovery";
 
-export const metadata: Metadata = {
-  title: { absolute: "Sign in | Alice Personalities" },
-  alternates: localizedAlternates("en", "/login", "/ko/login", "/en/login", "/id/login"),
-  robots: { index: false, follow: false },
-};
+export const metadata: Metadata = { robots: { index: false, follow: false } };
 
-export default function EnglishLoginPage() {
-  return <LoginPageContent locale="en" />;
+export default async function LoginPage({ searchParams }: { searchParams: Promise<LoginParams> }) {
+  return <LoginEntry locale="en" params={await searchParams} />;
 }

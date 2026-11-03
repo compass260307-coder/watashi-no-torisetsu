@@ -2,12 +2,13 @@
 
 // マジックリンク発行の白カード (16personalities のログインモーダル風)。
 //   - /login ページと、ヘッダーから開くログインモーダル (LoginModal) の両方で再利用する。
-//   - フロー: email 入力 → POST /api/auth/request-magic-link → 送信完了画面
+//   - フロー: email 入力 → POST /api/auth/request-magic-link → 6桁コード入力
 //     (enumeration 対策で存在判定はサーバ側、常に同じ画面へ)。
 //   - onClose を渡すとカード右上に × (モーダル用) を表示する。
 
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import Link from "next/link";
+import LoginCodeScreen from "./login/LoginCodeScreen";
 import type { ResultLocale } from "@/i18n/result";
 
 type LoginLocale = ResultLocale | "en" | "id";
@@ -25,7 +26,7 @@ const LOGIN_COPY = {
     close: "閉じる",
     heading: "ログインリンクをリクエスト",
     description:
-      "ログインリンクをお送りしますので、\nメールアドレスを入力してください。",
+      "登録したメールアドレスにログインリンクをお送りします。",
     emailLabel: "メールアドレス",
     submitting: "送信中...",
     submit: "リンクを送る",
@@ -42,6 +43,7 @@ const LOGIN_COPY = {
     heading: "로그인 링크 받기",
     description: "로그인 링크를 보내 드릴게요.\n이메일 주소를 입력해 주세요.",
     emailLabel: "이메일 주소",
+    passwordHelp: "비밀번호 없이 이메일의 링크로 로그인할 수 있어요.",
     submitting: "보내는 중...",
     submit: "로그인 링크 받기",
     sendError: "전송에 실패했어요",
@@ -58,6 +60,7 @@ const LOGIN_COPY = {
     description:
       "Enter your email and we’ll send you a secure sign-in link.\nNo password needed.",
     emailLabel: "Email address",
+    passwordHelp: "No password needed. Sign in using the link in your email.",
     submitting: "Sending...",
     submit: "Send sign-in link",
     sendError: "We couldn’t send the link",
@@ -73,6 +76,7 @@ const LOGIN_COPY = {
     heading: "Dapatkan tautan masuk",
     description: "Masukkan email Anda dan kami akan mengirim tautan masuk yang aman.\nTanpa kata sandi.",
     emailLabel: "Alamat email",
+    passwordHelp: "Tanpa kata sandi. Masuk melalui tautan di email Anda.",
     submitting: "Mengirim...",
     submit: "Kirim tautan masuk",
     sendError: "Tautan tidak dapat dikirim",
@@ -87,14 +91,29 @@ const LOGIN_COPY = {
 export function LoginCard({
   onClose,
   locale = "ja",
+  notice,
 }: {
   onClose?: () => void;
+  notice?: string;
   locale?: LoginLocale;
 }) {
+  const emailId = useId();
   const [email, setEmail] = useState("");
   const [phase, setPhase] = useState<Phase>("input");
   const [errorMessage, setErrorMessage] = useState("");
+  const [challenge, setChallenge] = useState("");
+  const [preview, setPreview] = useState(false);
   const copy = LOGIN_COPY[locale];
+  const [googleAvailable, setGoogleAvailable] = useState(false);
+  useEffect(() => {
+    if (locale !== "ja") return;
+    let active = true;
+    void fetch("/api/auth/google", { cache: "no-store" })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => { if (active) setGoogleAvailable(data?.available === true); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [locale]);
 
   const trimmed = email.trim();
   const isValid =
@@ -113,15 +132,20 @@ export function LoginCard({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: trimmed, locale }),
       });
-      // enumeration 対策: 成功・失敗を問わず 200 が返るが、念のため status 確認
+      // 登録の有無では表示を分けず、通信失敗と再送制限のみ案内する。
       if (!res.ok && res.status !== 200) {
-        const data = await res.json().catch(() => null);
         setPhase("error");
         setErrorMessage(
-          data?.error ?? `${copy.sendError} (HTTP ${res.status})`,
+          res.status === 429
+            ? ({ ja: "新しいコードは60秒後にリクエストできます。", en: "Please wait 60 seconds before requesting another code.", ko: "60초 후 새 코드를 요청해 주세요.", id: "Tunggu 60 detik sebelum meminta kode baru." }[locale])
+            : copy.sendError,
         );
         return;
       }
+      const data = await res.json();
+      if (typeof data.challenge !== "string") throw new Error(copy.sendError);
+      setChallenge(data.challenge);
+      setPreview(data.preview === true);
       setPhase("sent");
     } catch (err) {
       setPhase("error");
@@ -136,7 +160,7 @@ export function LoginCard({
 
   return (
     <section
-      className="relative w-full max-w-[440px] rounded-2xl bg-white px-6 py-8 md:px-8"
+      className="relative w-full max-w-[540px] rounded-2xl bg-white px-5 py-8 sm:px-8 sm:py-9"
       style={{
         fontFamily: FONT_STACK,
         boxShadow: "0 18px 50px rgba(46,46,92,0.16)",
@@ -147,7 +171,7 @@ export function LoginCard({
           type="button"
           onClick={onClose}
           aria-label={copy.close}
-          className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full transition-colors hover:bg-[#2E2E5C]/5"
+          className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full border border-[#2E2E5C]/15 transition-colors hover:bg-[#2E2E5C]/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5B5BEF]"
           style={{ color: `${NAVY}99` }}
         >
           <svg
@@ -168,19 +192,19 @@ export function LoginCard({
       )}
 
       {phase === "sent" ? (
-        <SentScreen email={trimmed} onReset={reset} locale={locale} />
+        <LoginCodeScreen email={trimmed} initialChallenge={challenge} onReset={reset} locale={locale} preview={preview} />
       ) : (
         <>
           {/* 見出しは h2: 設置先ページ (/login の「おかえりなさい！」や
               /purchase-complete の「購入ありがとうございます！」) が h1 を持つため。 */}
           <h2
-            className="whitespace-nowrap text-center text-[22px] font-bold leading-snug md:text-[28px]"
+            className="pr-7 text-[22px] font-bold leading-[1.5] tracking-tight sm:text-[28px]"
             style={{ color: NAVY }}
           >
             {copy.heading}
           </h2>
           <p
-            className="mx-auto mt-3 text-center text-[15px] leading-[1.9]"
+            className="mt-2 text-[14px] leading-[1.9] sm:text-[15px]"
             style={{ color: `${NAVY}99` }}
           >
             {copy.description.split("\n").map((line, index) => (
@@ -191,10 +215,11 @@ export function LoginCard({
             ))}
           </p>
 
+          {notice && <p role="status" className="mt-4 rounded-lg bg-[#5B5BEF]/5 p-3 text-[13px] leading-relaxed text-[#2E2E5C]">{notice}</p>}
           <form onSubmit={submit} className="mt-6 flex flex-col gap-4">
             <div>
               <label
-                htmlFor="login-email"
+                htmlFor={emailId}
                 className="mb-2 block text-[14px] font-bold"
                 style={{ color: `${NAVY}B3` }}
               >
@@ -209,16 +234,18 @@ export function LoginCard({
                   <MailIcon />
                 </span>
                 <input
-                  id="login-email"
+                  id={emailId}
+                  aria-describedby={locale === "ja" ? undefined : `${emailId}-help`}
+                  required
                   type="email"
                   inputMode="email"
                   autoComplete="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="email@gmail.com"
+                  placeholder="email@example.com"
                   maxLength={254}
                   disabled={phase === "submitting"}
-                  className="w-full rounded-lg border py-3.5 pl-11 pr-4 text-[16px] focus:outline-none focus:ring-2 disabled:opacity-60"
+                  className="w-full rounded-lg border py-3.5 pl-11 pr-4 text-[16px] transition-shadow placeholder:text-[#85859C] focus:outline-none focus:ring-2 disabled:opacity-60"
                   style={
                     {
                       borderColor: "#DBDCEB",
@@ -229,6 +256,12 @@ export function LoginCard({
                 />
               </div>
             </div>
+
+            {locale !== "ja" && (
+              <p id={`${emailId}-help`} className="-mt-1 text-[12px] leading-[1.8] text-[#2E2E5C]/65">
+                {LOGIN_COPY[locale].passwordHelp}
+              </p>
+            )}
 
             {locale === "ko" ? (
               <p className="-mt-1 text-[11px] leading-[1.7] text-[#2E2E5C]/55">
@@ -247,70 +280,38 @@ export function LoginCard({
             <button
               type="submit"
               disabled={!isValid || phase === "submitting"}
-              className="w-full rounded-lg py-4 text-[17px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+              className="w-full rounded-full py-4 text-[17px] font-bold text-white transition-all hover:opacity-90 active:scale-[0.99] disabled:cursor-not-allowed focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#5B5BEF] disabled:opacity-50"
               style={{ backgroundColor: SORA }}
             >
               {phase === "submitting" ? copy.submitting : copy.submit}
             </button>
 
             {phase === "error" && errorMessage && (
-              <p className="whitespace-pre-line text-center text-[13px] text-red-500">
+              <p role="alert" className="whitespace-pre-line rounded-lg bg-red-50 p-3 text-[13px] leading-relaxed text-red-700">
                 {errorMessage}
               </p>
             )}
           </form>
+          {locale === "ja" && googleAvailable && (
+            <div className="mt-7">
+              <p className="mb-3 text-center text-[13px] leading-relaxed text-[#2E2E5C]/65">
+                以下の方法でもログインできます
+              </p>
+              <form action="/api/auth/google" method="post">
+                <button
+                  type="submit"
+                  disabled={phase === "submitting"}
+                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-[#DADCE0] bg-white px-5 py-2.5 text-[14px] font-semibold text-[#3C4043] transition-colors hover:bg-[#F8F9FA] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5B5BEF] disabled:opacity-50"
+                >
+                  <GoogleIcon />
+                  Googleでログイン
+                </button>
+              </form>
+            </div>
+          )}
         </>
       )}
     </section>
-  );
-}
-
-function SentScreen({
-  email,
-  onReset,
-  locale,
-}: {
-  email: string;
-  onReset: () => void;
-  locale: LoginLocale;
-}) {
-  const copy = LOGIN_COPY[locale];
-  return (
-    <div className="flex flex-col items-center text-center">
-      <h2
-        className="text-[24px] font-bold leading-snug md:text-[28px]"
-        style={{ color: NAVY }}
-      >
-        {copy.sentHeading}
-      </h2>
-      <p
-        className="mt-4 text-[15px] leading-[1.9]"
-        style={{ color: `${NAVY}CC` }}
-      >
-        <span className="break-all font-bold">{email}</span>
-        <br />
-        {copy.sentBody}
-      </p>
-      <p
-        className="mt-3 text-[13px] leading-relaxed"
-        style={{ color: `${NAVY}80` }}
-      >
-        {copy.sentHelp.split("\n").map((line, index) => (
-          <span key={line}>
-            {index > 0 && <br />}
-            {line}
-          </span>
-        ))}
-      </p>
-      <button
-        type="button"
-        onClick={onReset}
-        className="mt-6 text-[13px] underline underline-offset-2 transition-colors hover:opacity-70"
-        style={{ color: `${NAVY}99` }}
-      >
-        {copy.reset}
-      </button>
-    </div>
   );
 }
 
@@ -340,6 +341,17 @@ function MailIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </svg>
+  );
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5Z" />
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6C44.4 38.02 46.98 31.85 46.98 24.55Z" />
+      <path fill="#FBBC05" d="M10.53 28.59A14.41 14.41 0 0 1 9.75 24c0-1.59.27-3.13.76-4.59l-7.98-6.19A23.87 23.87 0 0 0 0 24c0 3.87.93 7.53 2.56 10.78l7.97-6.19Z" />
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.91-5.8l-7.73-6c-2.15 1.45-4.92 2.3-8.18 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48Z" />
     </svg>
   );
 }
