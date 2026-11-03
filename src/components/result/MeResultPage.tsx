@@ -496,7 +496,7 @@ async function MeResultPageContent({
   const resultUpgradeOwnerName = user.display_name?.trim() || (isKorean ? "회원님" : "あなた");
   const resultUpgradeCtaLabel = premiumBundlePaid
     ? (isKorean ? "Alice의 질문에 답하기" : "Aliceの質問に答える")
-    : (isKorean ? "결과 업그레이드" : "質問に答えてアップグレード");
+    : (isKorean ? "결과 업그레이드" : "結果をアップグレード");
   const unmeiPurchaseProduct = isKorean || locale === "ja"
     ? "full_access"
     : fullAccessPaid
