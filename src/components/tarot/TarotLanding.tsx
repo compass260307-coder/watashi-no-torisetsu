@@ -137,6 +137,69 @@ export default function TarotLanding({
   const copy = LANDING_COPY[locale];
   return (
     <main className="overflow-hidden bg-white text-[#2E2E5C]">
+      {locale === "ja" ? (
+        <section aria-label="Aliceのタロットの部屋" className="relative isolate h-[calc(100svh-56px)] min-h-[560px] overflow-hidden bg-[#102C30] text-[#FFF7E5] md:h-[850px] md:max-h-[calc(100svh-64px)]">
+          <Image
+            src="/mascot/tarot-alice-front-room-v1.webp"
+            alt="正面を向くAliceと、目の前に広がるタロットテーブル"
+            fill
+            priority
+            sizes="(min-width: 768px) 760px, 100vw"
+            className="mx-auto max-w-[760px] origin-bottom object-cover object-center [@media(min-height:1100px)]:scale-[1.10]"
+          />
+          <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,rgba(7,27,31,0.55)_0%,transparent_30%,transparent_53%,rgba(6,25,29,0.3)_69%,rgba(6,25,29,0.9)_100%)]" />
+          <div className="relative mx-auto flex h-full max-w-[640px] flex-col px-3 pb-[calc(84px+env(safe-area-inset-bottom))] pt-7 md:px-6 md:pb-5 md:pt-10">
+            <div className="text-center">
+              <h1 className="mt-2 text-[clamp(30px,8.5vw,48px)] font-black leading-[1.25] tracking-[0.02em] drop-shadow-md md:text-[52px]">{copy.title}</h1>
+              <p className="mt-2 text-[13px] font-medium tracking-[0.06em] text-[#FFF7E5]/85">今日は、何をカードで占う？</p>
+            </div>
+            <div className="mt-auto pt-6">
+              <div className="mx-auto grid w-full max-w-[600px] grid-cols-3 items-center justify-items-center gap-2 md:gap-4">
+                {TAROT_MODE_IDS.map((mode, index) => (
+                  <Link
+                    key={mode}
+                    href={previewMode ? `/tarot/dev-preview?mode=${mode}` : `/tarot/${mode}`}
+                    aria-label={`${tarotModes(locale)[mode].title}を開く`}
+                    className={`group relative flex aspect-square w-full flex-col items-center justify-center rounded-full border-[3px] border-[#FFF8E8]/90 px-1 text-center shadow-[inset_0_3px_14px_#ffffffb3,0_5px_0_#182b3255,0_10px_24px_#0004] transition hover:-translate-y-1 active:translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F6D99C] ${[
+                      "bg-[radial-gradient(circle_at_35%_20%,#fff7ff,#e4d5f5_65%,#cbb5e5)] text-[#665084]",
+                      "bg-[radial-gradient(circle_at_35%_20%,#f4fff7,#cfeee3_65%,#a4d2c6)] text-[#386e66]",
+                      "bg-[radial-gradient(circle_at_35%_20%,#fff9ef,#f8d8dc_65%,#e8b6c1)] text-[#96566e]",
+                    ][index]}`}
+                  >
+                    <span aria-hidden="true" className="pointer-events-none absolute inset-[5px] rounded-full border border-dashed border-current opacity-25" />
+                    <span aria-hidden="true" className="absolute right-[17%] top-[17%] text-[11px] opacity-60">✧</span>
+                    <span aria-hidden="true" className="mb-1.5 flex h-8 items-center justify-center md:mb-2 md:h-10">
+                      <svg viewBox="0 0 40 40" className="h-8 w-8 md:h-10 md:w-10" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                        {index === 0 ? (
+                          <>
+                            <circle cx="20" cy="20" r="8" fill="currentColor" fillOpacity=".1" />
+                            <path d="M20 5v3m0 24v3M5 20h3m24 0h3M9.5 9.5l2.1 2.1m16.8 16.8 2.1 2.1m0-21-2.1 2.1m-16.8 16.8-2.1 2.1" />
+                            <path d="M17 19h.1m5.8 0h.1m-6 4c1.8 1.5 4.2 1.5 6 0" />
+                          </>
+                        ) : index === 1 ? (
+                          <>
+                            <rect x="7" y="11" width="15" height="23" rx="3" transform="rotate(-18 7 11)" fill="currentColor" fillOpacity=".08" />
+                            <rect x="23" y="6" width="15" height="23" rx="3" transform="rotate(18 23 6)" fill="currentColor" fillOpacity=".08" />
+                            <rect x="13" y="7" width="15" height="25" rx="3" fill="#e9f8ef" />
+                            <path d="m20.5 13 1.6 4.4 4.4 1.6-4.4 1.6-1.6 4.4-1.6-4.4-4.4-1.6 4.4-1.6 1.6-4.4Z" />
+                          </>
+                        ) : (
+                          <>
+                            <path d="M20 32S6 24 6 15a7 7 0 0 1 14-2 7 7 0 0 1 14 2c0 9-14 17-14 17Z" fill="currentColor" fillOpacity=".1" />
+                            <path d="M17 16a3 3 0 1 1 5 2c-2 1-2 2-2 3m0 4h.01" />
+                          </>
+                        )}
+                      </svg>
+                    </span>
+                    <span className="text-[clamp(12px,3.5vw,18px)] font-black md:text-[19px]">{tarotModes(locale)[mode].title}</span>
+                    <span className="mt-1 text-[9px] font-bold text-current opacity-75 md:text-[11px]">{["今日のヒント", "過去・現在・未来", "迷いをひもとく"][index]}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : (
       <section className="relative border-b border-[#2E2E5C]/5 bg-white px-5 pb-4 pt-12 md:px-8 md:py-16">
         <div className="relative mx-auto grid max-w-[1040px] items-center gap-4 md:grid-cols-[1fr_0.9fr] md:gap-8">
           <div className="contents md:order-2 md:block">
@@ -162,6 +225,9 @@ export default function TarotLanding({
         </div>
       </section>
 
+      )}
+
+      {locale !== "ja" && (
       <section className="mx-auto max-w-[1040px] px-5 py-12 md:px-8 md:py-20">
         <div className="mb-8 text-center md:mb-10">
           <p className="text-[11px] font-black tracking-[0.16em] text-[#8A78CF]">CHOOSE A READING</p>
@@ -183,6 +249,8 @@ export default function TarotLanding({
           {copy.disclaimer}
         </p>
       </section>
+
+      )}
 
       <section className="border-t border-[#2E2E5C]/5 bg-white px-5 py-14 md:px-8 md:py-20">
         <div className="mx-auto max-w-[1040px]">
