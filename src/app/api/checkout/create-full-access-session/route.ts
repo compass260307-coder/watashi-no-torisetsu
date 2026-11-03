@@ -635,7 +635,11 @@ export async function POST(request: NextRequest) {
   // 不正値は完全版へフォールバックせず、誤課金防止で拒否する。
   const requestedProduct: AccessProduct = body.product ?? "full_access";
   const product: AccessProduct = requestedProduct;
-  const lineUpgradeCheckout = checkoutLocale === "ja" && product === "premium_bundle";
+  const japaneseUpgradeCheckout = checkoutLocale === "ja" && product === "premium_bundle";
+  if (japaneseUpgradeCheckout && body.paywall_source !== "result_upgrade_after_answers") {
+    return NextResponse.json({ error: "result_upgrade_answers_required" }, { status: 403 });
+  }
+  const lineUpgradeCheckout = japaneseUpgradeCheckout && body.sales_channel === "line";
   const lineBuyer = lineUpgradeCheckout && body.sales_channel === "line" ? await getLineResultUpgradeSession() : null;
   if (lineUpgradeCheckout && (!lineBuyer || body.paywall_source !== "result_upgrade_after_answers")) {
     return NextResponse.json({ error: "line_channel_required", code: "line_channel_required" }, { status: 403 });
@@ -871,9 +875,9 @@ export async function POST(request: NextRequest) {
     );
   }
   // Saved answers are private: require the logged-in owner and five answers in the purchase language.
-  if ((isResultUpgradeCheckout && checkoutLocale === "ko") || lineUpgradeCheckout) {
+  if (isResultUpgradeCheckout) {
     const session = lineUpgradeCheckout ? lineBuyer : await getSession(request);
-    if (!session || session.id !== userId) {
+    if (!session || session.id !== userId || (bodyToken && bodyToken !== session.owner_token)) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
     const { data: upgrade, error } = await supabaseAdmin
@@ -988,7 +992,7 @@ export async function POST(request: NextRequest) {
   // キャンセルは購入前にいたページへ戻す。/aisho はゲスト (owner_token なし) でも
   // /aisho に戻す (従来はトップに落ちて迷子になっていた)。
   const cancelBasePath =
-    lineUpgradeCheckout ? "/line/result-upgrade" : returnTo === "aisho"
+    lineUpgradeCheckout ? "/line/result-upgrade" : isResultUpgradeCheckout && checkoutLocale === "ja" ? "/result-upgrade" : returnTo === "aisho"
       ? `${aishoPath}${aishoPairQuery ? `?${aishoPairQuery}` : ""}`
       : returnTo === "hoshiyomi"
         ? `${localePrefix}/hoshiyomi`
@@ -1042,7 +1046,7 @@ export async function POST(request: NextRequest) {
     tax_code?: string;
   } = {
     name:
-      lineUpgradeCheckout ? "結果アップグレード（LINE限定）" : isResultUpgradeCheckout && checkoutLocale === "ko"
+      lineUpgradeCheckout ? "結果アップグレード（LINE）" : isResultUpgradeCheckout && checkoutLocale === "ja" ? "結果アップグレード" : isResultUpgradeCheckout && checkoutLocale === "ko"
         ? "결과 업그레이드"
         : upgradeFrom !== "none"
         ? checkoutLocale === "ko"
@@ -1055,6 +1059,8 @@ export async function POST(request: NextRequest) {
         : checkoutCopy.productName,
     description: lineUpgradeCheckout
       ? `5つの自由回答から専用キャラクター・タイプ名・自己診断結果・5章の鑑定書を作成。税込${RESULT_UPGRADE_PRICE_JPY}円の買い切り。`
+      : isResultUpgradeCheckout && checkoutLocale === "ja"
+      ? "5つの回答から作る専用キャラクター・専用タイプ名・自己診断結果・鑑定書。Webで受け取れる買い切り。"
       : isResultUpgradeCheckout && checkoutLocale === "ko"
       ? "5개 답변으로 만드는 나만의 캐릭터, 유형 이름, 자기 분석 결과와 전용 보고서 · 1회 결제"
       : checkoutCopy.productDescription,
@@ -1066,6 +1072,8 @@ export async function POST(request: NextRequest) {
 
   const productSubmitMessage = lineUpgradeCheckout
     ? `通常価格${LINE_RESULT_UPGRADE_LIST_PRICE_JPY.toLocaleString("ja-JP")}円から${LINE_RESULT_UPGRADE_COUPON_JPY}円クーポン適用で税込${RESULT_UPGRADE_PRICE_JPY}円の買い切りです。Alice Plusの定期課金とは別購入で、LINEメニューから結果を受け取れます。30日間の返金保証。`
+    : isResultUpgradeCheckout && checkoutLocale === "ja"
+    ? `税込${RESULT_UPGRADE_PRICE_JPY}円の買い切りです。5つの回答から専用キャラクターと鑑定書を作成し、Webで受け取れます。追加料金なし。`
     : isResultUpgradeCheckout && checkoutLocale === "ko"
     ? "5개 답변으로 나만의 캐릭터와 전용 보고서를 만들어요. 1회 결제 · 추가 요금 없음 · 30일 환불 보장."
     : checkoutCopy.submitMessage;

@@ -36,12 +36,8 @@ export default async function ResultUpgradePageContent({ locale = "ja", salesCha
       <TopFooter locale={locale} />
     </>;
   }
-  // Existing Web buyers retain access; new Japanese purchases start in LINE.
-  if (locale === "ja" && !lineFlow && !premiumPaid) {
-    redirect(session.owner_token ? `/me/${encodeURIComponent(session.owner_token)}` : "/diagnosis");
-  }
   if (lineFlow && isResultUpgradeReady(row) && !premiumPaid) redirect("/line/menu");
-  if (isResultUpgradeReady(row)) redirect(lineFlow ? "/line/result-upgrade/reading" : `${prefix}/result-upgrade/reading`);
+  if (premiumPaid && isResultUpgradeReady(row)) redirect(lineFlow ? "/line/result-upgrade/reading" : `${prefix}/result-upgrade/reading`);
 
   return (
     <>

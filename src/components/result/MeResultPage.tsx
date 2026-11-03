@@ -493,11 +493,10 @@ async function MeResultPageContent({
     fullAccessPaid &&
     destinyFeaturesPaid &&
     (!premiumBundlePaid || !resultUpgrade);
-  const isLineUpgradeOffer = locale === "ja" && showResultUpgradePlaceholder && !premiumBundlePaid;
   const resultUpgradeOwnerName = user.display_name?.trim() || (isKorean ? "회원님" : "あなた");
   const resultUpgradeCtaLabel = premiumBundlePaid
     ? (isKorean ? "Alice의 질문에 답하기" : "Aliceの質問に答える")
-    : (isKorean ? "결과 업그레이드" : "LINEでアップグレード");
+    : (isKorean ? "결과 업그레이드" : "質問に答えてアップグレード");
   const unmeiPurchaseProduct = isKorean || locale === "ja"
     ? "full_access"
     : fullAccessPaid
@@ -580,11 +579,11 @@ async function MeResultPageContent({
       }
     >
       <div
-        className={`rounded-[23px] border px-5 py-10 md:px-14 md:py-14 ${isLineUpgradeOffer ? "border-[#B9EACD] shadow-[0_8px_32px_rgba(6,199,85,0.14)]" : "animate-premium-glow border-[#F1DDAA] shadow-[0_8px_24px_rgba(46,46,92,0.055)]"}`}
+        className={`rounded-[23px] border px-5 py-10 md:px-14 md:py-14 ${"animate-premium-glow border-[#F1DDAA] shadow-[0_8px_24px_rgba(46,46,92,0.055)]"}`}
         style={{ backgroundColor: "#FFFFFF" }}
       >
         <div className="mx-auto mb-8 max-w-[800px] text-center md:mb-10">
-          <span className={`mb-4 inline-flex rounded-full px-4 py-2 text-[12px] font-black tracking-[0.08em] md:text-[13px] ${isLineUpgradeOffer ? "bg-[#E9F9EF] text-[#007A33]" : "bg-[#FFF6DF] text-[#9A6A24]"}`}>
+          <span className={`mb-4 inline-flex rounded-full px-4 py-2 text-[12px] font-black tracking-[0.08em] md:text-[13px] ${"bg-[#FFF6DF] text-[#9A6A24]"}`}>
             {isEnglish
               ? fullAccessPaid
                 ? "Unlocked with Everything"
@@ -607,7 +606,7 @@ async function MeResultPageContent({
               : isIndonesian
                 ? "Jawab pertanyaan Alice untuk melengkapi Peta Takdir Anda"
                 : showResultUpgradePlaceholder
-                  ? "LINEで質問に答えて、あなた専用の結果をアップグレードしよう"
+                  ? "5つの質問に答えて、あなた専用の結果へ"
                   : "Aliceの質問に答えて、運命の設計図を完成させよう"}
           </h2>
         </div>
@@ -748,8 +747,8 @@ async function MeResultPageContent({
                 style={{
                   clipPath:
                     "polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%)",
-                  backgroundColor: isLineUpgradeOffer ? "#E9F9EF" : feature.iconBg,
-                  color: isLineUpgradeOffer ? "#059E44" : feature.iconColor,
+                  backgroundColor: feature.iconBg,
+                  color: feature.iconColor,
                 }}
               >
                 {feature.icon}
@@ -774,7 +773,7 @@ async function MeResultPageContent({
               initialState={resultUpgrade?.state}
               premiumPaid={premiumBundlePaid}
               preview={Boolean(previewType)}
-              className={`inline-flex min-w-[260px] items-center justify-center gap-3 rounded-full px-9 py-4 text-[16px] font-bold text-white transition-all hover:-translate-y-0.5 md:min-w-[320px] md:text-[18px] ${isLineUpgradeOffer ? "bg-[#06C755] shadow-[0_7px_18px_rgba(6,199,85,0.28)] hover:bg-[#05B34C] hover:shadow-[0_10px_22px_rgba(6,199,85,0.32)]" : "bg-[#9A6A24] shadow-[0_7px_18px_rgba(154,106,36,0.28)] hover:bg-[#80571E] hover:shadow-[0_10px_22px_rgba(154,106,36,0.32)]"}`}
+              className={`inline-flex min-w-[260px] items-center justify-center gap-3 rounded-full px-9 py-4 text-[16px] font-bold text-white transition-all hover:-translate-y-0.5 md:min-w-[320px] md:text-[18px] ${"bg-[#9A6A24] shadow-[0_7px_18px_rgba(154,106,36,0.28)] hover:bg-[#80571E] hover:shadow-[0_10px_22px_rgba(154,106,36,0.32)]"}`}
             >
               {resultUpgradeCtaLabel}
               <span aria-hidden="true" className="text-xl font-medium">
@@ -1183,7 +1182,7 @@ async function MeResultPageContent({
       }
       reportIcon={showUnmeiPromo ? "upgrade" : "download"}
       reportOpensPaywall={showUnmeiPromo}
-      circleTone={isLineUpgradeOffer ? "line" : showUnmeiPromo || showResultUpgradePlaceholder ? "gold" : undefined}
+      circleTone={showUnmeiPromo || showResultUpgradePlaceholder ? "gold" : undefined}
       group={resultGroup}
       reportCta={
         showResultUpgradePlaceholder ? (
@@ -1195,7 +1194,7 @@ async function MeResultPageContent({
             premiumPaid={premiumBundlePaid}
             preview={Boolean(previewType)}
             className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full px-4 py-1.5 text-center text-[12px] font-bold leading-[1.2] text-white transition-transform hover:translate-y-0.5 active:scale-[0.99] sm:min-h-11 sm:px-5 sm:text-[13px]"
-            style={isLineUpgradeOffer ? { backgroundColor: "#06C755", boxShadow: "0 4px 0 #04933F" } : resultActionButtonStyle}
+            style={resultActionButtonStyle}
           >
             <svg
               width="15"

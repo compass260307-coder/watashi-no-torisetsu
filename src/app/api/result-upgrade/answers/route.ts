@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { consumeRateLimit, readJsonObject } from "@/lib/api-security";
-import { hasFullAccess, hasPremiumBundleAccess } from "@/lib/entitlements";
+import { hasFullAccess } from "@/lib/entitlements";
 import { checkOrigin } from "@/lib/origin-check";
 import {
   LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH,
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid locale" }, { status: 400 });
   }
   const lineFlow = new URL(request.url).searchParams.get("channel") === "line";
-  if ((lineFlow && locale !== "ja") || (locale === "ja" && !lineFlow && !(await hasPremiumBundleAccess(session.id)))) {
+  if (lineFlow && locale !== "ja") {
     return NextResponse.json({ error: "line_channel_required" }, { status: 403 });
   }
   const answers = normalizeResultUpgradeAnswers(body.value.answers);

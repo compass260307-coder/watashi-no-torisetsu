@@ -122,6 +122,19 @@ async function checkout({ full = true, premium = false, line = true, saved = ans
   const response = await route.POST(request);
   return { status: response.status, body: await response.json(), calls };
 }
+const webPurchase = await checkout({ sales_channel: 'web', line: false });
+assert.equal(webPurchase.status, 200);
+assert.equal(webPurchase.body.amount, 899);
+assert.equal(webPurchase.calls[0].line_items[0].price_data.unit_amount, 899);
+assert.equal(webPurchase.calls[0].metadata.sales_channel, undefined);
+assert.match(webPurchase.calls[0].success_url, /\/me\/owner-token\?paid=1/);
+assert.match(webPurchase.calls[0].cancel_url, /\/result-upgrade\?/);
+assert.match(webPurchase.calls[0].line_items[0].price_data.product_data.name, /結果アップグレード/);
+for (const input of [{ saved: answers.slice(0,4) }, { savedLocale: 'en' }, { full: false }, { owner_token: 'other' }, { premium: true }]) {
+  const rejected = await checkout({ sales_channel: 'web', line: false, ...input });
+  assert(rejected.status >= 400, JSON.stringify(input));
+  assert.equal(rejected.calls.length, 0);
+}
 const purchase = await checkout();
 assert.equal(purchase.status, 200);
 assert.equal(purchase.body.amount, 899);
@@ -135,7 +148,7 @@ assert.equal(purchase.calls[0].metadata.sales_channel_version, policy.LINE_RESUL
 assert.match(purchase.calls[0].success_url, /\/line\/result-upgrade\?paid=1/);
 assert.match(purchase.calls[0].cancel_url, /\/line\/result-upgrade\?/);
 for (const [input, status] of [
-  [{ line: false }, 403], [{ sales_channel: 'web' }, 403], [{ owner_token: 'another-owner' }, 403],
+  [{ line: false }, 403], [{ owner_token: 'another-owner' }, 403],
   [{ full: false }, 409], [{ saved: answers.slice(0, 4) }, 409], [{ savedLocale: 'en' }, 409],
   [{ premium: true }, 409], [{ paywall_source: 'direct' }, 403],
 ]) {
@@ -156,7 +169,7 @@ const complete = await checkout({ full: false, line: false, sales_channel: 'web'
 assert.equal(complete.status, 200);
 assert.equal(complete.body.amount, 499);
 assert(!complete.calls[0].success_url.includes('/line/'));
-console.log('PASS: LINE-only JPY 899 one-time upgrade, answers/owner/purchase checks, duplicate prevention, LINE returns; Web JPY 499 preserved.');
+console.log('PASS: Web and LINE JPY 899 one-time upgrade, answers/owner/purchase checks, duplicate prevention, LINE returns; Web JPY 499 preserved.');
 
 async function saveAnswers({ channel = 'line', locale = 'ja', premium = false, full = true, existing = null, session = owner, submitted = answers } = {}) {
   const writes = [];
@@ -180,14 +193,15 @@ assert.equal((await saveAnswers({ submitted: ['あ'.repeat(50), ...answers.slice
 assert.equal((await saveAnswers({ submitted: ['あ'.repeat(51), ...answers.slice(1)] })).status,400);
 assert.equal((await saveAnswers({ channel:'web',premium:true,submitted:['あ'.repeat(51), ...answers.slice(1)] })).status,200);
 
-assert.equal((await saveAnswers({ channel: 'web' })).status, 403);
+assert.equal((await saveAnswers({ channel: 'web' })).status, 200, 'Unpaid full-access owner can answer on Web');
+assert.equal((await saveAnswers({ channel: 'web', full: false })).status, 403);
 assert.equal((await saveAnswers({ channel: 'web', premium: true })).status, 200, 'Existing purchasers can resume on Web');
 assert.equal((await saveAnswers({ locale: 'en' })).status, 400);
 assert.equal((await saveAnswers({ session: null })).status, 401);
 assert.equal((await saveAnswers({ session: { ...owner, owner_token: 'other' } })).status, 403);
 assert.equal((await saveAnswers({ existing: { state: 'ready', locale: 'ja' } })).status, 409);
 assert.equal((await saveAnswers({ existing: { state: 'answers_ready', locale: 'en' } })).status, 409);
-console.log('PASS: private answers save to the authenticated LINE owner only; legacy paid Web resume preserved, completed and other-language results protected.');
+console.log('PASS: Web and LINE answers require the authenticated full-access owner; completed results and LINE language restrictions preserved.');
 
 const messages = [];
 const email = compile('src/lib/email.ts', {
@@ -200,6 +214,10 @@ assert.match(messages[0].subject, /結果アップグレード/);
 assert.match(messages[0].text, /税込899円/);
 assert.match(messages[0].text, /5つの自由回答/);
 assert.match(messages[0].html, /line.me\/R\/oaMessage/);
+await email.sendDetailedReportEmail({ to: 'test@example.test', ownerToken: owner.owner_token, locale: 'ja', product: 'premium_bundle', resultUpgrade: true, purchaseAmountMinor: 899 });
+assert.match(messages[1].html, /Webで専用の結果を受け取る/);
+assert(!messages[1].text.includes('LINEメニュー'));
+assert.match(messages[1].text, /\/me\/owner-token/);
 console.log('PASS: Japanese receipt describes the upgrade price/features and recovery through LINE. No live LINE, Stripe, database, email, or AI calls.');
 
 async function statusCase({ premium = false, locale = 'ja', channel = 'line' } = {}) {
