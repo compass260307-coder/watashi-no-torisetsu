@@ -1073,7 +1073,7 @@ export async function POST(request: NextRequest) {
   const productSubmitMessage = lineUpgradeCheckout
     ? `通常価格${LINE_RESULT_UPGRADE_LIST_PRICE_JPY.toLocaleString("ja-JP")}円から${LINE_RESULT_UPGRADE_COUPON_JPY}円クーポン適用で税込${RESULT_UPGRADE_PRICE_JPY}円の買い切りです。Alice Plusの定期課金とは別購入で、LINEメニューから結果を受け取れます。30日間の返金保証。`
     : isResultUpgradeCheckout && checkoutLocale === "ja"
-    ? `税込${RESULT_UPGRADE_PRICE_JPY}円の買い切りです。5つの回答から専用キャラクターと鑑定書を作成し、Webで受け取れます。追加料金なし。`
+    ? `通常価格${LINE_RESULT_UPGRADE_LIST_PRICE_JPY.toLocaleString("ja-JP")}円から${LINE_RESULT_UPGRADE_COUPON_JPY}円クーポン適用で税込${RESULT_UPGRADE_PRICE_JPY}円の買い切りです。5つの回答から専用キャラクターと鑑定書を作成し、Webで受け取れます。`
     : isResultUpgradeCheckout && checkoutLocale === "ko"
     ? "5개 답변으로 나만의 캐릭터와 전용 보고서를 만들어요. 1회 결제 · 추가 요금 없음 · 30일 환불 보장."
     : checkoutCopy.submitMessage;
@@ -1109,7 +1109,7 @@ export async function POST(request: NextRequest) {
       ? await getCouponIdCached(stripe, checkoutLocale)
       : null;
 
-  const lineUpgradeCouponId = lineUpgradeCheckout
+  const lineUpgradeCouponId = japaneseUpgradeCheckout
     ? await resolveJapaneseCourseCoupon(stripe, product, {
         listAmount: LINE_RESULT_UPGRADE_LIST_PRICE_JPY,
         saleAmount: RESULT_UPGRADE_PRICE_JPY,
@@ -1118,7 +1118,7 @@ export async function POST(request: NextRequest) {
       })
     : null;
 
-  if (lineUpgradeCheckout && lineUpgradeCouponId) {
+  if (japaneseUpgradeCheckout && lineUpgradeCouponId) {
     lineItems = [{
       price_data: {
         currency: "jpy",

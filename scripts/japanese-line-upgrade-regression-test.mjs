@@ -125,7 +125,14 @@ async function checkout({ full = true, premium = false, line = true, saved = ans
 const webPurchase = await checkout({ sales_channel: 'web', line: false });
 assert.equal(webPurchase.status, 200);
 assert.equal(webPurchase.body.amount, 899);
-assert.equal(webPurchase.calls[0].line_items[0].price_data.unit_amount, 899);
+assert.equal(webPurchase.calls[0].line_items[0].price_data.unit_amount, 1398);
+assert.equal(webPurchase.calls[0].discounts[0].coupon, 'wt-line-result-upgrade-off499-jpy');
+for (const couponMode of ['wrong_amount', 'wrong_currency', 'unavailable']) {
+  const fallback = await checkout({ sales_channel: 'web', line: false, couponMode });
+  assert.equal(fallback.body.amount, 899);
+  assert.equal(fallback.calls[0].line_items[0].price_data.unit_amount, 899);
+  assert.equal(fallback.calls[0].discounts, undefined);
+}
 assert.equal(webPurchase.calls[0].metadata.sales_channel, undefined);
 assert.match(webPurchase.calls[0].success_url, /\/me\/owner-token\?paid=1/);
 assert.match(webPurchase.calls[0].cancel_url, /\/result-upgrade\?/);

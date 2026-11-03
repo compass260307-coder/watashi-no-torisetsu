@@ -61,15 +61,36 @@ export function ResultUpgradeChatLauncher({
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
 
-    const previousOverflow = document.body.style.overflow;
+    const scrollX = window.scrollX;
+    const scrollY = window.scrollY;
+    const previousBodyStyle = {
+      overflow: document.body.style.overflow,
+      position: document.body.style.position,
+      top: document.body.style.top,
+      width: document.body.style.width,
+    };
     const previousFocus = document.activeElement as HTMLElement | null;
     const trigger = triggerRef.current;
-    document.body.style.overflow = "hidden";
-    closeRef.current?.focus();
+    // Keep the underlying result at its original scroll position when iOS opens the keyboard.
+    Object.assign(document.body.style, {
+      overflow: "hidden", position: "fixed", top: `-${scrollY}px`, width: "100%",
+    });
+    const viewport = window.visualViewport;
+    const syncViewport = () => {
+      if (!viewportRef.current) return;
+      viewportRef.current.style.top = `${viewport?.offsetTop ?? 0}px`;
+      viewportRef.current.style.height = `${viewport?.height ?? window.innerHeight}px`;
+    };
+    syncViewport();
+    viewport?.addEventListener("resize", syncViewport);
+    viewport?.addEventListener("scroll", syncViewport);
+    window.addEventListener("resize", syncViewport);
+    closeRef.current?.focus({ preventScroll: true });
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
@@ -77,9 +98,13 @@ export function ResultUpgradeChatLauncher({
     window.addEventListener("keydown", handleKeyDown);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      viewport?.removeEventListener("resize", syncViewport);
+      viewport?.removeEventListener("scroll", syncViewport);
+      window.removeEventListener("resize", syncViewport);
+      Object.assign(document.body.style, previousBodyStyle);
+      window.scrollTo({ left: scrollX, top: scrollY, behavior: "instant" });
       window.removeEventListener("keydown", handleKeyDown);
-      (previousFocus ?? trigger)?.focus();
+      (previousFocus ?? trigger)?.focus({ preventScroll: true });
     };
   }, [open]);
 
@@ -98,12 +123,13 @@ export function ResultUpgradeChatLauncher({
       {open
         ? createPortal(
             <div
+              ref={viewportRef}
               role="dialog"
               aria-modal="true"
               aria-label={copy.dialog}
-              className="fixed inset-0 z-[120] flex items-center justify-center bg-[#2E2E5C]/60 p-2 backdrop-blur-sm md:p-6"
+              className="fixed inset-x-0 top-0 h-svh z-[120] flex items-center justify-center bg-[#2E2E5C]/60 p-2 backdrop-blur-sm md:p-6"
             >
-              <div className="relative h-[calc(100dvh-1rem)] w-full max-w-[720px] overflow-hidden rounded-[28px] shadow-[0_24px_70px_rgba(21,21,55,0.35)] md:h-[min(760px,calc(100dvh-3rem))]">
+              <div className="relative h-full max-h-[760px] min-h-0 w-full max-w-[720px] overflow-hidden rounded-[28px] shadow-[0_24px_70px_rgba(21,21,55,0.35)]">
                 <button
                   ref={closeRef}
                   type="button"
