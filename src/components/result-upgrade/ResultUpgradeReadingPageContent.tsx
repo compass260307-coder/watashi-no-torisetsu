@@ -28,10 +28,12 @@ export default async function ResultUpgradeReadingPageContent({ locale = "ja", s
   return (
     <>
       <div className="print:hidden"><TopHeader locale={locale} /></div>
-      <main className="min-h-screen bg-[#E9E3D7] px-3 py-10 print:bg-white print:px-0 print:py-0 md:px-8 md:py-16">
+      <main className="min-h-screen bg-[#F8F7FC] px-3 py-10 print:bg-white print:px-0 print:py-0 md:px-8 md:py-16">
         {/* 生成キャラ画像はセッション認証付き API 配信のため常に unoptimized
             (next/image の内部フェッチは Cookie を引き継がず 404 になる)。 */}
         <ResultUpgradeReadingDocument
+          nickname={session.display_name}
+          sourceTypeId={row.source_type_id}
           locale={locale}
           imageSrc={`/api/result-upgrade/character/${encodeURIComponent(ownerToken)}?${new URLSearchParams({ ...(row.generated_at ? { v: row.generated_at } : {}), ...(lineFlow ? { channel: "line" } : {}) })}`}
           imageAlt={row.personalized_type_name}

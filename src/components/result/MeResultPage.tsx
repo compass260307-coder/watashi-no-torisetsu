@@ -1324,6 +1324,17 @@ async function MeResultPageContent({
             ページの薄グレー (ラッパー) をそのまま見せる (2026-08-26)。 */}
         <div className="relative mx-[calc(50%-50vw)] w-screen pb-1 pt-4 md:pt-2">
           <div className="mx-auto flex max-w-[1080px] flex-col items-center px-4 text-center md:px-8">
+            {resultUpgradeReady && (
+              <p className="mb-2 text-xs font-medium text-[#2E2E5C]/75 motion-safe:animate-pulse">
+                {isEnglish
+                  ? "Your personality results have been updated!"
+                  : isKorean
+                    ? "진단 결과 내용이 달라졌어요!"
+                    : isIndonesian
+                      ? "Isi hasil tesmu sudah diperbarui!"
+                      : "診断結果の内容が変わっているよ！"}
+              </p>
+            )}
             <svg
               width="22"
               height="22"
