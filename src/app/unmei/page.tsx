@@ -25,9 +25,9 @@ import type { Chart } from "@/lib/unmei/chart-view";
 import { localizedAlternates } from "@/lib/locale-seo";
 
 export const metadata = {
-  title: "運命の設計図",
+  title: "運命の設計図｜西洋占星術と性格診断",
   description:
-    "星の配置をもとに、あなたがこれまで選んできた姿勢に名前をつけ、これからの選び方を考えるきっかけを届ける本格鑑定。性格診断とかけ合わせて、あなただけの運命の設計図を読み解きます。",
+    "西洋占星術の出生図をもとに、あなたがこれまで選んできた姿勢に名前をつけ、これからの選び方を考えるきっかけを届ける本格鑑定。性格診断とかけ合わせて、あなただけの運命の設計図を読み解きます。",
   alternates: localizedAlternates(
     "ja",
     "/unmei",
@@ -183,14 +183,14 @@ function UnmeiTeaserLp({
             <div className="text-left">
               <h1 className="leading-tight">
                 <span className="block text-[28px] font-black text-[#2E2E5C] md:text-[34px]">
-                  あなただけの
+                  西洋占星術で読み解く
                 </span>
                 <span className="mt-1.5 inline-block rounded-xl bg-[#A36818] px-3 py-1 text-[34px] font-black text-white md:text-[42px]">
                   運命の設計図
                 </span>
               </h1>
               <p className="mt-3 text-[15px] font-bold leading-relaxed text-[#2E2E5C]/70 md:text-[16px]">
-                星の配置×性格診断で、あなた専用の鑑定書をつくりましょう。
+                生まれた瞬間の太陽・月・惑星の配置を描いた出生図と、性格診断を掛け合わせて、あなたの資質や人との関わり方を読み解きます。
               </p>
               <UnmeiPriceCta
                 sessionOwnerToken={ownerToken}
@@ -280,7 +280,7 @@ function UnmeiTeaserLp({
                       <circle cx="15" cy="12" r="5.8" />
                     </svg>
                   ),
-                  title: "性格診断 × 星、ふたつの答え合わせ",
+                  title: "西洋占星術 × 性格診断、ふたつの視点",
                   body: "自己診断でわかった性格と星の素質を照らし合わせ、重なるところも少しのズレも含めて、あなたがこれまで選んできた姿勢に名前をつけます",
                   bg: "#D8F2C0",
                   dark: "#3F7A2E",

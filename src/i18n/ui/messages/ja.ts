@@ -16,12 +16,12 @@ const U_FRIEND_REPORT: UnlockItem = {
 };
 const U_ALICE_FORTUNE: UnlockItem = {
   title: "Aliceによる占い機能をすべて解放",
-  desc: "あなただけの「運命の設計図」に加えて、Aliceがタロットを引き、恋愛・仕事・人間関係の悩みや迷いを占ってくれます。",
+  desc: "西洋占星術で自分を知ることができます。また、Aliceのタロット占いで恋愛・仕事・人間関係を占えます。",
   peek: PEEK_ALICE_FORTUNE,
 };
 const U_UNMEI: UnlockItem = {
   title: "あなた専用「運命の設計図」",
-  desc: "性格診断と出生図を掛け合わせた4章仕立てのAI鑑定。今日の1枚・3枚引き・YES / NOのタロットも楽しめます。",
+  desc: "西洋占星術の出生図と性格診断から、あなたの資質や人との関わり方を読み解く4章仕立ての鑑定書。今日の1枚・3枚引き・YES / NOのタロットも楽しめます。",
   peek: PEEK_UNMEI,
 };
 const U_ALICE: UnlockItem = {
