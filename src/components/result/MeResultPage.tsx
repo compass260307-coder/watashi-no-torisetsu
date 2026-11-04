@@ -103,6 +103,7 @@ import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
 import { PreferredLocaleSync } from "@/components/result/PreferredLocaleSync";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
+import ResetResultSection from "./ResetResultSection";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import EnSiteHeader from "@/components/en/EnSiteHeader";
@@ -2008,8 +2009,11 @@ async function MeResultPageContent({
       </div>
     )}
     </div>
-    {/* データをリセット導線はヘッダーの SP メニュー内のみ (2026-08-26 にフッター直上の
-        重複リンクを撤去)。 */}
+    {(isOwnedResult ||
+      (process.env.NODE_ENV === "development" && previewType && !publicPreview && !acquisition)) &&
+      locale === "ja" && (
+      <ResetResultSection />
+    )}
     {/* 診断シェアバンド。獲得モードはCTA一点集中のため出さない。 */}
     {!acquisition && (
       <DiagnosisShareBand
