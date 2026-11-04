@@ -110,6 +110,7 @@ import EnSiteHeader from "@/components/en/EnSiteHeader";
 import EnSiteFooter from "@/components/en/EnSiteFooter";
 import { MeStickyHeader } from "@/components/result/MeStickyHeader";
 import { ResultUpgradeGenerationWatcher } from "@/components/result-upgrade/ResultUpgradeGenerationWatcher";
+import { ResultUpgradeLineCta } from "@/components/result-upgrade/ResultUpgradeLineCta";
 import { ResultUpgradeChatLauncher } from "@/components/result-upgrade/ResultUpgradeChatLauncher";
 import { ShareModalOpenButton } from "@/components/result/ShareModalOpenButton";
 import { ShareDiagnosisLink } from "@/components/share/ShareDiagnosisLink";
@@ -1183,10 +1184,16 @@ async function MeResultPageContent({
       }
       reportIcon={showUnmeiPromo ? "upgrade" : "download"}
       reportOpensPaywall={showUnmeiPromo}
-      circleTone={showUnmeiPromo || showResultUpgradePlaceholder ? "gold" : undefined}
+      circleTone={
+        locale === "ja" && premiumBundlePaid && !acquisition && !publicPreview && (ownsResultSession || previewUpgrade)
+          ? "line"
+          : showUnmeiPromo || showResultUpgradePlaceholder ? "gold" : undefined
+      }
       group={resultGroup}
       reportCta={
-        showResultUpgradePlaceholder ? (
+        locale === "ja" && premiumBundlePaid && !acquisition && !publicPreview && (ownsResultSession || previewUpgrade) ? (
+          <ResultUpgradeLineCta ownerToken={previewUpgrade ? "preview" : token} preview={previewUpgrade} />
+        ) : showResultUpgradePlaceholder ? (
           <ResultUpgradeChatLauncher
               locale={isKorean ? "ko" : "ja"}
             ownerToken={previewType ? "preview" : token}
