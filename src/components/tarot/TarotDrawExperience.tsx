@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { ARCANA, TAROT_THEMES, type TarotTheme } from "./tarot-themes";
 import styles from "./TarotDrawExperience.module.css";
 import {
   tarotModes,
@@ -12,6 +13,12 @@ import {
 
 type Phase = "ready" | "shuffling" | "cutting" | "selecting" | "revealed";
 type CardName = "moon" | "star" | "sun";
+
+const ROOM_SCENES = [
+  { id: "shuffle", src: "/mascot/tarot-alice-shuffle-room-v2.webp", alt: "Aliceが両手でカードを混ぜるタロットの部屋" },
+  { id: "cut", src: "/mascot/tarot-alice-cut-room-v1.webp", alt: "Aliceがカードの山を選ぶように案内するタロットの部屋" },
+  { id: "select", src: "/mascot/tarot-alice-select-room-v1.webp", alt: "Aliceがテーブルのカードへ優しく手を添えるタロットの部屋" },
+] as const;
 
 const CARD_BACK = "/tarot/card-back.webp";
 const CARD_ART: Record<CardName, string> = {
@@ -274,48 +281,155 @@ export default function TarotDrawExperience({
   mode,
   locale = "ja",
   previewMode = false,
+  theme,
 }: {
   mode: TarotMode;
   locale?: TarotLocale;
   previewMode?: boolean;
+  theme?: TarotTheme;
 }) {
   const config = tarotModes(locale)[mode];
   const copy = DRAW_COPY[locale];
   const [phase, setPhase] = useState<Phase>("ready");
+  const [deck, setDeck] = useState<number[]>([]);
   const [question, setQuestion] = useState("");
   const [selectedCards, setSelectedCards] = useState<number[]>([]);
-  const shuffleTimer = useRef<number | null>(null);
+  const [loadedRoomScenes, setLoadedRoomScenes] = useState<Record<string, boolean>>({});
+  const [isReading, setIsReading] = useState(false);
+  const [readingReady, setReadingReady] = useState(false);
+  const phaseTimer = useRef<number | null>(null);
   const needsQuestion = mode === "yes-no";
   const canStart = !needsQuestion || question.trim().length > 0;
   const selectionComplete = selectedCards.length === config.selectionCount;
   const singleCard = HIDDEN_CARDS[selectedCards[0] ?? 2];
+  const roomScene = phase === "cutting" ? "cut" : phase === "selecting" || phase === "revealed" ? "select" : "shuffle";
+  const visibleRoomScene = loadedRoomScenes[roomScene] ? roomScene : "shuffle";
 
   useEffect(() => {
     return () => {
-      if (shuffleTimer.current !== null) window.clearTimeout(shuffleTimer.current);
+      if (phaseTimer.current !== null) window.clearTimeout(phaseTimer.current);
     };
   }, []);
 
   function startShuffle() {
     if (!canStart || phase !== "ready") return;
     setSelectedCards([]);
+    if (theme) {
+      const shuffled = ARCANA.map((_, index) => index);
+      for (let index = shuffled.length - 1; index > 0; index--) {
+        const swap = Math.floor(Math.random() * (index + 1));
+        [shuffled[index], shuffled[swap]] = [shuffled[swap], shuffled[index]];
+      }
+      setDeck(shuffled);
+    }
     setPhase("shuffling");
-    shuffleTimer.current = window.setTimeout(() => setPhase("cutting"), 1_350);
+    phaseTimer.current = window.setTimeout(() => setPhase("cutting"), 1_350);
+  }
+
+  function cutDeck(pile: number) {
+    if (phase !== "cutting") return;
+    if (theme) {
+      const offset = Math.floor(pile * deck.length / 3);
+      setDeck([...deck.slice(offset), ...deck.slice(0, offset)]);
+    }
+    setPhase("selecting");
+  }
+
+  function revealReading() {
+    if (phase !== "selecting" || !readingReady || isReading) return;
+    setPhase("revealed");
   }
 
   function toggleCard(index: number) {
-    if (phase !== "selecting") return;
-    setSelectedCards((current) => {
-      if (current.includes(index)) return current.filter((value) => value !== index);
-      if (current.length >= config.selectionCount) return current;
-      return [...current, index];
-    });
+    if (isReading || readingReady || phase !== "selecting") return;
+    if (!selectedCards.includes(index) && selectionComplete) return;
+    const nextCards = selectedCards.includes(index)
+      ? selectedCards.filter(value => value !== index)
+      : [...selectedCards, index];
+    setSelectedCards(nextCards);
+    if (locale === "ja" && nextCards.length === config.selectionCount) {
+      setIsReading(true);
+      phaseTimer.current = window.setTimeout(() => {
+        setIsReading(false);
+        setReadingReady(true);
+      }, 5_000);
+    }
   }
 
   function reset() {
+    if (phaseTimer.current !== null) window.clearTimeout(phaseTimer.current);
+    setIsReading(false);
+    setReadingReady(false);
     setSelectedCards([]);
     setPhase("ready");
     if (needsQuestion) setQuestion("");
+  }
+
+  if (locale === "ja") {
+    return (
+      <main className={`${styles.room} ${phase === "revealed" ? styles.roomRevealed : ""}`}>
+        <div className={styles.roomBackdrop}>
+          {ROOM_SCENES.map(scene => (
+            <div key={scene.id} aria-hidden={visibleRoomScene !== scene.id} className={`${styles.roomScene} ${visibleRoomScene === scene.id ? styles.roomSceneActive : ""}`}>
+              <Image src={scene.src} alt={visibleRoomScene === scene.id ? scene.alt : ""} fill priority={scene.id === "shuffle"} loading={scene.id === "shuffle" ? undefined : "eager"} onLoad={() => setLoadedRoomScenes(current => current[scene.id] ? current : { ...current, [scene.id]: true })} sizes="(min-width: 768px) 760px, 100vw" className={styles.roomImage} />
+            </div>
+          ))}
+        </div>
+        <div className={styles.roomContent}>
+          <header className={styles.roomHeader}>
+            <Link href={previewMode ? "/tarot/dev-preview" : "/tarot"} aria-label={copy.back} className={styles.roomBack}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m15 18-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            </Link>
+            <div className="text-center"><h1 className="text-[24px] font-bold tracking-wide md:text-[30px]">{theme ? `${TAROT_THEMES[theme].title}について` : config.title}</h1></div>
+            <span aria-hidden="true" className="w-10" />
+          </header>
+          {phase !== "cutting" && phase !== "selecting" && !(theme && phase === "revealed") && <div aria-live="polite" className={styles.roomGuide}>
+            <p className={styles.roomSpeaker}>Alice</p>
+            <p className={styles.roomDialogue}>{phase === "ready" ? <>気になることを思い浮かべてね。<br />あなたのカードを読んでみるね。</> : guideMessage(phase, locale)}</p>
+          </div>}
+          <div className={styles.roomTable}>
+            {needsQuestion && phase === "ready" ? (
+              <div className={styles.roomQuestion}>
+                <label htmlFor="tarot-question" className="text-[13px] font-black">{copy.questionLabel}</label>
+                <textarea id="tarot-question" maxLength={200} value={question} onChange={event => setQuestion(event.target.value)} placeholder={copy.questionPlaceholder} className="mt-2 min-h-24 w-full resize-y rounded-2xl border border-[#DECDE8] bg-white/90 px-4 py-3 text-[16px] leading-relaxed text-[#574565] outline-none focus:border-[#9575B5] focus:ring-2 focus:ring-[#D6C1E8]" />
+                <p className="mt-1 text-right text-[10px]">{question.length}/200</p>
+              </div>
+            ) : phase === "revealed" ? (
+              <div className={theme ? "w-full" : styles.roomReading}>{theme ? (
+                <ThemeReading theme={theme} cards={selectedCards.map(index => deck[index])} />
+              ) : (
+                <ResultStage mode={mode} card={singleCard} question={question.trim()} locale={locale} />
+              )}</div>
+            ) : (
+              <RitualStage phase={phase} selectionCount={config.selectionCount} selectedCards={selectedCards} onCut={cutDeck} onToggle={toggleCard} locale={locale} immersive />
+            )}
+            <div className={styles.roomActions}>
+              {phase === "ready" ? (
+                <button type="button" disabled={!canStart} onClick={startShuffle} className={styles.roomAction}><span aria-hidden="true" className="mb-1 text-base">✧</span>{copy.shuffle}</button>
+              ) : phase === "shuffling" ? (
+                <button type="button" disabled className={styles.roomAction}><span aria-hidden="true" className="mb-1 text-base">✧</span>{copy.shuffling}</button>
+              ) : phase === "cutting" ? (
+                null
+              ) : phase === "selecting" ? (
+                isReading ? (
+                  <div role="status" className={styles.roomAction}>
+                    <span aria-hidden="true" className="mb-1 text-base motion-safe:animate-pulse">✧</span>
+                    Aliceが<br />読み解き中…
+                  </div>
+                ) : (
+                  <button type="button" disabled={!readingReady} onClick={revealReading} className={`${styles.roomAction} ${readingReady ? styles.roomActionReady : ""}`}><span aria-hidden="true" className="mb-1 text-base">✧</span>{readingReady ? "結果をみる" : `${selectedCards.length} / ${config.selectionCount}`}</button>
+                )
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  <Link href="/hoshiyomi" className={styles.roomAction}><span aria-hidden="true" className="mb-1 text-base">✧</span>{copy.talk}</Link>
+                  <button type="button" onClick={reset} className={styles.roomAction}><span aria-hidden="true" className="mb-1 text-base">✧</span>{copy.retry}</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </main>
+    );
   }
 
   return (
@@ -437,6 +551,7 @@ export default function TarotDrawExperience({
 }
 
 function RitualStage({
+  immersive = false,
   phase,
   selectionCount,
   selectedCards,
@@ -444,37 +559,38 @@ function RitualStage({
   onToggle,
   locale,
 }: {
+  immersive?: boolean;
   phase: Phase;
   selectionCount: number;
   selectedCards: number[];
-  onCut: () => void;
+  onCut: (pile: number) => void;
   onToggle: (index: number) => void;
   locale: TarotLocale;
 }) {
   const copy = DRAW_COPY[locale];
   return (
-    <section className="relative mx-auto mt-7 flex min-h-[350px] max-w-[650px] items-center justify-center overflow-hidden rounded-[28px] border border-[#6D91D8]/35 bg-[#071B45] px-3 py-8 shadow-[0_18px_45px_rgba(7,27,69,0.22)] md:min-h-[390px] md:px-6">
-      <Image
+    <section className={immersive ? styles.tableStage : "relative mx-auto mt-7 flex min-h-[350px] max-w-[650px] items-center justify-center overflow-hidden rounded-[28px] border border-[#6D91D8]/35 bg-[#071B45] px-3 py-8 shadow-[0_18px_45px_rgba(7,27,69,0.22)] md:min-h-[390px] md:px-6"}>
+      {!immersive && <Image
         src="/tarot/reading-cloth.webp"
         alt=""
         fill
         sizes="650px"
         className="pointer-events-none object-cover opacity-[0.16]"
-      />
+      />}
       <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(69,114,205,0.26),transparent_58%)]" />
 
       {phase === "cutting" ? (
         <div className="relative z-10 w-full text-center">
-          <p className="text-[17px] font-black text-white">{copy.cutTitle}</p>
-          <p className="mt-2 text-[12px] font-bold text-[#BFD0FF]">{copy.cutBody}</p>
-          <div className="mt-9 flex items-center justify-center gap-6 md:gap-10">
+          <p aria-live="polite" className="text-[17px] font-black text-white">{immersive ? "気になる山をひとつ選んでね。" : copy.cutTitle}</p>
+          {!immersive && <p className="mt-2 text-[12px] font-bold text-[#BFD0FF]">{copy.cutBody}</p>}
+          <div className={immersive ? "mt-6 grid grid-cols-3 gap-4 px-2 md:gap-8" : "mt-9 flex items-center justify-center gap-6 md:gap-10"}>
             {[0, 1, 2].map((index) => (
               <button
                 key={index}
                 type="button"
                 aria-label={copy.pileAria(index)}
-                onClick={onCut}
-                className="group relative h-[112px] w-[74px] transition hover:-translate-y-2 active:scale-95"
+                onClick={() => onCut(index)}
+                className={`group relative transition hover:-translate-y-2 active:scale-95 ${immersive ? styles.roomPile : "h-[112px] w-[74px]"}`}
               >
                 <span className="absolute left-2 top-0 h-[98px] w-[65px] rotate-[4deg] rounded-lg border border-[#8FC9FF]/70 bg-[#173C7E]" />
                 <span className="absolute left-1 top-1 h-[98px] w-[65px] rotate-[2deg] rounded-lg border border-[#8FC9FF]/70 bg-[#2458B8]" />
@@ -486,9 +602,9 @@ function RitualStage({
       ) : phase === "selecting" ? (
         <div className="relative z-10 w-full text-center">
           <p className="text-[15px] font-black text-white">
-            {selectionCount === 1 ? copy.selectOne : copy.selectThree}
+            {immersive ? `気になるカードを${selectionCount}枚選んでね。` : selectionCount === 1 ? copy.selectOne : copy.selectThree}
           </p>
-          <div className="mt-10 flex min-h-[145px] items-center justify-center gap-0 sm:gap-2">
+          <div className={immersive ? styles.roomCardSpread : "mt-10 flex min-h-[145px] items-center justify-center gap-0 sm:gap-2"}>
             {SELECTABLE_CARDS.map((card, index) => {
               const selected = selectedCards.includes(index);
               return (
@@ -516,8 +632,12 @@ function RitualStage({
             })}
           </div>
         </div>
+      ) : immersive ? (
+        <div aria-hidden="true" className={`${styles.tableMagic} ${phase === "shuffling" ? styles.tableMagicShuffling : ""}`}>
+          <span>✧</span><span>✦</span><span>✧</span>
+        </div>
       ) : (
-        <div className={`${phase === "shuffling" ? styles.shuffleDeck : ""} relative z-10 flex h-[270px] w-[190px] items-center justify-center`}>
+        <div className={`${phase === "shuffling" ? styles.shuffleDeck : ""} ${immersive ? styles.tableDeck : ""} relative z-10 flex h-[270px] w-[190px] items-center justify-center`}>
           <div aria-hidden="true" className="absolute h-[258px] w-[184px] rounded-[20px] border border-[#8FC9FF]/35 bg-[#173C7E]/40" />
           <div aria-hidden="true" className="absolute h-[222px] w-[148px] translate-x-3 -translate-y-2 rotate-[5deg] rounded-[14px] bg-[#173C7E]" />
           <div aria-hidden="true" className="absolute h-[222px] w-[148px] translate-x-1.5 -translate-y-1 rotate-[2deg] rounded-[14px] bg-[#2458B8]" />
@@ -531,6 +651,108 @@ function RitualStage({
           />
         </div>
       )}
+    </section>
+  );
+}
+
+const READING_OPENERS = [
+  "気になることがあるのに、初めてだからと後回しにしたこと、なかった？",
+  "誰かに頼んだり、手元にあるものを使ったりすれば進みそうなのに、一人で抱えていたことはない？",
+  "その場では大丈夫と言ったけど、あとになって違和感が残ったことはない？",
+  "目の前の用事を優先して、本当は時間をかけたいことを後回しにしてなかった？",
+  "どこまで引き受けるか決めないまま、気づいたら負担が増えていたことはない？",
+  "いつものやり方を続けながら、ほかの人ならどうするんだろうと思ったことはない？",
+  "どっちも大切にしたくて、返事を決められなかったことはない？",
+  "やることがいくつも重なって、どれから手をつけるか迷ったことはない？",
+  "ちゃんと伝えたい気持ちが強くて、つい言い方がきつくなったことはない？",
+  "人の意見を聞くほど、自分がどうしたいか分からなくなったことはない？",
+  "予定が急に変わって、そのあと何から始めるか迷ったことはない？",
+  "選んだあとに、どうしてそっちにしたんだろうと考え直したことはない？",
+  "同じことを何度考えても、答えが出なかったことはない？",
+  "もう役目を終えたやり方を、慣れているから続けていたことはない？",
+  "相手や周りに合わせているうちに、自分のペースが分からなくなったことはない？",
+  "やめたほうが楽だと分かっていても、つい繰り返してしまうことはない？",
+  "当たり前だと思っていた前提が崩れて、急に迷ったことはない？",
+  "少し楽しみなことが浮かんだのに、忙しさに流されて忘れかけていない？",
+  "相手のひと言や曖昧な返事が気になって、いろいろ想像してしまったことはない？",
+  "遠回しに伝えたせいで、言いたかったことが伝わらなかったことはない？",
+  "前に一度あきらめたことが、最近また気になっていない？",
+  "何かをやり終えたのに、振り返る間もなく次へ進んだことはない？",
+] as const;
+
+const ARCANA_ART: Partial<Record<number, string>> = {
+  17: CARD_ART.star,
+  18: CARD_ART.moon,
+  19: CARD_ART.sun,
+};
+
+const READING_EXAMPLES = [
+  "気になっていることを、まずは10分だけ試してみよう。続けたいかどうかは、そのあとで決めても大丈夫。",
+  "一人で考えて止まっていたら、頼れそうな人を一人思い浮かべてみて。「ここだけ相談してもいい？」と声をかけるところからでいいよ。",
+  "返事をする前に、今の気持ちを一行だけ書いてみて。書いているうちに、自分が引っかかっていたことが見えてくるかもしれないね。",
+  "大切にしたいことのために、今日の予定を少し空けてみよう。短い時間でも、ちゃんと向き合えた感覚が残ると思う。",
+  "「ここまではできるけど、ここからは相談したい」と、引き受けられる範囲を伝えてみて。相手も、あなたに何を頼めるか分かりやすくなるよ。",
+  "信頼している人に「あなたならどうする？」と聞いてみよう。その答えの中に、自分にも試せそうな工夫があるかもしれない。",
+  "迷っている選択肢それぞれに、選びたい理由を一つ書いてみて。人に説明するつもりで言葉にすると、大切にしたいものが見えやすいよ。",
+  "あれもこれも気になるときは、「今日はこれを進めたい」と一つ決めてみよう。最初にやることが決まるだけでも、取りかかりやすくなるよ。",
+  "伝えにくいことがあるなら、「私はこうしてもらえると助かる」と話してみて。落ち着いて希望を伝えると、相手もどう応えたらいいか考えやすくなるはず。",
+  "少しだけ通知を閉じて、「本当はどうしたい？」と自分に聞いてみよう。すぐに答えが出なくても、思いついたことをメモしておけばいいよ。",
+  "予定どおりに進まないときは、今の自分にできそうなことを一つ探してみて。小さな用事を片づけるだけでも、次の動きを考える余裕ができるかも。",
+  "選択肢を比べるときは、かかる時間や自分の負担など、同じ項目で見てみよう。なんとなくの迷いを、相談できる言葉にしやすくなるよ。",
+  "「相手からは、この場面がどう見えているかな」と考えてみよう。自分には当たり前だったことを、一言説明すると伝わる場合もあるよ。",
+  "なんとなく続けていることを一つ、休んでみてもよさそう。空いた時間に何をしたくなるか、自分の気持ちを確かめてみて。",
+  "頑張る日と休む日の差が大きいなら、少し控えめな予定を立ててみよう。明日も同じくらいできそう、と思える量を探してみてね。",
+  "つい繰り返してしまうことには、どんな気持ちのときに手が伸びるのか、気づいたらメモしてみて。きっかけが分かると、別の過ごし方も探しやすくなるよ。",
+  "「これは絶対に必要」と思っている条件を一つ、確かめてみよう。実際に聞いてみると、思っていたより調整できることがあるかもしれない。",
+  "これからやってみたいことを、一つ書いてみて。小さなことでも大丈夫。「そのために今できることは何かな」と考えてみると、最初の一歩を決めやすくなるよ。",
+  "気になることを、実際に聞いた言葉と、自分が想像したことに分けてみて。分からないところは、落ち着いたときに一つずつ確かめていこう。",
+  "うれしかったことや助かったことがあれば、短くそのまま伝えてみよう。「あのとき、ありがとう」の一言が、話しやすいきっかけになるかも。",
+  "以前うまくいったとき、何が助けになったか思い出してみよう。そのときの工夫を、今の状況に合わせて一つ試してみて。",
+  "ここまでにできたことを、三つだけ書いてみよう。やり残したことも整理しておくと、どこで一区切りにするか決めやすくなるよ。",
+] as const;
+
+function ThemeReading({ theme, cards }: { theme: TarotTheme; cards: number[] }) {
+  const [, challenge, advice] = cards.map(index => ARCANA[index]);
+  const reassurance = {
+    love: "相手を大切に思うほど、何気ないやりとりも気になることがあるよね。あとから言いたいことが浮かぶ日もあると思う。",
+    work: "その場ではなんとか進められても、あとで「あれでよかったかな」と考えることってあるよね。忙しいと、自分の気持ちを確かめる時間も取りにくいと思う。",
+    friendship: "仲のいい相手でも、言葉を選んだり、遠慮したりすることはあるよね。家に帰ってから、あの会話がふと気になる日もあると思う。",
+  }[theme];
+  const topic = { love: "恋愛で", work: "仕事で", friendship: "友だちとの間で" }[theme];
+
+  return (
+    <section aria-label={`${TAROT_THEMES[theme].title}の占い結果`} className="overflow-hidden rounded-[24px] bg-[#faf2df] text-[#342d3d]">
+      <ol aria-label="引いた3枚" className="grid grid-cols-3 gap-2 px-3 py-4 text-center sm:gap-4 sm:px-6">
+        {cards.map((card, index) => (
+          <li key={card} className="min-w-0">
+            <span className="text-xs font-bold text-[#765527]">{index + 1}枚目</span>
+            <div className="relative mx-auto my-2 aspect-[2/3] w-full max-w-28 overflow-hidden rounded-[10px] border border-[#2E2E5C]/10 shadow-[0_10px_24px_rgba(46,46,92,0.12)]">
+              <Image
+                src={ARCANA_ART[card] ?? `/tarot/arcana/${card}.webp`}
+                alt=""
+                fill
+                sizes="112px"
+                className="object-contain"
+              />
+            </div>
+            <span className="block text-sm font-bold">{ARCANA[card][0]}</span>
+            <span className="block text-xs text-[#765527]">{["最近のこと", "見直すヒント", "次の一歩"][index]}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="mx-5 border-t border-[#765527]/20 pb-7 pt-5 sm:mx-8">
+        <h2 className="text-lg font-bold">{TAROT_THEMES[theme].title}の占い結果</h2>
+        <p className="mt-3 text-[15px] leading-7 text-[#51483e]">
+          {topic}、{READING_OPENERS[cards[0]]}
+          {reassurance}
+        </p>
+        <p className="mt-4 text-[15px] leading-7 text-[#51483e]">
+          2枚目は「{challenge[0]}」。{READING_EXAMPLES[cards[1]]}
+        </p>
+        <p className="mt-4 text-[15px] leading-7 text-[#51483e]">
+          3枚目は「{advice[0]}」。こちらも試してみてほしいな。{READING_EXAMPLES[cards[2]]}
+        </p>
+      </div>
     </section>
   );
 }
@@ -698,5 +920,5 @@ function guideMessage(phase: Phase, locale: TarotLocale) {
   if (phase === "cutting") return "カードを3つの山に分けたよ。直感でひとつ選んで、デッキを切って。";
   if (phase === "selecting") return "考えすぎなくて大丈夫。最初に気になったカードを選んで。";
   if (phase === "revealed") return "出たカードを、あなたの今と重ねて読んでみたよ。";
-  return "今日はAliceが、あなたのために丁寧にカードを読むね。";
+  return "気になっていることを、ひとつ思い浮かべてみて。あなたのためにカードを読むね。";
 }

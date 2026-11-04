@@ -1,3 +1,4 @@
+import { isTarotTheme } from "@/components/tarot/tarot-themes";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import TarotDrawExperience from "@/components/tarot/TarotDrawExperience";
@@ -10,6 +11,7 @@ import { requireTarotAccess } from "@/lib/tarot/access";
 import { localizedAlternates } from "@/lib/locale-seo";
 
 type PageProps = {
+  searchParams?: Promise<{ theme?: string | string[] }>;
   params: Promise<{ mode: string }>;
 };
 
@@ -33,10 +35,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default async function TarotModePage({ params }: PageProps) {
+export default async function TarotModePage({ params, searchParams }: PageProps) {
   const { mode } = await params;
   if (!isTarotMode(mode)) notFound();
   await requireTarotAccess("ja");
 
-  return <TarotDrawExperience mode={mode} />;
+  const theme = (await searchParams)?.theme;
+  return <TarotDrawExperience mode={mode} theme={mode === "three" && isTarotTheme(theme) ? theme : undefined} />;
 }

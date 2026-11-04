@@ -1,3 +1,4 @@
+import { TAROT_THEMES, type TarotTheme } from "./tarot-themes";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -155,11 +156,11 @@ export default function TarotLanding({
             </div>
             <div className="mt-auto pt-6">
               <div className="mx-auto grid w-full max-w-[600px] grid-cols-3 items-center justify-items-center gap-2 md:gap-4">
-                {TAROT_MODE_IDS.map((mode, index) => (
+                {(Object.keys(TAROT_THEMES) as TarotTheme[]).map((theme, index) => (
                   <Link
-                    key={mode}
-                    href={previewMode ? `/tarot/dev-preview?mode=${mode}` : `/tarot/${mode}`}
-                    aria-label={`${tarotModes(locale)[mode].title}を開く`}
+                    key={theme}
+                    href={previewMode ? `/tarot/dev-preview?mode=three&theme=${theme}` : `/tarot/three?theme=${theme}`}
+                    aria-label={`${TAROT_THEMES[theme].title}を占う`}
                     className={`group relative flex aspect-square w-full flex-col items-center justify-center rounded-full border-[3px] border-[#FFF8E8]/90 px-1 text-center shadow-[inset_0_3px_14px_#ffffffb3,0_5px_0_#182b3255,0_10px_24px_#0004] transition hover:-translate-y-1 active:translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F6D99C] ${[
                       "bg-[radial-gradient(circle_at_35%_20%,#fff7ff,#e4d5f5_65%,#cbb5e5)] text-[#665084]",
                       "bg-[radial-gradient(circle_at_35%_20%,#f4fff7,#cfeee3_65%,#a4d2c6)] text-[#386e66]",
@@ -191,8 +192,8 @@ export default function TarotLanding({
                         )}
                       </svg>
                     </span>
-                    <span className="text-[clamp(12px,3.5vw,18px)] font-black md:text-[19px]">{tarotModes(locale)[mode].title}</span>
-                    <span className="mt-1 text-[9px] font-bold text-current opacity-75 md:text-[11px]">{["今日のヒント", "過去・現在・未来", "迷いをひもとく"][index]}</span>
+                    <span className="text-[clamp(12px,3.5vw,18px)] font-black md:text-[19px]">{TAROT_THEMES[theme].title}</span>
+                    <span className="mt-1 text-[9px] font-bold text-current opacity-75 md:text-[11px]">{["気持ちと距離", "働き方と一歩", "関係とつながり"][index]}</span>
                   </Link>
                 ))}
               </div>
