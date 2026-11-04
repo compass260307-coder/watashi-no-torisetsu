@@ -12,7 +12,7 @@ export type NavItem = {
   // disabled: 準備中 (グレー表示・リンクなし)。ページが公開できたら外す。
   disabled?: boolean;
   // Alice: 購入権限がある場合だけリンク化し、それ以外は鍵付き課金導線にする。
-  course?: "astrologer";
+  course?: "astrologer" | "tarot";
 };
 export type HeaderContent = {
   siteName: string;
