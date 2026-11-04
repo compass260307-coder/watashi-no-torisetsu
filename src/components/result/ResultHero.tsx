@@ -79,7 +79,7 @@ export function ResultHero({
   return (
     <div
       className={`relative mx-[calc(50%-50vw)] w-screen overflow-hidden ${
-        hasFullBleedImage ? "min-h-[560px] md:min-h-[640px]" : ""
+        hasFullBleedImage ? "md:min-h-[640px]" : ""
       }`}
       style={{
         background: heroBg,
@@ -92,19 +92,22 @@ export function ResultHero({
           {/* 生成キャラ画像はセッション認証付き API 配信のため常に unoptimized。
               next/image の内部フェッチは元リクエストの Cookie を引き継がず 404 になる
               (fetchInternalImage は url/method/socket のみのモックで実行される)。 */}
-          <SmoothImage
-            src={fullBleedImageSrc}
-            alt=""
-            fill
-            priority
-            unoptimized
-            sizes="100vw"
-            className="object-cover object-center md:object-[65%_50%]"
-          />
+          <div className="relative w-full md:absolute md:inset-y-0 md:right-0 md:flex md:w-[60%] md:items-center md:justify-center md:[mask-image:radial-gradient(ellipse_65%_65%_at_55%_50%,black_50%,transparent_100%)]">
+            <SmoothImage
+              src={fullBleedImageSrc}
+              alt={alt}
+              width={1024}
+              height={1024}
+              priority
+              unoptimized
+              sizes="(min-width: 768px) 60vw, 100vw"
+              className="block h-auto w-full md:max-h-[640px] md:object-contain"
+            />
+          </div>
           {/* 写真の明暗に左右されず、左側のタイプ名を読めるようにする。 */}
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(21,24,55,0.08)_10%,rgba(21,24,55,0.78)_100%)] md:bg-[linear-gradient(90deg,rgba(21,24,55,0.82)_0%,rgba(21,24,55,0.56)_42%,rgba(21,24,55,0.08)_76%,rgba(21,24,55,0.14)_100%)]"
+            className="pointer-events-none absolute inset-0 hidden md:block md:bg-[linear-gradient(90deg,rgba(21,24,55,0.5)_0%,rgba(21,24,55,0.24)_35%,transparent_60%)]"
           />
         </>
       )}
@@ -112,7 +115,7 @@ export function ResultHero({
       <div
         aria-hidden="true"
         className={`pointer-events-none absolute inset-x-0 top-0 h-[320px] ${
-          hasFullBleedImage ? "opacity-30" : ""
+          hasFullBleedImage ? "hidden md:block md:opacity-30" : ""
         }`}
         style={{
           background:
@@ -124,7 +127,7 @@ export function ResultHero({
         <span
           key={i}
           aria-hidden="true"
-          className="pointer-events-none absolute rounded-full"
+          className={`pointer-events-none absolute rounded-full ${hasFullBleedImage ? "hidden md:block" : ""}`}
           style={{
             background: dotColor,
             width: d.w,
@@ -138,7 +141,7 @@ export function ResultHero({
       <div
         className={`relative ${contentMaxWidthClass} mx-auto px-4 md:px-8 ${
           hasFullBleedImage
-            ? "flex min-h-[560px] items-end pb-24 pt-12 md:min-h-[640px] md:items-center md:pb-16 md:pt-16"
+            ? "flex items-center bg-[#243e52] pb-12 pt-6 md:min-h-[640px] md:bg-transparent md:pb-16 md:pt-16"
             : "pb-2 pt-9 md:pt-14"
         } ${
           twoColumn && !hasFullBleedImage
@@ -149,7 +152,7 @@ export function ResultHero({
         <div
           className={
             hasFullBleedImage
-              ? "w-full max-w-[720px]"
+              ? "min-w-0 w-full md:w-[42%]"
               : twoColumn
                 ? "md:flex-1"
                 : ""
@@ -163,9 +166,13 @@ export function ResultHero({
             {/* 型名はページの主見出し。見た目は据え置きで <h1> にし、見出し構造/a11y/SEO を満たす。
                 weight は Noto Sans JP の実配信ウェイト (400/700) に合わせ 700 (2026-09-04)。 */}
             <h1
-              className="whitespace-nowrap font-bold leading-[1.04] text-white"
+              className={hasFullBleedImage
+                ? "whitespace-normal break-words font-bold leading-[1.25] text-white [overflow-wrap:anywhere]"
+                : "whitespace-nowrap font-bold leading-[1.04] text-white"}
               style={{
-                fontSize: `clamp(32px, min(14vw, ${(88 / Math.max(essence.length, 1)).toFixed(2)}vw), 72px)`,
+                fontSize: hasFullBleedImage
+                  ? "clamp(24px, 4.5vw, 48px)"
+                  : `clamp(32px, min(14vw, ${(88 / Math.max(essence.length, 1)).toFixed(2)}vw), 72px)`,
                 textShadow: hasFullBleedImage
                   ? "0 3px 18px rgba(12, 15, 40, 0.42)"
                   : undefined,

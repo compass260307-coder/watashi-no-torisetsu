@@ -23,9 +23,9 @@ export async function resolveLineResultUpgradeIdentity(token: string) {
     .select("user_id").eq("line_user_id", identity.lineUserId).maybeSingle();
   if (error || account?.user_id !== identity.userId) return null;
   const { data: user, error: userError } = await supabaseAdmin.from("users")
-    .select("id, owner_token, email").eq("id", identity.userId).maybeSingle();
+    .select("id, owner_token, email, display_name").eq("id", identity.userId).maybeSingle();
   if (userError || !user?.owner_token) return null;
-  return { ...(user as { id: string; owner_token: string; email: string | null }), lineUserId: identity.lineUserId };
+  return { ...(user as { id: string; owner_token: string; email: string | null; display_name: string | null }), lineUserId: identity.lineUserId };
 }
 
 /** This session is restricted to the Japanese LINE upgrade; the Web login is never changed. */
