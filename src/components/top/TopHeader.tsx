@@ -68,7 +68,7 @@ export default function TopHeader({
   // (BottomNav と同じ判断。未診断側は hydration 後にロックが現れる)。
   const [hasToken, setHasToken] = useState(true);
   const [takoLockOpen, setTakoLockOpen] = useState(false);
-  const [alicePaywallOpen, setAlicePaywallOpen] = useState(false);
+  const [coursePaywall, setCoursePaywall] = useState<"hoshiyomi" | "tarot" | null>(null);
   const [desktopNavVisible, setDesktopNavVisible] = useState(false);
 
   // 相性診断の権限APIは、実際に導線を見せる直前まで呼ばない。
@@ -137,19 +137,20 @@ export default function TopHeader({
     if (preloadPurchaseOnIntent && PurchaseOverlay === PaywallOverlay) void preloadPaywall(locale).catch(() => {});
   };
   const purchaseIntent = { onPointerEnter: warmPurchase, onFocus: warmPurchase, onTouchStart: warmPurchase };
-  const openAlicePaywall = () => {
-    const source = "nav_locked_hoshiyomi";
+  const openCoursePaywall = (course: "astrologer" | "tarot") => {
+    const target = course === "astrologer" ? "hoshiyomi" : course;
+    const source = `nav_locked_${target}`;
     track("paywall_scroll_clicked", {
       ownerToken,
       metadata: {
         source,
         page: trackingPageFromPathname(pathname),
-        surface: "hoshiyomi",
-        destination: "hoshiyomi",
+        surface: target,
+        destination: target,
         paywall_version: accessPaywallVersionForLocale(locale),
       },
     });
-    setAlicePaywallOpen(true);
+    setCoursePaywall(target);
   };
 
   const nav = content.nav
@@ -268,8 +269,7 @@ export default function TopHeader({
                 {n.label}
                 <MenuLockIcon />
               </button>
-            ) : n.course === "astrologer" &&
-              !(resolvedCourseAccess?.astrologer ?? false) ? (
+            ) : n.course && !resolvedCourseAccess?.[n.course] ? (
               <button
                 key={n.href}
                 type="button"
@@ -277,7 +277,7 @@ export default function TopHeader({
                   uiText("（ロック中）")
                 }`}
                 {...purchaseIntent}
-                onClick={openAlicePaywall}
+                onClick={() => n.course && openCoursePaywall(n.course)}
                 className={`${navLinkClass} flex items-center gap-1`}
                 style={{ color: "#9BA3B4" }}
               >
@@ -420,8 +420,7 @@ export default function TopHeader({
                   {n.label}
                   <MenuLockIcon />
                 </button>
-              ) : n.course === "astrologer" &&
-                !(resolvedCourseAccess?.astrologer ?? false) ? (
+              ) : n.course && !resolvedCourseAccess?.[n.course] ? (
                 <button
                   key={n.href}
                   type="button"
@@ -432,7 +431,7 @@ export default function TopHeader({
                   {...purchaseIntent}
                   onClick={() => {
                     setOpen(false);
-                    openAlicePaywall();
+                    if (n.course) openCoursePaywall(n.course);
                   }}
                   className="flex w-full items-center gap-1.5 py-3.5 text-left text-[19px] font-bold"
                   style={{ color: "#9BA3B4" }}
@@ -590,20 +589,20 @@ export default function TopHeader({
         locale={locale}
       />
 
-      {alicePaywallOpen ? (
+      {coursePaywall ? (
         <PurchaseOverlay
           ownerToken={ownerToken ?? undefined}
           locale={locale}
-          returnTo="hoshiyomi"
-          ctaSource="nav_locked_hoshiyomi"
-          products={["full_access", "premium_bundle"]}
+          returnTo={coursePaywall === "tarot" ? "me" : "hoshiyomi"}
+          ctaSource={`nav_locked_${coursePaywall}`}
+          products={coursePaywall === "tarot" ? ["full_access"] : ["full_access", "premium_bundle"]}
           defaultProduct="full_access"
           heading={
-            isKo
+            isKo || coursePaywall === "tarot"
               ? undefined
               : uiText("Aliceを試す・本格相談を選ぶ")
           }
-          onClose={() => setAlicePaywallOpen(false)}
+          onClose={() => setCoursePaywall(null)}
         />
       ) : null}
     </header>
