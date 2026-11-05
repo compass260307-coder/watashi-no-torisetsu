@@ -2,7 +2,8 @@
 
 ## 動作
 
-- `next.config.ts` の fallback rewrite は、ファイル・ページの解決後に、存在しない `/_next/static/**/*.js` だけを復旧用Route Handlerへ送る。存在するJSを別世代のJSで置き換えない。
+- Vercelでは欠損した `/_next/static` がfallback rewriteより先に404となるため、`src/proxy.ts` で旧名前空間 `/_next/static/chunks/*.js` のGETだけを扱う。同一URLへのHEADを1回・最大2秒で確認し、404のときだけ復旧スクリプトを返す。再帰防止ヘッダーを付け、HEAD自体は再検査しない。存在するJS・認証エラー・通信障害・5xxは通常配信に戻す。
+- 現行の `/_next/static/immutable` はProxyの対象外で、通常のJS配信に追加リクエストを発生させない。`next.config.ts` のfallback rewriteはローカルNext.jsでの欠損JSにも対応する。存在するJSを別世代のJSで置き換えない。
 - GETは固定の復旧スクリプトを返す。Nextのchunkとしての互換性を偽装せず、最新HTMLの読み直しに使う。ブラウザ/CDNとも `no-store`。HEADは、以前のHTMLに埋め込まれた404検知との互換用に404を維持する。
 - 古いHTML側の `__wtAssetRecovery` フラグに妨げられず起動するため、既に開かれた旧画面にも、次に欠損JSを要求した時点で届く。
 - 自動復帰は保存済み結果の `/me/[token]` とen/ko/id版だけ。入力・変更、入力欄の値、開いているモーダル、編集可能領域があるときは、更新の案内を表示する。
@@ -15,7 +16,8 @@
 
 ```sh
 node scripts/static-asset-recovery-test.mjs
-npx eslint next.config.ts src/lib/static-asset-recovery.mjs src/app/api/static-asset-recovery/route.ts scripts/static-asset-recovery-test.mjs scripts/static-asset-recovery-routing-test.mjs
+node scripts/static-asset-proxy-test.mjs
+npx eslint src/proxy.ts scripts/static-asset-proxy-test.mjs next.config.ts src/lib/static-asset-recovery.mjs src/app/api/static-asset-recovery/route.ts scripts/static-asset-recovery-test.mjs scripts/static-asset-recovery-routing-test.mjs
 npx tsc --noEmit --incremental false
 npm run verify:commerce
 npm run verify:checkout-measurement

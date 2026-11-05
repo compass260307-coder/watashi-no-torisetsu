@@ -114,3 +114,11 @@ export const STATIC_ASSET_RECOVERY_SCRIPT = String.raw`(function(){
 // The fallback does not impersonate a React/Next chunk: it only restores a fresh document.
 export const MISSING_STATIC_ASSET_BOOTSTRAP = STATIC_ASSET_RECOVERY_SCRIPT +
   "\nwindow.__wtRecoverMissingAssetV2();\n";
+
+export const STATIC_ASSET_RECOVERY_HEADERS = {
+  "Content-Type": "application/javascript; charset=utf-8",
+  "Cache-Control": "private, no-store, max-age=0",
+  "CDN-Cache-Control": "no-store",
+  "Vercel-CDN-Cache-Control": "no-store",
+  "X-Content-Type-Options": "nosniff",
+};

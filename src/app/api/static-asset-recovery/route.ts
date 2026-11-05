@@ -1,12 +1,4 @@
-import { MISSING_STATIC_ASSET_BOOTSTRAP } from "@/lib/static-asset-recovery.mjs";
-
-const headers = {
-  "Content-Type": "application/javascript; charset=utf-8",
-  "Cache-Control": "private, no-store, max-age=0",
-  "CDN-Cache-Control": "no-store",
-  "Vercel-CDN-Cache-Control": "no-store",
-  "X-Content-Type-Options": "nosniff",
-};
+import { MISSING_STATIC_ASSET_BOOTSTRAP, STATIC_ASSET_RECOVERY_HEADERS as headers } from "@/lib/static-asset-recovery.mjs";
 
 // Only missing JS reaches this handler via a fallback rewrite. Existing assets win.
 // This fixed response performs no fetch, authentication, payment or database operations.
