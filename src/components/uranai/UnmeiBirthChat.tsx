@@ -422,7 +422,8 @@ export default function UnmeiBirthChat({
     setStep("submitting");
 
     if (previewMode) {
-      showPurchaseReady();
+      if (mode === "purchase") showPurchaseReady();
+      else say([copy.generationReady], onSaved);
       return;
     }
 

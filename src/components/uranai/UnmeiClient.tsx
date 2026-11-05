@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import UnmeiBirthChat from "@/components/uranai/UnmeiBirthChat";
+import UnmeiGenerating from "@/components/uranai/UnmeiGenerating";
 import type { AppResultLocale } from "@/i18n/result";
 import { isTerminalPollResponse, startVisiblePolling } from "@/lib/visible-polling";
 
@@ -20,6 +21,7 @@ type Props = {
   ownerToken?: string | null;
   /** devプレビューでは保存・計測・決済を実行しない。 */
   previewMode?: boolean;
+  previewState?: "timeout" | "ready";
   /** 生成完了時の挙動の差し替え。/unmei 以外 (例: /me のオーバーレイ) に埋め込む場合、
    *  router.refresh() では鑑定表示に切り替わらないため、遷移をここで指定する。 */
   onReady?: () => void;
@@ -74,6 +76,7 @@ export default function UnmeiClient({
   locale = "ja",
   ownerToken = null,
   previewMode = false,
+  previewState,
   onReady,
   hideHeaderStars = false,
   intro = null,
@@ -81,7 +84,7 @@ export default function UnmeiClient({
   const router = useRouter();
   const copy = CLIENT_COPY[locale];
   const purchaseOwnerToken = purchase?.ownerToken ?? null;
-  const [state, setState] = useState<State>(initialState);
+  const [state, setState] = useState<State>(previewMode && previewState ? previewState : initialState);
   // チャット経由で保存した直後は、生成待ちもチャット画面のまま見せる
   // (別画面のスピナーに切り替えず、会話の続きとして待たせる)。
   const [viaChat, setViaChat] = useState(false);
@@ -161,8 +164,10 @@ export default function UnmeiClient({
         if (j?.state === "pending") retryGraceUntil = 0;
         if (j?.state === "ready") {
           setState("ready");
-          if (onReady) onReady();
-          else router.refresh();
+          if (locale !== "ja") {
+            if (onReady) onReady();
+            else router.refresh();
+          }
           return false;
         }
         if (j?.state === "no_birth") {
@@ -207,16 +212,16 @@ export default function UnmeiClient({
   const drive = useCallback((force: boolean) => {
     autoRetriesRef.current = MAX_AUTO_RETRIES;
     setState("pending");
-    startPolling(force);
-  }, [startPolling]);
+    if (!previewMode) startPolling(force);
+  }, [startPolling, previewMode]);
 
   useEffect(() => {
-    if (initialState === "pending") {
+    if (!previewMode && initialState === "pending") {
       autoRetriesRef.current = MAX_AUTO_RETRIES;
       startPolling();
     }
     return stopPolling;
-  }, [initialState, startPolling, stopPolling]);
+  }, [initialState, startPolling, stopPolling, previewMode]);
 
   const handleSaved = useCallback(() => {
     setViaChat(true);
@@ -224,6 +229,20 @@ export default function UnmeiClient({
   }, [drive]);
   // 手動リトライはサーバの上限を超えて再試行するため force=true
   const handleRetry = useCallback(() => drive(true), [drive]);
+
+  useEffect(() => {
+    if (!previewMode || locale !== "ja" || state !== "pending") return;
+    const timer = window.setTimeout(() => setState("ready"), 24_000);
+    return () => window.clearTimeout(timer);
+  }, [previewMode, locale, state]);
+
+  if (locale === "ja" && (state === "pending" || state === "ready")) {
+    return <UnmeiGenerating ready={state === "ready"} onViewResult={() => {
+      if (previewMode) router.push("/unmei?preview=ready");
+      else if (onReady) onReady();
+      else router.refresh();
+    }} />;
+  }
 
   // no_birth はチャット入力。保存後 (viaChat) は pending/ready になっても
   // チャットを表示し続け、waiting バブルで生成完了 (router.refresh) を待つ。

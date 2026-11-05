@@ -8,7 +8,8 @@ import {
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import UnmeiPriceCta from "@/components/uranai/UnmeiPriceCta";
-import { hasUnmeiAccess } from "@/lib/entitlements";
+import { hasUnmeiAccess, hasFullAccess, hasPremiumBundleAccess } from "@/lib/entitlements";
+import { loadResultUpgradeForUser } from "@/lib/result-upgrade-server";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import UnmeiClient from "@/components/uranai/UnmeiClient";
 import UnmeiChatCheckoutGate from "@/components/uranai/UnmeiChatCheckoutGate";
@@ -463,7 +464,7 @@ async function UnmeiPageBody(sp: {
       : "";
 
   if (preview === "paid" || preview === "purchased") {
-    return <UnmeiClient initialState="no_birth" />;
+    return <UnmeiClient initialState="no_birth" previewMode />;
   }
   if (preview === "purchase") {
     // 未購入からの購入チャット (入力→Stripe Checkout→生成) の dev 確認用。
@@ -484,12 +485,19 @@ async function UnmeiPageBody(sp: {
     return <UnmeiCheckoutConfirming preview />;
   }
   if (preview === "pending") {
-    return <UnmeiClient initialState="pending" />;
+    return <UnmeiClient initialState="pending" previewMode />;
+  }
+  if (preview === "timeout") {
+    return <UnmeiClient initialState="pending" previewMode previewState="timeout" />;
+  }
+  if (preview === "complete") {
+    return <UnmeiClient initialState="pending" previewMode previewState="ready" />;
   }
   if (preview === "ready") {
     return (
       <UnmeiReading
         reading={PREVIEW_READING}
+        upgradeOffer={{ ownerToken: "preview", preview: true }}
         chart={PREVIEW_CHART}
         essence="寄添者"
         characterSlug="jellyfish"
@@ -599,8 +607,15 @@ async function UnmeiPageBody(sp: {
   );
 
   // 購入済み・生成完了 → 鑑定表示 (整形版 + 出生図)
+  const [fullAccess, premiumPaid] = await Promise.all([
+    hasFullAccess(userId!),
+    hasPremiumBundleAccess(userId!),
+  ]);
+  const canUpgrade = fullAccess && !premiumPaid && Boolean(session?.owner_token);
+  const upgrade = canUpgrade ? await loadResultUpgradeForUser(userId!) : null;
   return (
     <UnmeiReading
+      upgradeOffer={canUpgrade ? { ownerToken: session!.owner_token!, existingAnswers: upgrade?.answers ?? [], initialState: upgrade?.state } : undefined}
       reading={reading!.reading}
       chart={chart}
       timeUnknown={timeUnknown}

@@ -1,0 +1,41 @@
+.room {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  max-width: 640px;
+  min-height: 610px;
+  height: min(850px, calc(100svh - 110px));
+  margin: 0 auto;
+  overflow: hidden;
+  background: #09182a;
+  color: #fff7e6;
+}
+.background { object-fit: cover; object-position: center 52%; z-index: -2; transition: opacity 1.6s ease-in-out; }
+.shade { position: absolute; inset: 0; z-index: -1; background: linear-gradient(180deg, #07122488, transparent 30%, transparent 68%, #051c23cc); }
+.intro { position: absolute; top: 5%; inset-inline: 16px; text-align: center; text-shadow: 0 2px 12px #071224; }
+.name { color: #eacc8d; font-size: 12px; font-weight: 700; letter-spacing: .12em; margin-bottom: 12px; }
+.intro h1 { font-size: clamp(19px, 4.7vw, 27px); line-height: 1.8; font-weight: 700; }
+.progress { position: absolute; bottom: 4%; inset-inline: 12px; text-align: center; }
+.seal { position: relative; display: grid; place-items: center; width: 64px; height: 64px; margin: 0 auto 12px; border: 1px solid #ead49877; border-radius: 50%; background: #ead49812; box-shadow: 0 0 26px #eccb7926, inset 0 0 15px #eccb791a; }
+.seal span { display: block; color: #ffe2a2; font-size: 38px; filter: drop-shadow(0 0 8px #ffd77b88); animation: starFloat 2.4s ease-in-out infinite; }
+.seal i { position: absolute; inset: -7px; border: 1px dashed #e9cb8499; border-radius: 50%; animation: orbit 5s linear infinite; }
+.seal i::after { content: ""; position: absolute; top: -4px; left: calc(50% - 4px); width: 8px; height: 8px; border-radius: 50%; background: #ffe3a0; box-shadow: 0 0 12px #ffda7b; }
+.label { font-size: 16px; font-weight: 700; letter-spacing: .04em; }
+.resultButton { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; width: 116px; height: 116px; margin: 0 auto; border: 3px solid #fff2c6; border-radius: 50%; background: linear-gradient(145deg, #fff3bd, #e6bb56); color: #63421c; font-size: 15px; font-weight: 700; box-shadow: 0 5px 0 #9c702e, 0 0 28px #ffdc8580; animation: readyGlow 2.8s ease-in-out infinite; cursor: pointer; }
+.resultButton span { font-size: 25px; }
+.resultButton:hover { filter: brightness(1.08); }
+.resultButton:focus-visible { outline: 3px solid white; outline-offset: 5px; }
+.resultButton:active { transform: translateY(2px); }
+@keyframes readyGlow { 50% { box-shadow: 0 5px 0 #9c702e, 0 0 44px #ffdc85bb; } }
+.dots { animation: glow 2.4s ease-in-out infinite; }
+.stars { position: absolute; inset: 0; pointer-events: none; color: #ffe3a0; }
+.stars span { position: absolute; font-size: 20px; text-shadow: 0 0 15px #ffe3a0; animation: glow 4s ease-in-out infinite; }
+.stars span:nth-child(1) { top: 33%; left: 11%; }
+.stars span:nth-child(2) { top: 28%; right: 13%; animation-delay: -1s; }
+.stars span:nth-child(3) { top: 57%; right: 7%; animation-delay: -2s; font-size: 13px; }
+.stars span:nth-child(4) { top: 65%; left: 9%; animation-delay: -3s; font-size: 13px; }
+@keyframes glow { 0%, 100% { opacity: .45; } 50% { opacity: 1; } }
+@keyframes starFloat { 0%, 100% { transform: translateY(4px) scale(.85) rotate(-12deg); } 50% { transform: translateY(-6px) scale(1.2) rotate(12deg); } }
+@keyframes orbit { to { transform: rotate(360deg); } }
+@media (min-width: 640px) { .room { border-radius: 24px; margin-block: 24px; } }
+@media (prefers-reduced-motion: reduce) { .seal span, .seal i, .stars span, .dots, .resultButton { animation: none; } .background { transition: none; } }
