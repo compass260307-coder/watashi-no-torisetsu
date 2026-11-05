@@ -52,6 +52,16 @@ const nextConfig: NextConfig = {
     root: projectRoot,
   },
 
+  async rewrites() {
+    return {
+      // After the filesystem check: never replace an existing chunk with a different build.
+      fallback: [{
+        source: "/_next/static/:assetPath(.*\\.js)",
+        destination: "/api/static-asset-recovery",
+      }],
+    };
+  },
+
   async headers() {
     return [
       // ブラウザがページ遷移のたびにサイトアイコンを再検証しないよう、長期保存する。
