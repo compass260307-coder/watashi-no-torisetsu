@@ -122,6 +122,7 @@ export async function GET(req: Request, ctx: RouteContext) {
       data.id as string,
       isKo ? "ko" : isEn ? "en" : isId ? "id" : "ja",
       [
+        "tako-verified-print-v2",
         data.diagnosis_completed_at,
         data.display_name,
         perceptionCount ?? 0,
@@ -131,8 +132,10 @@ export async function GET(req: Request, ctx: RouteContext) {
   }
 
   // ===== PDF生成専用ページを描画して PDF 化 =====
-  const origin = process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
+  // Production deployment URLs may require Vercel authentication. Render through
+  // the public site, where the print route still checks the owner's paid access.
+  const origin = process.env.VERCEL_ENV === "production"
+    ? resolveSiteUrl()
     : new URL(req.url).origin;
   const pageUrl = isEn
     ? `${origin}/en/tako-report/${encodeURIComponent(token)}/print${printQuery}`
@@ -161,7 +164,14 @@ export async function GET(req: Request, ctx: RouteContext) {
   try {
     browser = await launchPdfBrowser();
     const page = await browser.newPage();
-    await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 45_000 });
+    const response = await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 45_000 });
+    if (!response?.ok()) {
+      throw new Error(`Friend report print request failed (${response?.status() ?? "no response"})`);
+    }
+    // Never turn a login, error, or incomplete streamed page into a cached PDF.
+    await page.waitForSelector('main article[data-tako-report-document="ready"]', {
+      timeout: 10_000,
+    });
     await page.evaluate(async () => {
       const timeout = (ms: number) =>
         new Promise<void>((resolve) => window.setTimeout(resolve, ms));
@@ -179,14 +189,6 @@ export async function GET(req: Request, ctx: RouteContext) {
         timeout(15_000),
       ]);
     });
-    const englishReportRendered = isEn || isId
-      ? await page.evaluate(() =>
-          Boolean(document.querySelector("main[lang='en'] article, main[lang='id']")),
-        )
-      : true;
-    if (!englishReportRendered) {
-      throw new Error("English friend analysis report did not render");
-    }
     const pdf = await page.pdf({
       format: "A4",
       preferCSSPageSize: true,

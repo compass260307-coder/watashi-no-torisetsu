@@ -478,7 +478,7 @@ export default async function EnglishFriendReportPrintPage({
         <ReportPrintButton locale="en" />
       </div>
 
-      <article className={styles.reportDocument}>
+      <article className={styles.reportDocument} data-tako-report-document="ready">
         <ReportCover
           locale="en"
           profileLabel="SOCIAL MIRROR REPORT"
