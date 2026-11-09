@@ -637,7 +637,7 @@ export default async function TakoReportPrintPage({
         <ReportPrintButton locale={locale} />
       </div>
 
-      <article className={styles.reportDocument}>
+      <article className={styles.reportDocument} data-tako-report-document="ready">
         <ReportCover
           locale={locale}
           profileLabel="SOCIAL MIRROR PROFILE"
