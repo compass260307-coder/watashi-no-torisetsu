@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import KoTopFooter from "@/components/ko/top/KoTopFooter";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
-import { SmoothImage } from "@/components/ui/SmoothImage";
+import { ArticleDetailCover } from "@/components/articles/ArticleCover";
 import {
   getKoArticle,
   getKoRelatedArticles,
@@ -42,12 +42,13 @@ export async function generateMetadata({
   const japanesePath = `/articles/${article.slug}`;
   const koreanPath = `/ko/articles/${article.slug}`;
   const englishPath = `/en/articles/${article.slug}`;
+  const indonesianPath = `/id/articles/${article.slug}`;
   const image = KO_DEFAULT_OG_IMAGE;
 
   return {
     title: { absolute: `${article.title} | 나의 사용설명서` },
     description: article.description,
-    alternates: localizedAlternates("ko", japanesePath, koreanPath, englishPath),
+    alternates: localizedAlternates("ko", japanesePath, koreanPath, englishPath, indonesianPath),
     openGraph: {
       type: "article",
       locale: "ko_KR",
@@ -185,19 +186,7 @@ export default async function KoreanArticlePage({
               </p>
             </header>
 
-            <div
-              className="mt-8 flex items-center justify-center rounded-2xl px-8 pt-8"
-              style={{ backgroundColor: "#F4F4FE" }}
-            >
-              <SmoothImage
-                src={article.image}
-                alt={article.imageAlt}
-                width={1448}
-                height={1086}
-                priority
-                className="h-auto w-full max-w-[440px]"
-              />
-            </div>
+            <ArticleDetailCover src={article.image} alt={article.imageAlt} />
 
             <div
               className="mt-8 flex flex-col gap-4 break-keep text-[15px] leading-[2]"

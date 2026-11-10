@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import TopFooter from "@/components/top/TopFooter";
 import TopHeader from "@/components/top/TopHeader";
-import { SmoothImage } from "@/components/ui/SmoothImage";
+import { ArticleDetailCover } from "@/components/articles/ArticleCover";
 import { getIdArticle, getIdRelatedArticles, ID_ARTICLES } from "@/lib/articles-id";
 import { localizedAlternates, SITE_URL } from "@/lib/locale-seo";
 
@@ -41,7 +41,7 @@ export default async function IndonesianArticlePage({ params }: Props) {
         <nav aria-label="Breadcrumb" className="pt-8 text-[12px]" style={{ color: `${NAVY}80` }}><Link href="/id" className="hover:underline">Beranda</Link><span aria-hidden className="mx-1.5">/</span><Link href="/id/articles" className="hover:underline">Artikel</Link></nav>
         <article>
           <header className="pt-6"><p className="text-[12px] font-bold tracking-wide" style={{ color: SORA }}>{article.category}</p><h1 className="font-bold" style={{ color: NAVY, fontSize: "clamp(26px, 4.5vw, 36px)", lineHeight: 1.5 }}>{article.title}</h1><p className="mt-3 text-[12px]" style={{ color: `${NAVY}80` }}><time dateTime={article.published}>{article.published.replaceAll("-", ".")}</time>{article.updated ? <> (Diperbarui: <time dateTime={article.updated}>{article.updated.replaceAll("-", ".")}</time>)</> : null}</p></header>
-          <div className="mt-8 flex items-center justify-center rounded-2xl px-8 pt-8" style={{ backgroundColor: "#F4F4FE" }}><SmoothImage src={article.image} alt={article.imageAlt} width={1448} height={1086} priority className="h-auto w-full max-w-[440px]" /></div>
+          <ArticleDetailCover src={article.image} alt={article.imageAlt} />
           <div className="mt-8 flex flex-col gap-4 text-[15px] leading-[2]" style={{ color: `${NAVY}CC` }}>{article.lead.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>
           {article.sections.map((section) => <section key={section.heading} className="mt-14"><h2 className="text-[20px] font-bold leading-snug md:text-[24px]" style={{ color: NAVY }}>{section.heading}</h2><div className="mt-5 flex flex-col gap-4 text-[15px] leading-[2]" style={{ color: `${NAVY}CC` }}>{section.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div>{section.list ? <ul className="mt-5 flex flex-col gap-4">{section.list.map((item) => <li key={item.term} className="rounded-2xl border-2 p-5" style={{ borderColor: "#E3E6F5" }}><h3 className="text-[15px] font-bold leading-snug" style={{ color: NAVY }}>{item.term}</h3><p className="mt-1.5 text-[14px] leading-[1.9]" style={{ color: `${NAVY}B3` }}>{item.body}</p></li>)}</ul> : null}</section>)}
         </article>
