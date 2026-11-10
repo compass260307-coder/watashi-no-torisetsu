@@ -27,7 +27,6 @@ import {
   type ThreeCoursePaywallVersion
 } from "@/lib/access-products";
 import { FULL_ACCESS_PRICING, formatFullAccessAmount } from "@/lib/full-access-pricing";
-import { YenPrice } from "@/components/result/YenPrice";
 import { useFullAccessQuote, type FullAccessQuoteState } from "@/lib/use-full-access-quote";
 import { DIAGNOSIS_COUNT_SNAPSHOT } from "@/lib/proof-stats";
 import { track } from "@/lib/track";
@@ -271,9 +270,6 @@ function PlanCard({
   const checkoutPrice = regional
     ? quote?.amountMinor
     : usePlanBasePrice || purchased ? plan.basePrice : accessProductPrice(locale, plan.product, entitlements);
-  const showYenPrice = plan.product === "full_access" &&
-    (regional ? quote?.market === "ja" : locale === "ja");
-  const showTaxIncluded = locale === "ja" && showYenPrice;
   const isUpgrade = !purchased && checkoutPrice !== undefined &&
     checkoutPrice !== (regional ? pricing?.saleAmount : plan.basePrice);
   const listPrice = regional
@@ -386,7 +382,7 @@ function PlanCard({
           <p className="text-[12px] font-bold tabular-nums text-[#9A9DB0] line-through md:text-[13px]">
             {uiText("通常")} {formatPriceForCard(referencePrice)}
           </p>
-        ) : moveOneTimePurchaseCaptionBelowPrice || showTaxIncluded ? null : (
+        ) : moveOneTimePurchaseCaptionBelowPrice ? null : (
           <p className="text-[10px] font-black md:text-[11px]" style={{ color: plan.accent }}>
             {uiText("すべて買い切り")}
           </p>
@@ -396,9 +392,7 @@ function PlanCard({
             className="text-[36px] font-bold leading-none tabular-nums tracking-[-0.02em] md:text-[38px]"
             style={{ color: plan.accent }}
           >
-            {checkoutPrice === undefined ? "—" : showYenPrice
-              ? <YenPrice amount={checkoutPrice} />
-              : formatPriceForCard(checkoutPrice)}
+            {checkoutPrice === undefined ? "—" : formatPriceForCard(checkoutPrice)}
           </span>
           {discountPercent !== null ? (
             <span
@@ -416,11 +410,9 @@ function PlanCard({
             </span>
           ) : null}
         </div>
-        {moveOneTimePurchaseCaptionBelowPrice || showTaxIncluded ? (
+        {moveOneTimePurchaseCaptionBelowPrice ? (
           <p className="mt-1 text-[10px] font-bold text-[#7F8294] md:text-[11px]">
-            {showTaxIncluded
-              ? "税込・買い切り"
-              : uiText("買い切り（お支払いは1回のみ）")}
+            {uiText("買い切り（お支払いは1回のみ）")}
           </p>
         ) : null}
       </div>
