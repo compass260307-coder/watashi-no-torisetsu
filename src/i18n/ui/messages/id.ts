@@ -24,7 +24,7 @@ const header: HeaderContent = {
       label: "Alice", href: "/id/hoshiyomi", course: "astrologer"
     },
     {
-      label: "Tarot", href: "/id/tarot"
+      label: "Tarot", href: "/id/tarot", course: "tarot"
     },
     {
       label: "Masuk", href: "/id/login", login: true

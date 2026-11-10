@@ -28,7 +28,7 @@ const header: HeaderContent = {
       course: "astrologer",
     },
     {
-      label: "타로", href: "/ko/tarot"
+      label: "타로", href: "/ko/tarot", course: "tarot"
     },
     {
       label: KO_TOP_CONTENT.navigation.login, href: "/ko/login", login: true
