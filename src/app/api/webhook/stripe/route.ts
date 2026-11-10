@@ -612,6 +612,10 @@ async function recordFullAccessPayment(
       source: normalizePaywallSource(session.metadata?.paywall_source),
       locale: purchaseLocale(session),
       paywall_version: session.metadata?.paywall_version ?? "legacy",
+      ...(session.metadata?.regional_offer_version ? {
+        regional_offer_version: session.metadata.regional_offer_version,
+        price_market: session.metadata.price_market,
+      } : {}),
       placement: session.metadata?.paywall_placement ?? "unknown",
       return_to: session.metadata?.return_to ?? "me",
     },
@@ -914,6 +918,7 @@ async function sendDetailedReportEmailBestEffort(
       purchaseAmountJpy:
         session.currency === "jpy" ? session.amount_total : null,
       purchaseAmountMinor: session.amount_total,
+      purchaseCurrency: session.currency,
     });
     console.log("[webhook/stripe] detailed report email sent");
   } catch (err) {
@@ -1011,6 +1016,10 @@ async function recordPurchaseCompletedEvent(
         aisho_access_policy:
           session.metadata?.aisho_access_policy ?? "legacy_included",
         paywall_version: session.metadata?.paywall_version ?? "legacy",
+        ...(session.metadata?.regional_offer_version ? {
+          regional_offer_version: session.metadata.regional_offer_version,
+          price_market: session.metadata.price_market,
+        } : {}),
         placement: session.metadata?.paywall_placement ?? "unknown",
         source: normalizePaywallSource(session.metadata?.paywall_source),
         return_to:

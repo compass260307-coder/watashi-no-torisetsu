@@ -21,6 +21,7 @@ const accessProducts = read("src/lib/access-products.ts");
 const checkoutRoute = read(
   "src/app/api/checkout/create-full-access-session/route.ts",
 );
+const regionalPricing = read("src/lib/full-access-pricing.ts");
 const friendPaywall = read(
   "src/components/result/FriendIndividualPaywall.tsx",
 );
@@ -139,18 +140,18 @@ const contractChecks = [
   {
     label: "Korean Stripe Checkout derives pricing from shared constants",
     valid:
-      checkoutRoute.includes("listAmount: FULL_ACCESS_LIST_PRICE_KRW,") &&
-      checkoutRoute.includes(
+      regionalPricing.includes("listAmount: FULL_ACCESS_LIST_PRICE_KRW,") &&
+      regionalPricing.includes(
         "FULL_ACCESS_LIST_PRICE_KRW - FULL_ACCESS_PRICE_KRW",
       ),
   },
   {
     label: "Stripe Checkout uses the frozen reference price",
-    valid: checkoutRoute.includes("listAmount: FULL_ACCESS_LIST_PRICE_JPY,"),
+    valid: regionalPricing.includes("listAmount: FULL_ACCESS_LIST_PRICE_JPY,"),
   },
   {
     label: "Stripe Checkout uses the frozen JPY 499 sale price",
-    valid: checkoutRoute.includes("saleAmount: FULL_ACCESS_PRICE_JPY,"),
+    valid: regionalPricing.includes("saleAmount: FULL_ACCESS_PRICE_JPY,"),
   },
   {
     label: "Stripe Checkout derives the fixed discount from shared constants",
@@ -160,13 +161,13 @@ const contractChecks = [
   },
   {
     label: "English Stripe Checkout uses the frozen reference price",
-    valid: checkoutRoute.includes(
+    valid: regionalPricing.includes(
       "listAmount: EN_FULL_ACCESS_LIST_PRICE_USD_CENTS,",
     ),
   },
   {
     label: "English Stripe Checkout derives its fixed discount from shared constants",
-    valid: checkoutRoute.includes(
+    valid: regionalPricing.includes(
       "EN_FULL_ACCESS_LIST_PRICE_USD_CENTS - EN_FULL_ACCESS_PRICE_USD_CENTS",
     ),
   },
@@ -190,19 +191,19 @@ const contractChecks = [
   },
   {
     label: "Indonesian Stripe Checkout uses IDR",
-    valid: checkoutRoute.includes(
+    valid: regionalPricing.includes(
       'id: {\n    currency: "idr",',
     ),
   },
   {
     label: "Indonesian Stripe Checkout uses the frozen IDR 129,000 reference price",
-    valid: checkoutRoute.includes(
+    valid: regionalPricing.includes(
       'id: {\n    currency: "idr",\n    saleAmount: ID_FULL_ACCESS_PRICE_IDR_MINOR,\n    listAmount: ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR,',
     ),
   },
   {
     label: "Indonesian Stripe Checkout derives the IDR 80,000 discount from shared constants",
-    valid: checkoutRoute.includes(
+    valid: regionalPricing.includes(
       "ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR - ID_FULL_ACCESS_PRICE_IDR_MINOR",
     ),
   },
@@ -229,16 +230,15 @@ const contractChecks = [
       fullAccessCta.includes('? "IDR"'),
   },
   {
-    label: "Indonesian Alice FAQ renders the shared rupiah price",
+    label: "Indonesian Alice FAQ points to regional purchase pricing",
     valid: hoshiyomiCopy.includes(
-      "formatIdrMinor(ID_FULL_ACCESS_PRICE_IDR_MINOR)",
+      "Harga regional ditampilkan di layar pembelian",
     ),
   },
   {
-    label: "Friend paywall renders the shared price constant",
-    valid: friendPaywall.includes(
-      'FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")',
-    ),
+    label: "Friend paywall displays the same quote it passes to Checkout",
+    valid: friendPaywall.includes("formatFullAccessAmount(quote.market, quote.amountMinor)") &&
+      friendPaywall.includes("priceState={priceState}"),
   },
   {
     label: "Commerce disclosure renders the shared price constant",
@@ -279,13 +279,13 @@ const contractChecks = [
       emailTemplates.includes("ID_FULL_ACCESS_PRICE_IDR_MINOR"),
   },
   {
-    label: "Indonesian embedded Checkout does not offer JPY-only PayPay",
-    valid: embeddedCheckout.includes('const supportsPayPay = locale === "ja";'),
+    label: "Embedded Checkout offers PayPay only for the JPY market",
+    valid: embeddedCheckout.includes('const supportsPayPay = needsQuote ? quote?.market === "ja" : locale === "ja";'),
   },
   {
     label: "Checkout API rejects PayPay outside the Japanese offer",
     valid: checkoutRoute.includes(
-      'if (paypayRedirect && checkoutLocale !== "ja")',
+      'if (paypayRedirect && priceMarket !== "ja")',
     ),
   },
   {
@@ -317,7 +317,7 @@ const contractChecks = [
         'paywallSource === "result_upgrade_after_answers"',
       ) &&
       /const resultUpgradePrice = checkoutLocale === "ko"\s*\? KO_RESULT_UPGRADE_PRICE_KRW\s*: RESULT_UPGRADE_PRICE_JPY/.test(checkoutRoute) &&
-      /const effectivePrice = isResultUpgradeCheckout\s*\? resultUpgradePrice/.test(checkoutRoute),
+      /const effectivePrice = regionalQuote\?\.amountMinor \?\? \(isResultUpgradeCheckout\s*\? resultUpgradePrice/.test(checkoutRoute),
   },
   {
     label: "Result upgrade CTA does not duplicate the price in its label",

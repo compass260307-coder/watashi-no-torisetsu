@@ -1,9 +1,4 @@
 import type { ResultLocale } from "@/i18n/result";
-import {
-  formatIdrMinor,
-  FULL_ACCESS_PRICE_JPY,
-  ID_FULL_ACCESS_PRICE_IDR_MINOR,
-} from "@/lib/access-products";
 
 type HoshiyomiFaq = Readonly<{ question: string; answer: string }>;
 export type HoshiyomiLocale = ResultLocale | "en" | "id";
@@ -53,7 +48,7 @@ const JA_COPY: HoshiyomiCopy = {
     {
       question: "どのコースで利用できますか？",
       answer:
-        `完全版（¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}）で、Aliceとのチャットを30回利用できます。月額ではありません。`,
+        "完全版は買い切りで、Aliceとのチャットを30回利用できます。地域ごとの価格は購入画面に表示されます。",
     },
     {
       question: "運命の設計図をまだ作っていなくても話せますか？",
@@ -138,7 +133,7 @@ const KO_COPY: HoshiyomiCopy = {
     {
       question: "어떤 상품에 포함되어 있나요?",
       answer:
-        "완전판(₩4,900)에서 Alice와 30회 채팅할 수 있어요. 한국어판에서 현재 판매하는 유료 상품은 완전판 하나이며, 월정액이 아닌 1회 결제예요.",
+        "완전판을 한 번 구매하면 Alice와 30회 채팅할 수 있어요. 지역별 가격은 구매 화면에서 확인할 수 있어요.",
     },
     {
       question: "운명의 설계도를 아직 만들지 않아도 대화할 수 있나요?",
@@ -223,7 +218,7 @@ const EN_COPY: HoshiyomiCopy = {
     {
       question: "Which purchase includes Alice?",
       answer:
-        "The Complete Edition includes 30 replies from Alice for a one-time payment of $4.99. It is not a subscription.",
+        "The Complete Edition includes 30 replies from Alice with a one-time purchase. Your regional price appears on the purchase screen.",
     },
     {
       question: "Can I talk with Alice before creating my Destiny Blueprint?",
@@ -310,7 +305,7 @@ const ID_COPY: HoshiyomiCopy = {
     },
     {
       question: "Pembelian mana yang menyertakan Alice?",
-      answer: `Edisi Lengkap menyertakan 30 jawaban dari Alice dengan pembayaran satu kali ${formatIdrMinor(ID_FULL_ACCESS_PRICE_IDR_MINOR)}. Ini bukan langganan.`,
+      answer: "Edisi Lengkap menyertakan 30 jawaban dari Alice dengan pembayaran satu kali. Harga regional ditampilkan di layar pembelian.",
     },
     {
       question: "Bisakah saya berbicara dengan Alice sebelum membuat Peta Takdir?",

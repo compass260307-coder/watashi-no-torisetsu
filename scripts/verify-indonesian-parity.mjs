@@ -731,9 +731,9 @@ const criticalChecks = [
     'locale === "id"',
   ],
   [
-    "destiny checkout excludes JPY-only PayPay for IDR",
+    "destiny checkout excludes JPY-only PayPay for the IDR market",
     "src/components/uranai/UnmeiEmbeddedCheckout.tsx",
-    'const supportsPayPay = locale === "ja";',
+    'const supportsPayPay = needsQuote ? quote?.market === "ja" : locale === "ja";',
   ],
   [
     "destiny birth regions",

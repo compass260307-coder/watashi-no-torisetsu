@@ -61,9 +61,10 @@ export default function IndonesianCommercePage() {
       <h2>Produk dan Harga</h2>
       <ul>
         <li>
-          Alice Test - Edisi Lengkap: {formatIdrMinor(ID_FULL_ACCESS_PRICE_IDR_MINOR)},
+          Alice Test - Edisi Lengkap (akses dari Indonesia): {formatIdrMinor(ID_FULL_ACCESS_PRICE_IDR_MINOR)},
           termasuk pajak, pembelian satu kali, dan tanpa langganan.
         </li>
+        <li>Harga dan mata uang ditentukan oleh negara asal koneksi dan ditampilkan sebelum pembayaran.</li>
       </ul>
       <p>Edisi Lengkap mencakup:</p>
       <ul>

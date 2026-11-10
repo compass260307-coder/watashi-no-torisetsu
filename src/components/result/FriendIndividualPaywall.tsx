@@ -1,3 +1,5 @@
+"use client";
+
 // タコ個別ページ /tako/[token]/friend/[perceptionId] の「本人・未課金向け課金導線」。
 // 本人 (isOwner) だが ¥499 全解放 (plan='full') を持っていないときに表示する。
 //
@@ -12,13 +14,8 @@
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
 import type { AppResultLocale } from "@/i18n/result";
-import {
-  EN_FULL_ACCESS_PRICE_USD_CENTS,
-  formatIdrMinor,
-  FULL_ACCESS_PRICE_JPY,
-  FULL_ACCESS_PRICE_KRW,
-  ID_FULL_ACCESS_PRICE_IDR_MINOR,
-} from "@/lib/access-products";
+import { formatFullAccessAmount } from "@/lib/full-access-pricing";
+import { useFullAccessQuote } from "@/lib/use-full-access-quote";
 import { FRIEND_INDIVIDUAL_PAYWALL_SOURCE } from "@/lib/paywall-source";
 import { FullAccessCta } from "./FullAccessCta";
 
@@ -37,6 +34,8 @@ export function FriendIndividualPaywall({
   ownerToken?: string;
   locale?: AppResultLocale;
 } = {}) {
+  const priceState = useFullAccessQuote(true, locale, ownerToken);
+  const quote = priceState.quote;
   const isEn = locale === "en";
   const isId = locale === "id";
   const who =
@@ -99,7 +98,7 @@ export function FriendIndividualPaywall({
 
           <div className="mt-8 rounded-3xl bg-[#F7F7FB] px-5 py-6 text-left">
             <p className="text-[#2E2E5C] font-black text-[15px] leading-[1.6]">
-              🔓 {isEn ? `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}` : isId ? formatIdrMinor(ID_FULL_ACCESS_PRICE_IDR_MINOR) : isKo ? `₩${FULL_ACCESS_PRICE_KRW.toLocaleString("ko-KR")}` : `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`} {isEn ? "one-time purchase" : isId ? "sekali bayar" : isKo ? "한 번만 결제하면" : "一度きりで、"}
+              🔓 {quote ? formatFullAccessAmount(quote.market, quote.amountMinor) : "—"} {isEn ? "one-time purchase" : isId ? "sekali bayar" : isKo ? "한 번만 결제하면" : "一度きりで、"}
               <br />
               {isEn ? "Unlock every friend result." : isId ? "Buka semua hasil dari teman." : isKo ? "모든 결과를 읽을 수 있어요." : "ぜんぶ読めるようになります。"}
             </p>
@@ -117,6 +116,7 @@ export function FriendIndividualPaywall({
                 source={FRIEND_INDIVIDUAL_PAYWALL_SOURCE}
                 locale={locale}
                 returnTo="tako"
+                priceState={priceState}
               >{isEn ? "Unlock the Complete Edition" : isId ? "Buka Edisi Lengkap" : isKo ? "완전판 열기" : "完全版を解放する"}</FullAccessCta>
             </div>
             <p className="mt-3 text-[#A0A0B4] font-bold text-[12px]">

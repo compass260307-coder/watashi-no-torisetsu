@@ -20,6 +20,7 @@ function compile(path, overrides, env = {}, expose = []) {
   return exports;
 }
 const policy = compile('src/lib/access-products.ts', {});
+const pricing = compile('src/lib/full-access-pricing.ts', { './access-products': policy });
 const answersLib = compile('src/lib/result-upgrade.ts', {});
 const commerceDisclosure = compile('src/lib/checkout-commerce-disclosure.ts', {});
 const copy = compile('src/i18n/result-upgrade.ts', {});
@@ -31,19 +32,37 @@ assert(answersLib.normalizeResultUpgradeAnswers(answers));
 assert.equal(answersLib.normalizeResultUpgradeAnswers(answers.slice(0, 4)), null);
 assert.equal(answersLib.normalizeResultUpgradeAnswers(['x'.repeat(501), ...answers.slice(1)]), null);
 
-async function checkout({ full = true, selfReport = false, premium = false, purchaseFull = full, session = true, sessionId = 'owner', saved = answers, savedLocale = 'ko', dbError = false, ...body } = {}) {
+async function checkout({ full = true, selfReport = false, premium = false, purchaseFull = full, session = true, sessionId = 'owner', saved = answers, savedLocale = 'ko', dbError = false, country = 'KR', stripeMismatch = false, couponValid = true, ...body } = {}) {
   const calls = [];
   const buyer = { id: 'owner', owner_token: 'owner-token', email: 'owner@example.test' };
   const stripe = {
-    checkout: { sessions: { create: async params => { calls.push(params); return { id: 'cs_test', url: 'https://checkout.example.test' }; } } },
+    checkout: { sessions: { create: async params => {
+      calls.push(params);
+      const price = params.line_items[0].price_data ?? { currency: 'krw', unit_amount: 4900 };
+      const coupon = params.discounts?.[0].coupon;
+      const off = coupon ? Number(coupon.match(/off(\d+)-/)[1]) * (price.currency === 'idr' ? 100 : 1) : 0;
+      return { id: 'cs_test', url: 'https://checkout.example.test', client_secret: 'isolated',
+        currency: price.currency, amount_total: price.unit_amount - off + (stripeMismatch ? 1 : 0) };
+    } } },
     prices: { retrieve: async () => ({ active: true, type: 'one_time', currency: 'krw', unit_amount: 4900, tax_behavior: 'inclusive' }) },
-    coupons: { retrieve: async id => ({ id, valid: true, currency: 'krw', amount_off: 8000 }) },
+    coupons: { retrieve: async id => {
+      const currency = id.split('-').at(-1);
+      return { id, valid: couponValid, currency,
+        amount_off: Number(id.match(/off(\d+)-/)[1]) * (currency === 'idr' ? 100 : 1) };
+    } },
   };
   const db = { from(table) { return { select() { return this; }, eq() { return this; },
     maybeSingle: async () => table === 'users' ? { data: buyer } : { data: { locale: savedLocale, answers: saved }, error: dbError ? { code: '42703' } : null },
     insert: async () => ({ error: null }),
   }; } };
-  const route = compile('src/app/api/checkout/create-full-access-session/route.ts', {
+  const server = compile('src/lib/full-access-checkout-server.ts', {
+    'server-only': {}, '@/lib/full-access-pricing': pricing,
+    '@/lib/session': { getSession: async () => session ? { ...buyer, id: sessionId } : null },
+    '@/lib/supabase-server': { supabaseAdmin: db },
+  }, { VERCEL: '1' });
+  const common = {
+    '@/lib/full-access-pricing': pricing,
+    '@/lib/full-access-checkout-server': server,
     'next/server': { NextResponse },
     'node:crypto': { randomUUID },
     '@/lib/api-security': { consumeRateLimit: async () => ({ allowed: true }), isSafeOpaqueToken: () => true,
@@ -62,10 +81,22 @@ async function checkout({ full = true, selfReport = false, premium = false, purc
     '@/lib/paywall-source': { DIRECT_PAYWALL_SOURCE: 'direct', normalizePaywallSource: x => x ?? 'direct' },
     '@/lib/checkout-measurement': { normalizeCheckoutAttemptId: x => x },
     '@/lib/checkout-cancel-signature': { signCheckoutCancellation: () => 'isolated-signature' },
+  };
+  const route = compile('src/app/api/checkout/create-full-access-session/route.ts', common);
+  const quoteRoute = compile('src/app/api/checkout/full-access-price/route.ts', common);
+  const headers = { 'Content-Type': 'application/json', ...(country ? { 'x-vercel-ip-country': country } : {}) };
+  const checkoutBody = { locale: 'ko', owner_token: 'owner-token', product: 'premium_bundle',
+    paywall_source: 'result_upgrade_after_answers', paywall_version: policy.KO_SINGLE_FULL_ACCESS_PAYWALL_VERSION, ...body };
+  const quoteResponse = await quoteRoute.POST(new NextRequest('http://localhost/api/checkout/full-access-price', {
+    method: 'POST', headers, body: JSON.stringify({ locale: checkoutBody.locale, owner_token: checkoutBody.owner_token }),
+  }));
+  assert.equal(quoteResponse.headers.get('cache-control'), 'private, no-store');
+  const quote = await quoteResponse.json();
+  const request = new NextRequest('http://localhost/api/checkout/create-full-access-session', {
+    method: 'POST', headers, body: JSON.stringify(checkoutBody),
   });
-  const request = new NextRequest('http://localhost/api/checkout/create-full-access-session', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ locale: 'ko', owner_token: 'owner-token', product: 'premium_bundle', paywall_source: 'result_upgrade_after_answers', paywall_version: policy.KO_SINGLE_FULL_ACCESS_PAYWALL_VERSION, ...body }) });
   const response = await route.POST(request);
-  return { status: response.status, data: await response.json(), calls, cookie: response.headers.get('set-cookie') };
+  return { status: response.status, data: await response.json(), calls, quote, cookie: response.headers.get('set-cookie') };
 }
 const upgrade = await checkout();
 assert.equal(upgrade.status, 200);
@@ -101,7 +132,8 @@ for (const [input, expected] of [
   assert.equal(result.calls.length, 0, 'Rejected checkout must never call Stripe');
   assert.equal(result.cookie, null, 'Rejected checkout must not change the disclosure language');
 }
-const full = await checkout({ full: false, product: 'full_access', paywall_source: 'direct' });
+const fullPurchase = { full: false, product: 'full_access', paywall_source: 'direct' };
+const full = await checkout({ ...fullPurchase, displayed_price_market: 'ko', displayed_price_minor: 4900 });
 assert.equal(full.status, 200);
 assert.equal(full.data.amount, 4900);
 assert.equal(full.calls[0].line_items[0].price_data.unit_amount, 12900);
@@ -109,6 +141,56 @@ assert.equal(full.calls[0].discounts[0].coupon, 'full-access-anchor-off8000-krw'
 assert.equal(full.calls[0].metadata.offer_version, undefined);
 assert.match(full.cookie, /wt_checkout_commerce_locale=ko/);
 assert.match(full.calls[0].custom_text.submit.message, /\/ko\/legal\/commerce/);
+// Same language can pay in multiple markets, and changing language does not change the market price.
+for (const [country, market, currency, minor, amount, label] of [
+  ['JP', 'ja', 'jpy', 499, 499, '¥499'],
+  ['KR', 'ko', 'krw', 4900, 4900, '₩4,900'],
+  ['ID', 'id', 'idr', 4900000, 49000, 'Rp49.000'],
+  ['FR', 'en', 'usd', 499, 4.99, 'US$4.99'],
+  [null, 'en', 'usd', 499, 4.99, 'US$4.99'],
+]) {
+  for (const locale of ['ja', 'ko', 'en', 'id']) {
+    const result = await checkout({ ...fullPurchase, country, locale,
+      displayed_price_market: market, displayed_price_minor: minor,
+      paywall_version: policy.accessPaywallVersionForLocale(locale) });
+    assert.deepEqual(result.quote, { market, amountMinor: minor });
+    assert.equal(pricing.formatFullAccessAmount(market, minor), label);
+    assert.equal(result.status, 200, JSON.stringify(result.data));
+    assert.equal(result.data.amount, amount);
+    assert.equal(result.data.currency, currency.toUpperCase());
+    assert.equal(result.calls[0].locale, locale);
+    assert.equal(result.calls[0].adaptive_pricing.enabled, false);
+    assert.equal(result.calls[0].metadata.price_market, market);
+  }
+}
+const stale = { ...fullPurchase, country: 'JP' };
+for (const quote of [{}, { displayed_price_market: 'en', displayed_price_minor: 499 },
+  { displayed_price_market: 'ja', displayed_price_minor: 1 }]) {
+  const result = await checkout({ ...stale, ...quote });
+  assert.equal(result.status, 409);
+  assert.equal(result.data.code, 'stale_paywall');
+  assert.equal(result.calls.length, 0);
+}
+const japan = { ...stale, displayed_price_market: 'ja', displayed_price_minor: 499 };
+const paypay = await checkout({ ...japan, payment_method: 'paypay' });
+assert.equal(paypay.status, 200);
+assert.equal(paypay.calls[0].payment_method_types[0], 'paypay');
+assert.equal((await checkout({ ...japan, country: 'ID', payment_method: 'paypay' })).status, 409);
+assert.equal((await checkout({ ...japan, country: 'ID', payment_method: 'paypay',
+  displayed_price_market: 'id', displayed_price_minor: 4900000 })).status, 400);
+const embedded = await checkout({ ...japan, ui_mode: 'embedded', couponValid: false });
+assert.equal(embedded.status, 200);
+assert.equal(embedded.calls[0].line_items[0].price_data.unit_amount, 499);
+assert.equal(embedded.data.clientSecret, 'isolated');
+const mismatch = await checkout({ ...japan, stripeMismatch: true });
+assert.equal(mismatch.status, 503);
+assert.equal(mismatch.data.url, undefined);
+const legacy = await checkout({ ...fullPurchase, selfReport: true,
+  displayed_price_market: 'ko', displayed_price_minor: 3000 });
+assert.equal(legacy.status, 200);
+assert.equal(legacy.quote.amountMinor, 3000);
+assert.equal(legacy.data.amount, 3000);
+console.log('Regional pricing passed: country × language, USD fallback, stale/forged quote rejection, PayPay, embedded Checkout and legacy KRW upgrade.');
 const ja = await checkout({ locale: 'ja', paywall_version: policy.THREE_COURSE_PAYWALL_VERSION });
 assert.equal(ja.status, 409);
 assert.equal(ja.calls.length, 0, 'Japanese Web upgrades reject saved answers in another language');
@@ -116,7 +198,8 @@ console.log('Korean result upgrade regression passed; Japanese Web upgrades requ
 
 const messages = [];
 const email = compile('src/lib/email.ts', {
-  '@/i18n/th/email-templates': {},
+  './login-email': compile('src/lib/login-email.ts', {}),
+  '@/lib/full-access-pricing': pricing,
   'resend': { Resend: class { emails = { send: async message => { messages.push(message); return {}; } }; } },
   '@/lib/access-products': policy,
   './site-url': { resolveSiteUrl: () => 'https://isolated.example.test' },
@@ -134,6 +217,10 @@ assert(!messages[0].text.includes('프리미엄 코스'));
 await email.sendDetailedReportEmail({ to: 'owner@example.test', ownerToken: 'owner-token', locale: 'ko', product: 'full_access', purchaseAmountMinor: 4900 });
 assert.match(messages[1].text, /₩4,900/);
 assert.match(messages[1].text, /완전판/);
+await email.sendDetailedReportEmail({ to: 'owner@example.test', ownerToken: 'owner-token', locale: 'en',
+  product: 'full_access', purchaseAmountMinor: 499, purchaseCurrency: 'jpy' });
+assert.match(messages[2].text, /Complete Edition · ¥499/);
+assert.match(messages[2].html, /Complete Edition · ¥499/);
 console.log('Receipt regression passed: Korean upgrade details and escaped HTML; existing complete-edition receipt preserved.');
 
 async function saveAnswers({ ownerToken = 'owner-token', locale = 'ko', values = answers, loggedIn = true, fullAccess = true, state = null } = {}) {

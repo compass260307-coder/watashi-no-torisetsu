@@ -19,17 +19,15 @@ import {
   accessPaywallVersionForLocale,
   accessProductPrice,
   EMPTY_ACCESS_ENTITLEMENTS,
-  EN_FULL_ACCESS_PRICE_USD_CENTS,
   formatIdrMinor,
-  FULL_ACCESS_PRICE_JPY,
-  FULL_ACCESS_PRICE_KRW,
-  ID_FULL_ACCESS_PRICE_IDR_MINOR,
   SINGLE_ALL_ACCESS_PAYWALL_PRODUCT,
   type AccessEntitlements,
   type AccessProduct,
   type PaywallPlacement,
   type ThreeCoursePaywallVersion
 } from "@/lib/access-products";
+import { FULL_ACCESS_PRICING, formatFullAccessAmount } from "@/lib/full-access-pricing";
+import { useFullAccessQuote, type FullAccessQuoteState } from "@/lib/use-full-access-quote";
 import { DIAGNOSIS_COUNT_SNAPSHOT } from "@/lib/proof-stats";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
@@ -238,6 +236,7 @@ function PlanCard({
   previewMode,
   compactModal = false,
   usePlanBasePrice = false,
+  priceState,
   moveOneTimePurchaseCaptionBelowPrice = false,
   singleOffer = false,
   ctaLabel,
@@ -253,6 +252,7 @@ function PlanCard({
   previewMode: boolean;
   compactModal?: boolean;
   usePlanBasePrice?: boolean;
+  priceState: FullAccessQuoteState;
   moveOneTimePurchaseCaptionBelowPrice?: boolean;
   /** 日本版の主商品・学生向けを1枚だけ見せるときのカード幅。 */
   singleOffer?: boolean;
@@ -264,13 +264,25 @@ function PlanCard({
   const paywallVersion: ThreeCoursePaywallVersion =
     accessPaywallVersionForLocale(locale);
   const purchased = isPurchased(plan.product, entitlements);
-  const checkoutPrice = usePlanBasePrice || purchased
-    ? plan.basePrice
-    : accessProductPrice(locale, plan.product, entitlements);
-  const isUpgrade = !purchased && checkoutPrice !== plan.basePrice;
-  const upgradeReferencePrice = plan.listPrice ?? plan.basePrice;
-  const upgradeDiscountPercent = isUpgrade
-    ? Math.round((1 - checkoutPrice / upgradeReferencePrice) * 100)
+  const regional = plan.product === "full_access" && !previewMode && !purchased;
+  const quote = regional ? priceState.quote : null;
+  const pricing = quote ? FULL_ACCESS_PRICING[quote.market] : null;
+  const checkoutPrice = regional
+    ? quote?.amountMinor
+    : usePlanBasePrice || purchased ? plan.basePrice : accessProductPrice(locale, plan.product, entitlements);
+  const isUpgrade = !purchased && checkoutPrice !== undefined &&
+    checkoutPrice !== (regional ? pricing?.saleAmount : plan.basePrice);
+  const listPrice = regional
+    ? (pricing?.currency === "jpy" ? undefined : pricing?.listAmount)
+    : plan.listPrice;
+  const referencePrice = isUpgrade
+    ? listPrice ?? (regional ? pricing?.saleAmount : plan.basePrice)
+    : listPrice;
+  const formatPriceForCard = (amount: number) => quote
+    ? formatFullAccessAmount(quote.market, amount)
+    : priceNode(amount, locale);
+  const discountPercent = checkoutPrice !== undefined && referencePrice && (isUpgrade || (regional && plan.badge))
+    ? Math.round((1 - checkoutPrice / referencePrice) * 100)
     : null;
   const visibleItems = plan.items;
 
@@ -366,13 +378,9 @@ function PlanCard({
             : "mt-5 min-h-[62px] py-0 md:mt-7 md:min-h-[74px] md:py-1"
         } ${purchased ? "opacity-60" : ""}`}
       >
-        {isUpgrade ? (
-          <p className="text-[12px] font-bold tabular-nums text-[#7F8294] line-through md:text-[13px]">
-            {uiText("通常")} {priceNode(upgradeReferencePrice, locale)}
-          </p>
-        ) : plan.listPrice ? (
+        {referencePrice ? (
           <p className="text-[12px] font-bold tabular-nums text-[#9A9DB0] line-through md:text-[13px]">
-            {uiText("通常")} {priceNode(plan.listPrice, locale)}
+            {uiText("通常")} {formatPriceForCard(referencePrice)}
           </p>
         ) : moveOneTimePurchaseCaptionBelowPrice ? null : (
           <p className="text-[10px] font-black md:text-[11px]" style={{ color: plan.accent }}>
@@ -384,16 +392,16 @@ function PlanCard({
             className="text-[36px] font-bold leading-none tabular-nums tracking-[-0.02em] md:text-[38px]"
             style={{ color: plan.accent }}
           >
-            {priceNode(checkoutPrice, locale)}
+            {checkoutPrice === undefined ? "—" : formatPriceForCard(checkoutPrice)}
           </span>
-          {isUpgrade && upgradeDiscountPercent !== null ? (
+          {discountPercent !== null ? (
             <span
               className="mb-0.5 shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-black md:text-[11px]"
               style={{ backgroundColor: plan.soft, color: plan.accent }}
             >
-              {uiText("{upgradeDiscountPercent}% OFF", { upgradeDiscountPercent })}
+              {uiText("{upgradeDiscountPercent}% OFF", { upgradeDiscountPercent: discountPercent })}
             </span>
-          ) : plan.badge ? (
+          ) : !regional && plan.badge ? (
             <span
               className="mb-0.5 max-w-full shrink-0 whitespace-nowrap rounded-full px-2 py-1 text-[9px] font-black md:px-2.5 md:text-[10px]"
               style={{ backgroundColor: plan.soft, color: plan.accent }}
@@ -432,6 +440,7 @@ function PlanCard({
             placement={placement}
             compact
             previewMode={previewMode}
+            priceState={priceState}
           >
             {ctaLabel ??
               (isUpgrade
@@ -576,6 +585,11 @@ export function SelfAccessPlanCarousel({
         : selectedPlans;
     },
     [allPlans, isSingleOffer, products, locale, previewJapaneseThreeCourse],
+  );
+  const priceState = useFullAccessQuote(
+    !previewMode && plans.some((plan) => plan.product === "full_access"),
+    locale,
+    ownerToken,
   );
   const defaultPlanIndex = Math.max(
     0,
@@ -783,6 +797,7 @@ export function SelfAccessPlanCarousel({
               placement={placement}
               compact
               previewMode={previewMode}
+              priceState={priceState}
             >
               {uiText("同じコースでもう一度決済する")}
             </FullAccessCta>
@@ -807,13 +822,7 @@ export function SelfAccessPlanCarousel({
         >
           {heading ??
             (isSingleOffer
-              ? locale === "id"
-                ? `Buka Edisi Lengkap seharga ${formatPrice(plans[0]?.basePrice ?? ID_FULL_ACCESS_PRICE_IDR_MINOR, locale)}`
-                : locale === "en"
-                ? `Unlock the Complete Edition for ${formatPrice(plans[0]?.basePrice ?? EN_FULL_ACCESS_PRICE_USD_CENTS, locale)}`
-                : locale === "ko"
-                  ? `완전판을 ${formatPrice(plans[0]?.basePrice ?? FULL_ACCESS_PRICE_KRW, locale)}에 모두 해제`
-                  : `完全版を、${formatJpy(plans[0]?.basePrice ?? FULL_ACCESS_PRICE_JPY)}で全開放`
+              ? plans[0]?.title
               : uiText("あなたに合う解放範囲を選ぶ"))}
         </h2>
       </div>
@@ -875,6 +884,7 @@ export function SelfAccessPlanCarousel({
             returnTo={returnTo}
             locale={locale}
             previewMode={previewMode}
+            priceState={priceState}
             compactModal={!!onClose}
             usePlanBasePrice={
               previewMode &&

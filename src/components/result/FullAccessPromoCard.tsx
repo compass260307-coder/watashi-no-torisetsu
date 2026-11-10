@@ -56,6 +56,8 @@ import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
 import { useFullAccessStatus } from "@/lib/use-course-navigation-access";
+import { formatFullAccessAmount } from "@/lib/full-access-pricing";
+import { useFullAccessQuote } from "@/lib/use-full-access-quote";
 import { SelfAccessPlanCarousel } from "./SelfAccessPlanCarousel";
 
 // 値引き表記に使うロケール別価格。実課金額はサーバ側のStripe Priceで検証する。
@@ -409,7 +411,11 @@ export function FullAccessPromoCard({
     }
     return item;
   });
-  const price = copy.price;
+  const priceState = useFullAccessQuote(!previewMode && !usesPlanCarousel && product === "full_access", locale, ownerToken);
+  const quote = priceState.quote;
+  const salePrice = previewMode ? copy.price.sale
+    : quote ? formatFullAccessAmount(quote.market, quote.amountMinor)
+    : "—";
   // 色だけ variant で切替 (コピー・項目・レイアウトは全 variant 共通)。
   // aisho は相性ページ用にピンク基調、それ以外はその人のグループ色。
   const groupTone = cardColorsForGroup(group);
@@ -706,11 +712,13 @@ export function FullAccessPromoCard({
               ) : locale === "ja" || isKorean || isEnglish || isIndonesian ? (
                 <span className={`text-[36px] ${isKorean ? "font-bold" : "font-black"} leading-none text-black`}>
                   <span className="sr-only">{isKorean ? "가격" : uiText("価格")}</span>
-                  {price.sale}
+                  {previewMode && locale === "ja" && product === "full_access"
+                    ? salePrice.replace(/^¥/, "")
+                    : salePrice}
                 </span>
               ) : (
                 <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
-                  {price.sale}
+                  {salePrice}
                 </span>
               )}
             </div>
@@ -741,6 +749,7 @@ export function FullAccessPromoCard({
                 }
                 placement={paywallPlacement}
                 previewMode={previewMode}
+                priceState={priceState}
                 accentColor={
                   isStandaloneSelfReport
                     ? STUDENT_LITE_TONE.accent

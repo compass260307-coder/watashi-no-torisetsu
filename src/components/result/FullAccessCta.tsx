@@ -33,6 +33,7 @@ import { redirectToFullAccessCheckout } from "@/lib/redirect-to-checkout";
 import { getLastPaywallSource } from "@/lib/scroll-to-paywall";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
+import { displayedFullAccessPrice, useFullAccessQuote, type FullAccessQuoteState } from "@/lib/use-full-access-quote";
 import { useState, type CSSProperties } from "react";
 
 function readCookie(name: string): string | null {
@@ -71,6 +72,7 @@ export function FullAccessCta({
   previewMode = false,
   accentColor,
   shadowColor,
+  priceState,
 }: {
   children?: React.ReactNode;
   ownerToken?: string;
@@ -96,11 +98,15 @@ export function FullAccessCta({
   accentColor?: string;
   /** CTA下辺の立体影。accentColor と組で指定する。 */
   shadowColor?: string;
+  priceState?: FullAccessQuoteState;
 }) {
   const uiText = useUiText(locale, "result.FullAccessCta");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewNotice, setPreviewNotice] = useState(false);
+  const needsQuote = product === "full_access" && !previewMode;
+  const ownPriceState = useFullAccessQuote(needsQuote && !priceState, locale, ownerToken);
+  const { quote, failed: priceFailed } = priceState ?? ownPriceState;
   const resolvedPaywallVersion =
     paywallVersion ?? accessPaywallVersionForLocale(locale);
   const resolvedUnauthHref =
@@ -123,6 +129,10 @@ export function FullAccessCta({
     if (loading) return;
     if (previewMode) {
       setPreviewNotice(true);
+      return;
+    }
+    if (needsQuote && !quote) {
+      if (priceFailed) window.location.reload();
       return;
     }
     setLoading(true);
@@ -170,6 +180,7 @@ export function FullAccessCta({
           checkout_attempt_id: checkoutAttemptId,
           locale,
           product,
+          ...displayedFullAccessPrice(quote),
           ...(salesChannel === "line" ? { sales_channel: "line" } : {}),
           ...(ttclid ? { ttclid } : {}),
           ...(ttp ? { ttp } : {}),
@@ -264,7 +275,7 @@ export function FullAccessCta({
       <button
         type="button"
         onClick={handleClick}
-        disabled={loading}
+        disabled={loading || (needsQuote && !quote && !priceFailed)}
         style={themedButtonStyle}
         className={`flex w-full items-center justify-center rounded-full bg-[#2E2E5C] px-6 text-white shadow-[0_4px_0_#1b1b3e] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#1b1b3e] active:translate-y-1 active:shadow-[0_0_0_#1b1b3e] disabled:pointer-events-none disabled:opacity-60 ${
           compact
@@ -275,7 +286,7 @@ export function FullAccessCta({
         {/* エラー後はリトライを明示 (ボタンは再度タップ可能=再試行できる) */}
         {loading
           ? uiText("ひらいています…")
-          : error
+          : error || (needsQuote && priceFailed)
             ? uiText("もう一度ためす →")
             : children}
       </button>
