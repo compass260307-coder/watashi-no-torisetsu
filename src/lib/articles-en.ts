@@ -321,6 +321,117 @@ export const EN_ARTICLES: EnArticle[] = [
       { heading: "Try friend feedback in Alice Personalities", paragraphs: ["Complete your own OCEAN test, share your invitation link, and compare your self-view with the patterns in your friends’ answers.", "Use the result as the beginning of a conversation. A good insight should make understanding easier, not make anyone feel reduced to a label." ] },
     ],
   },
+  {
+    slug: "ocean-kekka-yomikata",
+    title: "How to read your OCEAN results and put the five scores to work",
+    listTitle: "How to read your OCEAN results",
+    description:
+      "Use your five OCEAN scores to notice everyday patterns and try a small experiment.",
+    category: "Foundations",
+    published: "2026-11-09",
+    image: "/article-covers/ocean-kekka-yomikata-scene.webp",
+    imageAlt: "A bear in a green jacket takes notes while looking at a chart at its desk",
+    lead: [
+      "Your highest score may be the first thing you notice. To make the results useful, look across the five traits and ask when each tendency shows up in your life.",
+    ],
+    sections: [
+      {
+        heading: "Look at one trait at a time",
+        paragraphs: [
+          "Openness can prompt you to think about how you approach new things. Conscientiousness points to how you get things done, and extraversion to how you engage with others. Agreeableness invites you to reflect on disagreement, while neuroticism can help you consider how you react to worry or pressure.",
+          "Pick one trait and recall a recent example. Write down the behavior itself, such as “I tend to score higher on extraversion, and I started a conversation at a gathering where I knew nobody.”",
+        ],
+      },
+      {
+        heading: "Look for combinations that fit your life",
+        paragraphs: [
+          "If you like trying new things and planning ahead, you might enjoy adding one unfamiliar place to your weekend and looking up the route in advance.",
+          "Find an example that runs against the result, too. If you love talking with certain people and prefer quiet in other settings, record who was there and where you were. That detail makes the result easier to interpret.",
+        ],
+      },
+      {
+        heading: "Try one small experiment",
+        paragraphs: [
+          "Choose something you can test this week. If planning helps you get started, put just one thing you want to do on the calendar.",
+          "At the weekend, ask whether the plan made it easier to start. Save what worked as one line in your personal guide so you can use it next time.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "jiko-hyoka-tasha-hyoka",
+    title: "What to do when your self-rating and your friends’ feedback differ",
+    listTitle: "When your friends see you differently",
+    description:
+      "Explore the gap between your self-rating and a friend’s feedback through specific situations and actions.",
+    category: "Self-understanding",
+    published: "2026-11-09",
+    image: "/article-covers/jiko-hyoka-tasha-hyoka-scene.webp",
+    imageAlt: "An octopus with round glasses compares two cards in an open notebook",
+    lead: [
+      "You may think of yourself as quiet, while a friend remembers you keeping a conversation going. Start by asking what was happening and what they saw you do.",
+    ],
+    sections: [
+      {
+        heading: "Write down your experience and their observation",
+        paragraphs: [
+          "At a gathering, you might have felt nervous while also asking a question when the conversation stalled. You remember the nerves, and your friend remembers the question.",
+          "Divide a notebook page in two. On one side write what you felt, and on the other write what your friend saw. Both can describe the same moment.",
+        ],
+      },
+      {
+        heading: "Consider who was there and where it happened",
+        paragraphs: [
+          "You may listen more at work and talk more with close friends. If people describe you differently, think about the settings in which each person usually spends time with you.",
+          "If you can ask a friend directly, try “When did you notice that?” A single concrete example gives you something you can reflect on later.",
+        ],
+      },
+      {
+        heading: "Keep a note with the context",
+        paragraphs: [
+          "Instead of “I’m good at conversation,” try “In a small group, I can ask a question when the conversation goes quiet.” That records where the strength shows up.",
+          "Next time you’re in a small group, notice whether you do it again. You can test an observation that came from comparing both perspectives.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "tomodachi-kotowarikata",
+    title: "How to turn down a friend’s invitation kindly",
+    listTitle: "How to turn down a friend’s invitation",
+    description:
+      "Use short message examples to decline an invitation clearly and suggest another time when you want to meet.",
+    category: "Friends & relationships",
+    published: "2026-11-09",
+    image: "/article-covers/tomodachi-kotowarikata-scene.webp",
+    imageAlt: "A penguin in blue overalls talks with a friend holding an invitation while a planner lies open",
+    lead: [
+      "When you want to decline an invitation, figuring out how much to explain can delay your reply. A quick thank-you and a clear answer give your friend what they need to make plans.",
+    ],
+    sections: [
+      {
+        heading: "Thank them and say whether you can come",
+        paragraphs: [
+          "“Thanks for inviting me! I’m going to sit this one out. I’d love to be invited next time.” That lets your friend know you appreciated the invitation and gives them a clear answer.",
+          "If you want to give a reason, a line like “I need a quiet weekend at home” is enough. If you’re unsure, say when you can answer, such as “I’ll let you know by tomorrow evening.”",
+        ],
+      },
+      {
+        heading: "Suggest another plan when you want to meet",
+        paragraphs: [
+          "If you do want to get together, offer a specific alternative: “Saturday is tricky for me. Could we grab coffee next Wednesday?” If you don’t know your schedule yet, say you’ll reach out when you do.",
+          "If the event itself is the issue, suggest a setting that suits you: “I’ll skip the big group this time, but I’d love to have dinner with just you sometime.”",
+        ],
+      },
+      {
+        heading: "Repeat your answer if they ask again",
+        paragraphs: [
+          "If a friend says “Could you come for just a little while?” and your decision is the same, you can say “I appreciate the invite, but I’m staying in today.”",
+          "If you want future invitations to work better, share a preference ahead of time. “I usually keep weeknights for myself. Weekends are easier for me” gives them something to plan around.",
+        ],
+      },
+    ],
+  },
 ];
 
 export function getEnArticle(slug: string): EnArticle | undefined {
@@ -328,6 +439,9 @@ export function getEnArticle(slug: string): EnArticle | undefined {
 }
 
 const RELATED: Record<string, string[]> = {
+  "ocean-kekka-yomikata": ["ocean-shindan", "torisetsu-tsukurikata", "sixteen-types-vs-ocean"],
+  "jiko-hyoka-tasha-hyoka": ["tako-bunseki", "johari-no-mado", "torisetsu-tsukurikata"],
+  "tomodachi-kotowarikata": ["kyouchousei", "seikaku-aisho", "gaikousei"],
   "ocean-shindan": ["sixteen-types-vs-ocean", "kaihousei", "tako-bunseki"],
   "sixteen-types-vs-ocean": ["ocean-shindan", "torisetsu-tsukurikata", "johari-no-mado"],
   kaihousei: ["ocean-shindan", "seijitsusei", "gaikousei"],

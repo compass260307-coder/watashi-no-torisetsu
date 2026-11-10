@@ -3,6 +3,7 @@
 import { useId, useRef, useState } from "react";
 import Link from "next/link";
 import { SmoothImage } from "@/components/ui/SmoothImage";
+import { ArticleCover, hasArticleSceneCover } from "./ArticleCover";
 
 // 記事一覧のカテゴリー絞り込み + カードグリッド (16Personalities の記事ハブ風)。
 // 絞り込みはクライアント側の state のみ (URL は変えない)。初期表示は「すべて」で
@@ -34,6 +35,7 @@ export function ArticleGrid({
   categories: string[];
   locale?: "ja" | "ko" | "en" | "id";
 }) {
+  const usesWideCovers = locale === "ja";
   const labels =
     locale === "id"
       ? {
@@ -136,22 +138,26 @@ export function ArticleGrid({
             <Link
               href={`${locale === "en" ? "/en" : locale === "ko" ? "/ko" : locale === "id" ? "/id" : ""}/articles/${a.slug}`}
               prefetch={false}
-              className="group flex h-full flex-col overflow-hidden rounded-2xl bg-white shadow-[0_2px_12px_rgba(46,46,92,0.10)] transition-shadow hover:shadow-[0_4px_20px_rgba(46,46,92,0.18)]"
+              className={`group flex h-full flex-col overflow-hidden rounded-2xl bg-white transition-shadow ${
+                usesWideCovers
+                  ? "border border-[#E3E6F5] hover:shadow-[0_4px_20px_rgba(46,46,92,0.12)]"
+                  : "shadow-[0_2px_12px_rgba(46,46,92,0.10)] hover:shadow-[0_4px_20px_rgba(46,46,92,0.18)]"
+              }`}
             >
-              {/* 上部イラスト (フェルト調シーン)。淡い背景で切り抜き感をなくす */}
-              <div
-                className="flex items-center justify-center px-6 pt-6"
-                style={{ backgroundColor: "#F4F4FE" }}
-              >
-                <SmoothImage
-                  src={a.image}
-                  alt={a.imageAlt}
-                  width={724}
-                  height={543}
-                  sizes="(min-width: 1144px) 296px, (min-width: 1024px) calc((100vw - 256px) / 3), (min-width: 784px) 300px, (min-width: 640px) calc(50vw - 92px), (min-width: 412px) 300px, calc(100vw - 112px)"
-                  className="h-auto w-full max-w-[300px]"
-                />
-              </div>
+              {hasArticleSceneCover(a.image) ? (
+                <ArticleCover src={a.image} />
+              ) : (
+                <div className="flex items-center justify-center bg-[#F4F4FE] px-6 pt-6">
+                  <SmoothImage
+                    src={a.image}
+                    alt={a.imageAlt}
+                    width={724}
+                    height={543}
+                    sizes="(min-width: 1144px) 296px, (min-width: 1024px) calc((100vw - 256px) / 3), (min-width: 784px) 300px, (min-width: 640px) calc(50vw - 92px), (min-width: 412px) 300px, calc(100vw - 112px)"
+                    className="h-auto w-full max-w-[300px]"
+                  />
+                </div>
+              )}
               <div className="flex flex-1 flex-col p-6">
                 <p
                   className="text-[11px] font-bold tracking-wide"
@@ -166,13 +172,15 @@ export function ArticleGrid({
                   {a.listTitle}
                 </h2>
                 <p
-                  className="mt-2 line-clamp-3 flex-1 text-[13px] leading-[1.9]"
+                  className="mt-2 line-clamp-3 text-[13px] leading-[1.9]"
                   style={{ color: `${NAVY}B3` }}
                 >
                   {a.description}
                 </p>
-                <span className="mt-5 inline-block w-fit rounded-full border-2 border-[#5B5BEF] px-5 py-2 text-[13px] font-bold text-[#5B5BEF] transition-colors group-hover:bg-[#5B5BEF] group-hover:text-white">
-                  {labels.read}
+                <span className="mt-auto pt-5">
+                  <span className="inline-block w-fit rounded-full border-2 border-[#5B5BEF] px-5 py-2 text-[13px] font-bold text-[#5B5BEF] transition-colors group-hover:bg-[#5B5BEF] group-hover:text-white">
+                    {labels.read}
+                  </span>
                 </span>
               </div>
             </Link>

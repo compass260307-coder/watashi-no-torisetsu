@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import EnSiteFooter from "@/components/en/EnSiteFooter";
 import EnSiteHeader from "@/components/en/EnSiteHeader";
-import { SmoothImage } from "@/components/ui/SmoothImage";
+import { ArticleDetailCover } from "@/components/articles/ArticleCover";
 import {
   EN_ARTICLES,
   getEnArticle,
@@ -126,9 +126,7 @@ export default async function EnglishArticlePage({ params }: Props) {
               </p>
             </header>
 
-            <div className="mt-8 flex items-center justify-center rounded-2xl px-8 pt-8" style={{ backgroundColor: "#F4F4FE" }}>
-              <SmoothImage src={article.image} alt={article.imageAlt} width={1448} height={1086} priority className="h-auto w-full max-w-[440px]" />
-            </div>
+            <ArticleDetailCover src={article.image} alt={article.imageAlt} />
 
             <div className="mt-8 flex flex-col gap-4 text-[15px] leading-[2]" style={{ color: `${NAVY}CC` }}>
               {article.lead.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}

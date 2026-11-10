@@ -150,6 +150,117 @@ export const ID_ARTICLES: IdArticle[] = [
       { heading: "Coba fitur teman di Alice Personalities", paragraphs: ["Selesaikan tes OCEAN Anda, bagikan tautan undangan, lalu bandingkan pandangan diri dengan pola jawaban teman. Gunakan hasil sebagai awal percakapan.", "Selisih antara penilaian diri dan teman menjadi area buta sekaligus halaman paling menarik dalam panduan Anda. Mulailah dari tes gratis 50 pertanyaan selama sekitar tiga menit, lalu mintalah teman menunjukkan sisi diri yang belum Anda kenali."] },
     ],
   },
+  {
+    slug: "ocean-kekka-yomikata",
+    title: "Cara membaca hasil OCEAN dan memakai lima skornya sehari-hari",
+    listTitle: "Bagaimana cara membaca hasil OCEAN?",
+    description:
+      "Gunakan lima skor OCEAN untuk melihat pola dalam keseharian dan mencoba satu perubahan kecil.",
+    category: "Dasar-dasar",
+    published: "2026-11-09",
+    image: "/article-covers/ocean-kekka-yomikata-scene.webp",
+    imageAlt: "Beruang berjaket hijau mencatat sambil melihat grafik skor di mejanya",
+    lead: [
+      "Skor tertinggi mungkin menjadi hal pertama yang Anda perhatikan. Agar hasilnya berguna dalam keseharian, lihat kelima sifat dan pikirkan kapan setiap kecenderungan muncul.",
+    ],
+    sections: [
+      {
+        heading: "Perhatikan satu sifat pada satu waktu",
+        paragraphs: [
+          "Keterbukaan memberi petunjuk tentang cara Anda menyikapi hal baru. Ketelitian berkaitan dengan cara Anda menyelesaikan pekerjaan, dan ekstraversi dengan cara Anda berinteraksi. Keramahan membantu Anda meninjau sikap saat berbeda pendapat, sedangkan neurotisisme membantu Anda memperhatikan respons terhadap rasa khawatir atau tekanan.",
+          "Pilih satu sifat dan ingat contoh yang baru terjadi. Catat tindakan konkretnya, misalnya “Skor ekstraversi saya cukup tinggi, dan saya memulai percakapan di acara yang pesertanya belum saya kenal.”",
+        ],
+      },
+      {
+        heading: "Cari kombinasi yang cocok dengan keseharian Anda",
+        paragraphs: [
+          "Jika Anda suka mencoba hal baru sekaligus senang merencanakan, coba masukkan satu tempat baru ke agenda akhir pekan dan cari rutenya lebih dulu.",
+          "Cari juga satu contoh yang berbeda dari hasilnya. Jika Anda senang mengobrol dengan orang tertentu tetapi memilih suasana tenang di tempat lain, catat dengan siapa dan di mana Anda berada.",
+        ],
+      },
+      {
+        heading: "Coba satu eksperimen kecil",
+        paragraphs: [
+          "Pilih satu tindakan yang bisa dicoba minggu ini. Jika rencana membantu Anda memulai, masukkan satu kegiatan yang ingin Anda lakukan ke kalender.",
+          "Pada akhir pekan, tanyakan pada diri sendiri apakah Anda jadi lebih mudah memulai. Simpan cara yang berhasil dalam satu kalimat di panduan pribadi Anda.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "jiko-hyoka-tasha-hyoka",
+    title: "Saat penilaian diri berbeda dari tanggapan teman",
+    listTitle: "Bagaimana jika teman melihat Anda secara berbeda?",
+    description:
+      "Gunakan situasi dan tindakan yang konkret untuk memahami perbedaan antara penilaian diri dan tanggapan teman.",
+    category: "Pemahaman diri",
+    published: "2026-11-09",
+    image: "/article-covers/jiko-hyoka-tasha-hyoka-scene.webp",
+    imageAlt: "Gurita berkacamata bulat membandingkan dua kartu di buku catatan terbuka",
+    lead: [
+      "Anda mungkin merasa pendiam, sementara seorang teman ingat Anda yang menjaga percakapan tetap berjalan. Mulailah dengan melihat situasinya dan tindakan apa yang mereka amati.",
+    ],
+    sections: [
+      {
+        heading: "Catat perasaan Anda dan pengamatan teman",
+        paragraphs: [
+          "Di sebuah pertemuan, Anda mungkin merasa gugup sambil tetap mengajukan pertanyaan ketika percakapan terhenti. Anda mengingat rasa gugup, sementara teman mengingat pertanyaan Anda.",
+          "Bagi satu halaman catatan menjadi dua bagian. Tulis apa yang Anda rasakan di satu sisi dan apa yang dilihat teman di sisi lain. Keduanya bisa menggambarkan momen yang sama.",
+        ],
+      },
+      {
+        heading: "Ingat dengan siapa dan di mana kejadiannya",
+        paragraphs: [
+          "Anda mungkin lebih banyak mendengarkan di tempat kerja dan lebih banyak berbicara dengan teman dekat. Saat tanggapan orang berbeda, pikirkan situasi ketika masing-masing orang biasanya bertemu dengan Anda.",
+          "Jika bisa bertanya langsung, coba tanyakan “Kapan kamu melihat saya melakukan itu?” Satu contoh konkret lebih mudah direnungkan kembali.",
+        ],
+      },
+      {
+        heading: "Simpan catatan dengan konteksnya",
+        paragraphs: [
+          "Kalimat “Di kelompok kecil, saya bisa mengajukan pertanyaan saat percakapan terhenti” mencatat kapan kemampuan itu muncul dengan lebih jelas daripada sekadar “Saya pandai mengobrol.”",
+          "Saat berada di kelompok kecil lagi, perhatikan apakah Anda melakukannya kembali. Dengan begitu, Anda bisa menguji pengamatan yang muncul dari dua sudut pandang.",
+        ],
+      },
+    ],
+  },
+  {
+    slug: "tomodachi-kotowarikata",
+    title: "Cara menolak ajakan teman dengan hangat",
+    listTitle: "Bagaimana cara menolak ajakan teman?",
+    description:
+      "Gunakan contoh pesan singkat untuk menolak ajakan dengan jelas dan menawarkan waktu lain jika ingin bertemu.",
+    category: "Teman dan hubungan",
+    published: "2026-11-09",
+    image: "/article-covers/tomodachi-kotowarikata-scene.webp",
+    imageAlt: "Penguin berbaju biru berbicara dengan temannya yang memegang undangan di dekat agenda terbuka",
+    lead: [
+      "Saat ingin menolak ajakan, memikirkan panjangnya penjelasan bisa membuat balasan tertunda. Ucapan terima kasih dan jawaban yang jelas membantu teman mengatur rencananya.",
+    ],
+    sections: [
+      {
+        heading: "Ucapkan terima kasih dan beri jawaban yang jelas",
+        paragraphs: [
+          "“Makasih sudah ngajak! Kali ini aku nggak ikut, ya. Aku senang kalau lain kali diajak lagi.” Teman Anda tahu bahwa undangannya dihargai dan mendapat jawaban yang jelas.",
+          "Jika ingin menyebutkan alasan, “Akhir pekan ini aku ingin istirahat di rumah” sudah cukup. Jika belum yakin, beri batas waktu seperti “Aku kabari paling lambat besok malam.”",
+        ],
+      },
+      {
+        heading: "Tawarkan rencana lain jika ingin bertemu",
+        paragraphs: [
+          "Coba tawarkan waktu yang spesifik, misalnya “Sabtu aku belum bisa. Rabu depan mau ngopi?” Jika jadwal belum jelas, Anda bisa mengatakan akan menghubungi mereka setelah mengetahuinya.",
+          "Jika acaranya terasa kurang cocok, sarankan bentuk pertemuan yang lebih nyaman. “Kali ini aku lewati acara ramainya, ya. Kapan-kapan aku mau makan bareng berdua.”",
+        ],
+      },
+      {
+        heading: "Ulangi jawaban jika diajak lagi",
+        paragraphs: [
+          "Jika teman bertanya “Datang sebentar saja?” dan keputusan Anda tetap sama, cukup jawab “Makasih sudah ngajak, tapi hari ini aku nggak ikut, ya.”",
+          "Untuk rencana berikutnya, sampaikan pilihan yang memudahkan Anda, misalnya “Malam hari kerja biasanya aku pakai untuk istirahat. Akhir pekan lebih gampang buatku.”",
+        ],
+      },
+    ],
+  },
 ];
 
 export function getIdArticle(slug: string) {
@@ -157,6 +268,9 @@ export function getIdArticle(slug: string) {
 }
 
 const RELATED: Record<string, string[]> = {
+  "ocean-kekka-yomikata": ["ocean-shindan", "torisetsu-tsukurikata", "sixteen-types-vs-ocean"],
+  "jiko-hyoka-tasha-hyoka": ["tako-bunseki", "johari-no-mado", "torisetsu-tsukurikata"],
+  "tomodachi-kotowarikata": ["kyouchousei", "seikaku-aisho", "gaikousei"],
   "ocean-shindan": ["sixteen-types-vs-ocean", "kaihousei", "tako-bunseki"],
   "sixteen-types-vs-ocean": ["ocean-shindan", "torisetsu-tsukurikata", "johari-no-mado"],
   kaihousei: ["ocean-shindan", "seijitsusei", "gaikousei"],

@@ -8,7 +8,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
-import { SmoothImage } from "@/components/ui/SmoothImage";
+import { ArticleCover } from "@/components/articles/ArticleCover";
 import { ARTICLES, getArticle, getRelatedArticles } from "@/lib/articles";
 import { localizedAlternates } from "@/lib/locale-seo";
 
@@ -179,20 +179,11 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             </p>
           </header>
 
-          {/* ヘッダーイラスト (一覧カードと同じフェルト調シーン) */}
-          <div
-            className="mt-8 flex items-center justify-center rounded-2xl px-8 pt-8"
-            style={{ backgroundColor: "#F4F4FE" }}
-          >
-            <SmoothImage
-              src={article.image}
-              alt={article.imageAlt}
-              width={1448}
-              height={1086}
-              priority
-              className="h-auto w-full max-w-[440px]"
-            />
-          </div>
+          <ArticleCover
+            src={article.image}
+            alt={article.imageAlt}
+            detail
+          />
 
           <div
             className="mt-8 flex flex-col gap-4 text-[15px] leading-[2]"
