@@ -80,7 +80,7 @@ export default function KoreanCommercePage() {
       <h2>상품명과 판매 가격</h2>
       <ul>
         <li>
-          완전판: {krw(FULL_ACCESS_PRICE_KRW)} · 1회 결제 (자기 진단의
+          완전판(한국에서 접속한 경우): {krw(FULL_ACCESS_PRICE_KRW)} · 1회 결제 (자기 진단의
           잠긴 9개 섹션, 16페이지 이상의 전용 전자책, 두 번째 친구부터의 친구
           진단 결과, 여러 번 다시 만들 수 있는 친구 분석 PDF, 궁합 진단, 한국어
           운명의 설계도, AI 점성술사 Alice 채팅 30회, 타로 3종 포함)
@@ -89,7 +89,7 @@ export default function KoreanCommercePage() {
         <li>구독 또는 자동 갱신 없음. 완전판에 포함된 기능에는 추가 결제가 필요하지 않습니다.</li>
       </ul>
       <p>
-        표시 가격은 세금이 포함된 최종 가격입니다. 최종 결제 금액은 Stripe 결제
+        완전판의 가격과 통화는 접속 국가에 따라 결정됩니다. 표시 가격은 세금이 포함된 최종 가격입니다. 최종 결제 금액은 Stripe 결제
         화면에서 다시 확인할 수 있습니다.
       </p>
       <p>

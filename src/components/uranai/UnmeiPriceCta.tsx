@@ -27,6 +27,8 @@ import {
   ID_FULL_ACCESS_PRICE_IDR_MINOR,
   PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY,
 } from "@/lib/access-products";
+import { formatFullAccessAmount } from "@/lib/full-access-pricing";
+import { useFullAccessQuote } from "@/lib/use-full-access-quote";
 import { useFullAccessStatus } from "@/lib/use-course-navigation-access";
 
 const OWNER_TOKEN_KEY = "torisetsu_owner_token";
@@ -84,7 +86,9 @@ export default function UnmeiPriceCta({
   const supportsLegacyUpgrade = locale === "ja";
   const purchaseProduct =
     supportsLegacyUpgrade && hasFull ? "premium_bundle" : "full_access";
-  const standardPrice =
+  const priceState = useFullAccessQuote(!previewMode && !launchChat && purchaseProduct === "full_access", locale, ownerToken);
+  const quote = priceState.quote;
+  const previewPrice =
     locale === "en"
       ? `$${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)}`
       : locale === "id"
@@ -92,6 +96,9 @@ export default function UnmeiPriceCta({
       : locale === "ko"
       ? `₩${FULL_ACCESS_PRICE_KRW.toLocaleString("ko-KR")}`
       : `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`;
+  const standardPrice = previewMode ? previewPrice
+    : quote ? formatFullAccessAmount(quote.market, quote.amountMinor)
+    : null;
   const upgradePrice = `¥${PREMIUM_BUNDLE_FULL_UPGRADE_PRICE_JPY.toLocaleString("ja-JP")}`;
   const showUpgradePrice = supportsLegacyUpgrade && hasFull;
 
@@ -107,7 +114,7 @@ export default function UnmeiPriceCta({
   if (variant === "compact") {
     return (
       <>
-        {!launchChat && (
+        {!launchChat && (showUpgradePrice || standardPrice) && (
           <p className="mt-1 text-[15px] font-bold text-[#2E2E5C]/65 md:text-[16px]">
             {locale === "en"
               ? `Only ${showUpgradePrice ? upgradePrice : standardPrice}.`
@@ -126,6 +133,7 @@ export default function UnmeiPriceCta({
             tone="premium"
             locale={locale}
             previewMode={previewMode}
+            priceState={priceState}
           >
             {ctaLabel}
           </UnmeiCheckoutButton>
@@ -163,6 +171,7 @@ export default function UnmeiPriceCta({
               tone="premium"
               locale={locale}
               previewMode={previewMode}
+              priceState={priceState}
             >
               {locale === "en"
                 ? "Try checkout again"
@@ -194,7 +203,7 @@ export default function UnmeiPriceCta({
         <div className="mt-4">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <p className="text-[40px] font-bold tabular-nums leading-none tracking-[-0.03em] text-[#A36818] md:text-[44px]">
-              {standardPrice}
+              {standardPrice ?? "—"}
             </p>
           </div>
         </div>
@@ -209,6 +218,7 @@ export default function UnmeiPriceCta({
           tone="premium"
           locale={locale}
           previewMode={previewMode}
+          priceState={priceState}
         >
           {ctaLabel}
         </UnmeiCheckoutButton>

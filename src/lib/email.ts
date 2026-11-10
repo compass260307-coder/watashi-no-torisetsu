@@ -24,6 +24,7 @@ import {
   SELF_REPORT_PRICE_KRW,
   type AccessProduct,
 } from "@/lib/access-products";
+import { FULL_ACCESS_PRICING, formatFullAccessAmount, type FullAccessMarket } from "@/lib/full-access-pricing";
 import { resolveSiteUrl } from "./site-url";
 
 const SITE_NAME = "ワタシのトリセツ";
@@ -294,6 +295,7 @@ interface SendDetailedReportArgs {
   friendFeaturesIncluded?: boolean;
   purchaseAmountJpy?: number | null;
   purchaseAmountMinor?: number | null;
+  purchaseCurrency?: string | null;
 }
 
 /**
@@ -388,6 +390,12 @@ export async function sendDetailedReportEmail(
         `${SITE_URL}/legal/commerce`,
       ].join("\n\n")
     : null;
+  const market = (Object.keys(FULL_ACCESS_PRICING) as FullAccessMarket[]).find(
+    (key) => FULL_ACCESS_PRICING[key].currency === args.purchaseCurrency,
+  );
+  const purchasePriceLabel = market && args.purchaseAmountMinor != null
+    ? formatFullAccessAmount(market, args.purchaseAmountMinor)
+    : undefined;
   try {
     const result = await resend.emails.send({
       from,
@@ -408,6 +416,7 @@ export async function sendDetailedReportEmail(
               hoshiyomiChatCredits: args.hoshiyomiChatCredits,
               tarotFeaturesIncluded: args.tarotFeaturesIncluded,
               friendFeaturesIncluded: args.friendFeaturesIncluded,
+              purchasePriceLabel,
               purchaseAmountMinor: args.purchaseAmountMinor,
             })
           : locale === "id"
@@ -423,6 +432,7 @@ export async function sendDetailedReportEmail(
                 hoshiyomiChatCredits: args.hoshiyomiChatCredits,
                 tarotFeaturesIncluded: args.tarotFeaturesIncluded,
                 friendFeaturesIncluded: args.friendFeaturesIncluded,
+                purchasePriceLabel,
                 purchaseAmountMinor: args.purchaseAmountMinor,
               })
           : locale === "en"
@@ -438,6 +448,7 @@ export async function sendDetailedReportEmail(
                 hoshiyomiChatCredits: args.hoshiyomiChatCredits,
                 tarotFeaturesIncluded: args.tarotFeaturesIncluded,
                 friendFeaturesIncluded: args.friendFeaturesIncluded,
+                purchasePriceLabel,
                 purchaseAmountMinor: args.purchaseAmountMinor,
               })
             : renderDetailedReportHtml({
@@ -452,6 +463,7 @@ export async function sendDetailedReportEmail(
               hoshiyomiChatCredits: args.hoshiyomiChatCredits,
               tarotFeaturesIncluded: args.tarotFeaturesIncluded,
               friendFeaturesIncluded: args.friendFeaturesIncluded,
+              purchasePriceLabel,
               purchaseAmountMinor: args.purchaseAmountMinor,
               purchaseAmountJpy: args.purchaseAmountJpy,
             }),
@@ -469,6 +481,7 @@ export async function sendDetailedReportEmail(
               hoshiyomiChatCredits: args.hoshiyomiChatCredits,
               tarotFeaturesIncluded: args.tarotFeaturesIncluded,
               friendFeaturesIncluded: args.friendFeaturesIncluded,
+              purchasePriceLabel,
             })
           : locale === "id"
             ? renderDetailedReportTextId({
@@ -483,6 +496,7 @@ export async function sendDetailedReportEmail(
                 hoshiyomiChatCredits: args.hoshiyomiChatCredits,
                 tarotFeaturesIncluded: args.tarotFeaturesIncluded,
                 friendFeaturesIncluded: args.friendFeaturesIncluded,
+                purchasePriceLabel,
                 purchaseAmountMinor: args.purchaseAmountMinor,
               })
           : locale === "en"
@@ -498,6 +512,7 @@ export async function sendDetailedReportEmail(
                 hoshiyomiChatCredits: args.hoshiyomiChatCredits,
                 tarotFeaturesIncluded: args.tarotFeaturesIncluded,
                 friendFeaturesIncluded: args.friendFeaturesIncluded,
+                purchasePriceLabel,
                 purchaseAmountMinor: args.purchaseAmountMinor,
               })
             : renderDetailedReportText({
@@ -512,6 +527,7 @@ export async function sendDetailedReportEmail(
               hoshiyomiChatCredits: args.hoshiyomiChatCredits,
               tarotFeaturesIncluded: args.tarotFeaturesIncluded,
               friendFeaturesIncluded: args.friendFeaturesIncluded,
+              purchasePriceLabel,
             })),
     });
     if (result.error) {
@@ -718,6 +734,7 @@ interface DetailedReportTemplateArgs {
   friendFeaturesIncluded?: boolean;
   purchaseAmountJpy?: number | null;
   purchaseAmountMinor?: number | null;
+  purchasePriceLabel?: string;
 }
 
 // export はテンプレプレビュー (scripts/preview-report-email.ts) 用
@@ -759,7 +776,7 @@ export function renderDetailedReportHtml(
     : isPremiumBundle
       ? PREMIUM_BUNDLE_PRICE_JPY
       : FULL_ACCESS_PRICE_JPY;
-  const purchasePrice = `¥${(
+  const purchasePrice = args.purchasePriceLabel ?? `¥${(
     args.purchaseAmountJpy ?? defaultPurchaseAmount
   ).toLocaleString("ja-JP")}`;
   const purchaseItems = isSelfReport
@@ -954,7 +971,7 @@ function renderDetailedReportText(args: DetailedReportTemplateArgs): string {
     : isPremiumBundle
       ? PREMIUM_BUNDLE_PRICE_JPY
       : FULL_ACCESS_PRICE_JPY;
-  const purchasePrice = `¥${(
+  const purchasePrice = args.purchasePriceLabel ?? `¥${(
     args.purchaseAmountJpy ?? defaultPurchaseAmount
   ).toLocaleString("ja-JP")}`;
   return [
@@ -1056,7 +1073,7 @@ export function renderDetailedReportHtmlKo(
         <div style="margin:0 0 30px;padding:26px 28px;background:#F3F2FF;border-radius:14px;">
           <h2 style="margin:0 0 12px;font-size:21px;font-weight:800;line-height:1.5;color:#2E2E5C;">구매 내용</h2>
           <p style="margin:0 0 6px;font-size:15px;font-weight:700;line-height:1.75;color:#2E2E5C;">${reportName}</p>
-          <p style="margin:0 0 14px;font-size:15px;line-height:1.75;color:#5A5A6E;">₩${price.toLocaleString("ko-KR")} · 1회 결제</p>
+          <p style="margin:0 0 14px;font-size:15px;line-height:1.75;color:#5A5A6E;">${args.purchasePriceLabel ?? `₩${price.toLocaleString("ko-KR")}`} · 1회 결제</p>
           <p style="margin:0;font-size:15px;line-height:1.9;color:#5A5A6E;">${items}</p>
         </div>
         <div style="margin:0 0 30px;padding:24px 26px;background:#FFF9EC;border:1px solid #F0DFC0;border-radius:14px;">
@@ -1144,7 +1161,7 @@ function renderDetailedReportTextKo(args: DetailedReportTemplateArgs): string {
     "",
     "【구매 내용】",
     reportName,
-    `₩${price.toLocaleString("ko-KR")} · 1회 결제`,
+    `${args.purchasePriceLabel ?? `₩${price.toLocaleString("ko-KR")}`} · 1회 결제`,
     ...items,
     "",
     "【계약·환불 정보】",
@@ -1205,7 +1222,7 @@ function renderDetailedReportHtmlId(
 <p style="margin:0 0 28px;font-size:16px;line-height:1.8;color:#51516E;">Terima kasih atas pembelian Anda. Satu kali pembayaran telah membuka seluruh pengalaman.</p>
 <p style="margin:0 0 14px;text-align:center;"><a href="${args.meUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFF;text-decoration:none;font-weight:800;border-radius:999px;">Buka Edisi Lengkap saya</a></p>
 <p style="margin:0 0 30px;text-align:center;"><a href="${args.pdfUrl}" style="display:block;padding:15px 18px;background:#2E2E5C;color:#FFF;text-decoration:none;font-weight:800;border-radius:999px;">Unduh PDF saya</a></p>
-<div style="margin:0 0 30px;padding:24px;background:#F3F2FF;border-radius:14px;"><h2 style="margin:0 0 8px;font-size:20px;">Rincian pembelian</h2><p style="margin:0 0 16px;color:#51516E;">Edisi Lengkap · ${formatIdrMinor(price)} · termasuk pajak · satu kali pembayaran</p><ul style="margin:0;padding-left:22px;">${featureRows}</ul></div>
+<div style="margin:0 0 30px;padding:24px;background:#F3F2FF;border-radius:14px;"><h2 style="margin:0 0 8px;font-size:20px;">Rincian pembelian</h2><p style="margin:0 0 16px;color:#51516E;">Edisi Lengkap · ${args.purchasePriceLabel ?? formatIdrMinor(price)} · termasuk pajak · satu kali pembayaran</p><ul style="margin:0;padding-left:22px;">${featureRows}</ul></div>
 <p style="margin:0 0 18px;font-size:14px;line-height:1.75;color:#77778D;">Jika Anda membeli sebelum menyelesaikan tes, selesaikan tes terlebih dahulu lalu buka kembali tautan ini.</p>
 <p style="margin:0;font-size:14px;line-height:1.75;color:#51516E;">Untuk bantuan akses, PDF, atau pengembalian dana, hubungi <a href="mailto:support@watashi-torisetsu.com" style="color:#5B5BEF;">support@watashi-torisetsu.com</a>.</p>
 </td></tr></table><p style="margin:20px 0 0;font-size:12px;color:#8A8AA3;">&copy; ${ID_SITE_NAME}</p>
@@ -1236,7 +1253,7 @@ function renderDetailedReportTextId(
       ? ["", `Ajukan hingga ${credits} pertanyaan kepada Alice:`, args.hoshiyomiUrl]
       : []),
     "",
-    `Edisi Lengkap · ${formatIdrMinor(price)} · termasuk pajak · satu kali pembayaran`,
+    `Edisi Lengkap · ${args.purchasePriceLabel ?? formatIdrMinor(price)} · termasuk pajak · satu kali pembayaran`,
     "- Laporan kepribadian lengkap dan PDF pribadi",
     "- Sudut pandang teman dan analisis kecocokan",
     "- Peta Takdir, Alice, dan tiga jenis pembacaan tarot",
@@ -1283,7 +1300,7 @@ function renderDetailedReportHtmlEn(
 <p style="margin:0 0 28px;font-size:16px;line-height:1.8;color:#51516E;">Thank you for your purchase. Your one-time payment has unlocked the full experience.</p>
 <p style="margin:0 0 14px;text-align:center;"><a href="${args.meUrl}" style="display:block;padding:15px 18px;background:#5B5BEF;color:#FFF;text-decoration:none;font-weight:800;border-radius:999px;">Open my Complete Edition</a></p>
 <p style="margin:0 0 30px;text-align:center;"><a href="${args.pdfUrl}" style="display:block;padding:15px 18px;background:#2E2E5C;color:#FFF;text-decoration:none;font-weight:800;border-radius:999px;">Download my PDF</a></p>
-<div style="margin:0 0 30px;padding:24px;background:#F3F2FF;border-radius:14px;"><h2 style="margin:0 0 8px;font-size:20px;">Purchase details</h2><p style="margin:0 0 16px;color:#51516E;">Complete Edition · $${(price / 100).toFixed(2)} · tax included · one-time purchase</p><ul style="margin:0;padding-left:22px;">${featureRows}</ul></div>
+<div style="margin:0 0 30px;padding:24px;background:#F3F2FF;border-radius:14px;"><h2 style="margin:0 0 8px;font-size:20px;">Purchase details</h2><p style="margin:0 0 16px;color:#51516E;">Complete Edition · ${args.purchasePriceLabel ?? `$${(price / 100).toFixed(2)}`} · tax included · one-time purchase</p><ul style="margin:0;padding-left:22px;">${featureRows}</ul></div>
 <p style="margin:0 0 18px;font-size:14px;line-height:1.75;color:#77778D;">If you purchased before finishing the personality test, complete it first and then reopen these links.</p>
 <p style="margin:0;font-size:14px;line-height:1.75;color:#51516E;">For help with access, your PDF, or a refund, contact <a href="mailto:support@watashi-torisetsu.com" style="color:#5B5BEF;">support@watashi-torisetsu.com</a>.</p>
 </td></tr></table><p style="margin:20px 0 0;font-size:12px;color:#8A8AA3;">&copy; ${EN_SITE_NAME}</p>
@@ -1323,7 +1340,7 @@ function renderDetailedReportTextEn(
       ? ["", "Talk with Alice:", args.hoshiyomiUrl]
       : []),
     "",
-    `Complete Edition · $${(price / 100).toFixed(2)} · tax included · one-time purchase`,
+    `Complete Edition · ${args.purchasePriceLabel ?? `$${(price / 100).toFixed(2)}`} · tax included · one-time purchase`,
     ...features.map((feature) => `- ${feature}`),
     "",
     "For help with access, your PDF, or a refund, contact support@watashi-torisetsu.com.",

@@ -5,6 +5,8 @@ import type { AppResultLocale } from "@/i18n/result";
 import { accessPaywallVersionForLocale } from "@/lib/access-products";
 import { track } from "@/lib/track";
 
+import { displayedFullAccessPrice, type FullAccessQuoteState } from "@/lib/use-full-access-quote";
+
 const BUTTON_COPY = {
   ja: {
     defaultLabel: "運命の設計図を占う",
@@ -44,6 +46,7 @@ export default function UnmeiCheckoutButton({
   tone = "indigo",
   locale = "ja",
   previewMode = false,
+  priceState,
 }: {
   ownerToken?: string | null;
   product?: "full_access" | "premium_bundle";
@@ -59,10 +62,13 @@ export default function UnmeiCheckoutButton({
   locale?: AppResultLocale;
   /** devプレビューでは計測・決済APIを実行しない。 */
   previewMode?: boolean;
+  priceState: FullAccessQuoteState;
 }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const copy = BUTTON_COPY[locale];
+  const needsQuote = product === "full_access" && !launchChat && !previewMode;
+  const { quote, failed: priceFailed } = priceState;
 
   async function handleClick() {
     if (loading) return;
@@ -95,6 +101,10 @@ export default function UnmeiCheckoutButton({
     }
 
     if (previewMode) return;
+    if (needsQuote && !quote) {
+      if (priceFailed) window.location.reload();
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -115,6 +125,7 @@ export default function UnmeiCheckoutButton({
         body: JSON.stringify({
           owner_token: ownerToken ?? undefined,
           product,
+          ...displayedFullAccessPrice(quote),
           return_to: "unmei",
           locale,
           paywall_source: "unmei_page",
@@ -123,6 +134,10 @@ export default function UnmeiCheckoutButton({
         }),
       });
 
+      if (res.status === 409 && (await res.clone().json().catch(() => null))?.code === "stale_paywall") {
+        window.location.reload();
+        return;
+      }
       if (!res.ok) {
         setError(copy.openError);
         setLoading(false);
@@ -149,7 +164,7 @@ export default function UnmeiCheckoutButton({
       <button
         type="button"
         onClick={handleClick}
-        disabled={loading}
+        disabled={loading || (needsQuote && !quote && !priceFailed)}
         className={`inline-flex w-full items-center justify-center rounded-full px-9 py-4 text-[15px] font-black text-white transition-all hover:-translate-y-0.5 disabled:opacity-60 md:w-auto md:text-[16px] ${
           tone === "premium"
             ? "bg-[#A36818] shadow-[0_3px_10px_rgba(163,104,24,0.3)] hover:shadow-[0_5px_14px_rgba(163,104,24,0.38)]"
@@ -158,7 +173,7 @@ export default function UnmeiCheckoutButton({
       >
         {loading
           ? copy.loading
-          : error
+          : error || (needsQuote && priceFailed)
             ? copy.retry
             : (children ?? copy.defaultLabel)}
       </button>

@@ -21,6 +21,7 @@ const owner = { lineUserId: 'line-owner', id: 'owner', owner_token: 'owner-token
 const security = { consumeRateLimit: async () => ({ allowed: true }), isSafeOpaqueToken: () => true,
   readJsonObject: async request => ({ ok: true, value: await request.json() }) };
 const policy = compile('src/lib/access-products.ts');
+const pricing = compile('src/lib/full-access-pricing.ts', { './access-products': policy });
 const answersLib = compile('src/lib/result-upgrade.ts');
 const answers = ['散歩をする', '読書が好き', '落ち着いている', 'お互いを尊重する', '好きな仕事を続ける'];
 let now = Date.now();
@@ -86,7 +87,7 @@ console.log('PASS: signed entry issues a restricted HttpOnly cookie, removes tok
 
 async function checkout({ full = true, premium = false, line = true, saved = answers, savedLocale = 'ja', couponMode = 'valid', ...body } = {}) {
   const calls = [];
-  const stripe = { checkout: { sessions: { create: async params => { calls.push(params); return { id: 'cs_isolated', url: 'https://checkout.example.test' }; } } },
+  const stripe = { checkout: { sessions: { create: async params => { calls.push(params); return { id: 'cs_isolated', url: 'https://checkout.example.test', currency: 'jpy', amount_total: 499 }; } } },
     prices: { retrieve: async () => ({ active: true, type: 'one_time', currency: 'jpy', unit_amount: 499, tax_behavior: 'inclusive' }) },
     coupons: {
       retrieve: async id => {
@@ -102,6 +103,12 @@ async function checkout({ full = true, premium = false, line = true, saved = ans
   }; } };
   const route = compile('src/app/api/checkout/create-full-access-session/route.ts', {
     'next/server': { NextResponse }, 'node:crypto': crypto,
+    '@/lib/full-access-pricing': pricing,
+    '@/lib/full-access-checkout-server': compile('src/lib/full-access-checkout-server.ts', {
+      'server-only': {}, '@/lib/full-access-pricing': pricing,
+      '@/lib/session': { getSession: async () => owner },
+      '@/lib/supabase-server': { supabaseAdmin: db },
+    }, { process: { env: { VERCEL: '1' } } }),
     '@/lib/api-security': security, '@/lib/session': { getSession: async () => owner },
     '@/lib/line-result-upgrade': { getLineResultUpgradeSession: async () => line ? owner : null },
     '@/lib/entitlements': { hasFullAccess: async () => full, hasSelfReportAccess: async () => full,
@@ -116,7 +123,7 @@ async function checkout({ full = true, premium = false, line = true, saved = ans
     '@/lib/checkout-cancel-signature': { signCheckoutCancellation: () => 'test-signature' },
   });
   const request = new NextRequest('https://example.test/api/checkout/create-full-access-session', { method: 'POST',
-    headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ locale: 'ja', owner_token: owner.owner_token,
+    headers: { 'Content-Type': 'application/json', 'x-vercel-ip-country': 'JP' }, body: JSON.stringify({ locale: 'ja', owner_token: owner.owner_token,
       product: 'premium_bundle', paywall_source: 'result_upgrade_after_answers', sales_channel: 'line',
       paywall_version: policy.accessPaywallVersionForLocale("ja"), ...body }) });
   const response = await route.POST(request);
@@ -135,7 +142,7 @@ for (const couponMode of ['wrong_amount', 'wrong_currency', 'unavailable']) {
 }
 assert.equal(webPurchase.calls[0].metadata.sales_channel, undefined);
 assert.match(webPurchase.calls[0].success_url, /\/me\/owner-token\?paid=1/);
-assert.match(webPurchase.calls[0].cancel_url, /\/result-upgrade\?/);
+assert.match(webPurchase.calls[0].cancel_url, /\/me\/owner-token\?checkout=cancelled/);
 assert.match(webPurchase.calls[0].line_items[0].price_data.product_data.name, /結果アップグレード/);
 for (const input of [{ saved: answers.slice(0,4) }, { savedLocale: 'en' }, { full: false }, { owner_token: 'other' }, { premium: true }]) {
   const rejected = await checkout({ sales_channel: 'web', line: false, ...input });
@@ -172,7 +179,7 @@ for (const couponMode of ['wrong_amount', 'wrong_currency', 'unavailable']) {
 const createdCoupon = await checkout({ couponMode: 'missing' });
 assert.equal(createdCoupon.calls[0].line_items[0].price_data.unit_amount, 1398);
 assert.equal(createdCoupon.calls[0].discounts[0].coupon, 'wt-line-result-upgrade-off499-jpy');
-const complete = await checkout({ full: false, line: false, sales_channel: 'web', product: 'full_access', paywall_source: 'direct' });
+const complete = await checkout({ full: false, line: false, sales_channel: 'web', product: 'full_access', paywall_source: 'direct', displayed_price_market: 'ja', displayed_price_minor: 499 });
 assert.equal(complete.status, 200);
 assert.equal(complete.body.amount, 499);
 assert(!complete.calls[0].success_url.includes('/line/'));
@@ -212,7 +219,8 @@ console.log('PASS: Web and LINE answers require the authenticated full-access ow
 
 const messages = [];
 const email = compile('src/lib/email.ts', {
-  '@/i18n/th/email-templates': {}, '@/lib/access-products': policy,
+  './login-email': compile('src/lib/login-email.ts'), '@/lib/access-products': policy,
+  '@/lib/full-access-pricing': pricing,
   './site-url': { resolveSiteUrl: () => 'https://example.test' },
   resend: { Resend: class { emails = { send: async message => { messages.push(message); return {}; } }; } },
 }, { process: { env: { RESEND_API_KEY: 'isolated-test-key', RESEND_FROM_EMAIL: 'test@example.test' } } });

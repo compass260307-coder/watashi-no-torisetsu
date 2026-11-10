@@ -11,10 +11,13 @@ import {
 import type { AppResultLocale } from "@/i18n/result";
 import { accessPaywallVersionForLocale } from "@/lib/access-products";
 import { getStripeClient } from "@/lib/stripe-client";
+import { displayedFullAccessPrice, useFullAccessQuote } from "@/lib/use-full-access-quote";
+import { formatFullAccessAmount } from "@/lib/full-access-pricing";
 import { track } from "@/lib/track";
 
 const CHECKOUT_COPY = {
   ja: {
+    loading: "価格を確認しています…",
     error: "決済画面をひらけませんでした。",
     retry: "もう一度ためす",
     preview: "ローカルプレビュー用の決済フォームです",
@@ -28,6 +31,7 @@ const CHECKOUT_COPY = {
     or: "または",
   },
   ko: {
+    loading: "가격을 확인하고 있어요…",
     error: "결제 양식을 불러오지 못했어요.",
     retry: "다시 시도하기",
     preview: "로컬 미리보기용 결제 양식입니다",
@@ -41,6 +45,7 @@ const CHECKOUT_COPY = {
     or: "또는",
   },
   en: {
+    loading: "Checking the price…",
     error: "We couldn’t open the payment form.",
     retry: "Try again",
     preview: "Payment form preview",
@@ -54,6 +59,7 @@ const CHECKOUT_COPY = {
     or: "or",
   },
   id: {
+    loading: "Memeriksa harga…",
     error: "Formulir pembayaran tidak dapat dibuka.",
     retry: "Coba lagi",
     preview: "Pratinjau formulir pembayaran",
@@ -124,10 +130,13 @@ export default function UnmeiEmbeddedCheckout({
   const [paypayLoading, setPaypayLoading] = useState(false);
   const [paypayError, setPaypayError] = useState(false);
   const completedRef = useRef(false);
+  const needsQuote = product === "full_access" && !previewMode;
+  const { quote, failed: priceFailed } = useFullAccessQuote(needsQuote, locale, ownerToken, attempt);
 
   const checkoutMetadata = useMemo(
     () => ({
       product,
+      ...displayedFullAccessPrice(quote),
       return_to: "unmei" as const,
       locale,
       paywall_source: "unmei_birth_chat",
@@ -135,7 +144,7 @@ export default function UnmeiEmbeddedCheckout({
       paywall_placement: "inline" as const,
       ...(ownerToken ? { owner_token: ownerToken } : {}),
     }),
-    [locale, ownerToken, product],
+    [locale, ownerToken, product, quote],
   );
 
   const fetchClientSecret = useCallback(async (): Promise<string> => {
@@ -184,6 +193,11 @@ export default function UnmeiEmbeddedCheckout({
           payment_method: "paypay",
         }),
       });
+      if (res.status === 409 && (await res.clone().json().catch(() => null))?.code === "stale_paywall") {
+        setAttempt((current) => current + 1);
+        setPaypayLoading(false);
+        return;
+      }
       if (!res.ok) throw new Error(`paypay session failed: ${res.status}`);
       const data = (await res.json()) as { url?: unknown };
       if (typeof data.url !== "string" || !data.url) {
@@ -212,7 +226,7 @@ export default function UnmeiEmbeddedCheckout({
     onComplete();
   }, [locale, onComplete, ownerToken, product]);
 
-  const supportsPayPay = locale === "ja";
+  const supportsPayPay = needsQuote ? quote?.market === "ja" : locale === "ja";
   const paypayButton =
     supportsPayPay ? (
       <div className="mt-2.5">
@@ -232,7 +246,7 @@ export default function UnmeiEmbeddedCheckout({
       </div>
     ) : null;
 
-  if (!previewMode && (!stripePromise || failed)) {
+  if (!previewMode && (!stripePromise || failed || priceFailed)) {
     return (
       <div className="rounded-2xl border border-[#E9E9F2] bg-white p-4 text-center">
         <p className="text-[14px] font-bold text-[#2E2E5C]">{copy.error}</p>
@@ -252,8 +266,17 @@ export default function UnmeiEmbeddedCheckout({
     );
   }
 
+  if (needsQuote && !quote) {
+    return <p role="status" className="p-4 text-center text-sm">{copy.loading}</p>;
+  }
+
   return (
     <div className="w-full">
+      {quote ? (
+        <p className="mb-2 text-center text-base font-bold">
+          {formatFullAccessAmount(quote.market, quote.amountMinor)}
+        </p>
+      ) : null}
       {paypayButton}
       {supportsPayPay ? (
         <div className="my-3 flex items-center gap-3">

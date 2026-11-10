@@ -58,7 +58,7 @@ export default function EnglishTermsPage() {
 
       <h2>6. Paid content and payment</h2>
       <ol>
-        <li>The English Complete Edition costs ${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)} USD including tax and is a one-time purchase. It is not a subscription and does not renew automatically.</li>
+        <li>In the USD pricing region, the Complete Edition costs ${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)} USD including tax and is a one-time purchase. It is not a subscription and does not renew automatically.</li>
         <li>It includes the complete personality report and PDF, friend insights, compatibility, Destiny Blueprint, 30 Alice chat answers, and all three tarot readings.</li>
         <li>The exact product, final price, payment method, delivery timing, and refund terms are shown before payment. Payment is processed by Stripe.</li>
         <li>You may request a full refund within 30 days of the payment date. See the <a href="/en/legal/commerce">Sales &amp; Refund Policy</a>.</li>

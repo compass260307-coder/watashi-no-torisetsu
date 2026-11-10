@@ -64,7 +64,7 @@ const koreanTerms = fs.readFileSync(
   path.join(ROOT, "src/app/ko/terms/page.tsx"),
   "utf8",
 );
-for (const required of ["한국어 완전판은", "KO_RESULT_UPGRADE_PRICE_KRW", "Alice 채팅 30회", "타로"]) {
+for (const required of ["한국에서 접속하면 완전판은", "KO_RESULT_UPGRADE_PRICE_KRW", "Alice 채팅 30회", "타로"]) {
   if (!koreanTerms.includes(required)) {
     problems.push(`src/app/ko/terms/page.tsx: current offer lacks ${required}`);
   }

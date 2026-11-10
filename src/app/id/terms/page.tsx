@@ -126,7 +126,7 @@ export default function IndonesianTermsPage() {
       <h2>Pasal 9 (Layanan Berbayar dan Pembayaran)</h2>
       <ol>
         <li>
-          Edisi Lengkap ditawarkan dengan harga pembelian satu kali sebesar{" "}
+          Untuk akses dari Indonesia, Edisi Lengkap ditawarkan dengan harga pembelian satu kali sebesar{" "}
           {formatIdrMinor(ID_FULL_ACCESS_PRICE_IDR_MINOR)}. Isi, harga akhir,
           dan syarat pembelian layanan berbayar ditampilkan pada layar pembelian
           dan halaman <a href="/id/legal/commerce">Informasi Penjualan dan Pengembalian Dana</a>.

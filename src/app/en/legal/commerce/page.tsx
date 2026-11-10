@@ -32,10 +32,10 @@ export default function EnglishCommercePage() {
 
       <h2>Product and price</h2>
       <ul>
-        <li>Alice Personalities — Complete Edition: ${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)} USD, tax included</li>
+        <li>Alice Personalities — Complete Edition (USD pricing region): ${(EN_FULL_ACCESS_PRICE_USD_CENTS / 100).toFixed(2)} USD, tax included</li>
         <li>One-time payment; no subscription, automatic renewal, or required additional payment</li>
       </ul>
-      <p>The final amount is displayed again in Stripe Checkout before payment.</p>
+      <p>Your connection country determines the price and currency. The same amount is shown in Stripe Checkout before payment.</p>
 
       <h2>What is included</h2>
       <ul>
