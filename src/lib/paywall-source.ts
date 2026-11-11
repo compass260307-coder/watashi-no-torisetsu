@@ -61,6 +61,9 @@ const PAYWALL_SOURCES = new Set([
 ]);
 
 export function normalizePaywallSource(value: unknown): string {
+  if (value === "love_endure_card") {
+    return "love_failure_card";
+  }
   return typeof value === "string" && PAYWALL_SOURCES.has(value)
     ? value
     : DIRECT_PAYWALL_SOURCE;
