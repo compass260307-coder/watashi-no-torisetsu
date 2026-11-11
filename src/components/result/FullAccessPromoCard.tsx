@@ -413,6 +413,14 @@ export function FullAccessPromoCard({
   });
   const priceState = useFullAccessQuote(!previewMode && !usesPlanCarousel && product === "full_access", locale, ownerToken);
   const quote = priceState.quote;
+  const hidePriceDetails =
+    Boolean(onClose) &&
+    surface === "self" &&
+    (returnTo === undefined || returnTo === "me") &&
+    (ctaSource === "love_payoff_card" ||
+      ctaSource === "love_failure_card" ||
+      ctaSource === "sticky_bar") &&
+    locale === "ja" && product === "full_access";
   const salePrice = previewMode ? copy.price.sale
     : quote ? formatFullAccessAmount(quote.market, quote.amountMinor)
     : "—";
@@ -689,47 +697,51 @@ export function FullAccessPromoCard({
 
             {benefitsBeforePrice ? unlockBenefitsPanel : null}
 
-            {/* ページ末尾では解放内容の後、それ以外では従来どおり冒頭に価格を置く。 */}
-            <div
-              className={`${benefitsBeforePrice ? "mt-6" : (locale === "ja" || isKorean || isEnglish || isIndonesian) && !isSelfReportProduct ? "mt-5" : "mt-3"} flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
-                hasImage ? "" : "justify-center"
-              }`}
-            >
-              {/* 価格タグは Noto Sans JP/KR の 700 + tabular-nums (M PLUS は撤回 2026-09-04)。 */}
-              {isStudentUpgrade ? (
-                <>
-                  <span className="text-[15px] font-black text-[#2E2E5C] md:text-[17px]">
-                    差額
-                  </span>
-                  <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
-                    ¥{upgradePrice.toLocaleString("ja-JP")}
-                  </span>
-                </>
-              ) : isSelfReportProduct ? (
-                <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
-                  {copy.selfReportPrice}
-                </span>
-              ) : locale === "ja" || isKorean || isEnglish || isIndonesian ? (
-                <span className={`text-[36px] ${isKorean ? "font-bold" : "font-black"} leading-none text-black`}>
-                  <span className="sr-only">{isKorean ? "가격" : uiText("価格")}</span>
-                  {previewMode && locale === "ja" && product === "full_access"
-                    ? salePrice.replace(/^¥/, "")
-                    : salePrice}
-                </span>
-              ) : (
-                <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
-                  {salePrice}
-                </span>
-              )}
-            </div>
+            {!hidePriceDetails && (
+              <>
+                {/* ページ末尾では解放内容の後、それ以外では従来どおり冒頭に価格を置く。 */}
+                <div
+                  className={`${benefitsBeforePrice ? "mt-6" : (locale === "ja" || isKorean || isEnglish || isIndonesian) && !isSelfReportProduct ? "mt-5" : "mt-3"} flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
+                    hasImage ? "" : "justify-center"
+                  }`}
+                >
+                  {/* 価格タグは Noto Sans JP/KR の 700 + tabular-nums (M PLUS は撤回 2026-09-04)。 */}
+                  {isStudentUpgrade ? (
+                    <>
+                      <span className="text-[15px] font-black text-[#2E2E5C] md:text-[17px]">
+                        差額
+                      </span>
+                      <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
+                        ¥{upgradePrice.toLocaleString("ja-JP")}
+                      </span>
+                    </>
+                  ) : isSelfReportProduct ? (
+                    <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
+                      {copy.selfReportPrice}
+                    </span>
+                  ) : locale === "ja" || isKorean || isEnglish || isIndonesian ? (
+                    <span className={`text-[36px] ${isKorean ? "font-bold" : "font-black"} leading-none text-black`}>
+                      <span className="sr-only">{isKorean ? "가격" : uiText("価格")}</span>
+                      {previewMode && locale === "ja" && product === "full_access"
+                        ? salePrice.replace(/^¥/, "")
+                        : salePrice}
+                    </span>
+                  ) : (
+                    <span className="text-[30px] font-bold tabular-nums tracking-[-0.02em] leading-none text-[#2E2E5C] md:text-[50px]">
+                      {salePrice}
+                    </span>
+                  )}
+                </div>
 
-            <p
-              className={`body-gothic mt-2 text-[13px] leading-[1.6] text-[#5A5A6E] ${
-                hasImage ? "" : "text-center"
-              }`}
-            >
-              {uiText("買い切り（お支払いは1回のみ）")}
-            </p>
+                <p
+                  className={`body-gothic mt-2 text-[13px] leading-[1.6] text-[#5A5A6E] ${
+                    hasImage ? "" : "text-center"
+                  }`}
+                >
+                  {uiText("買い切り（お支払いは1回のみ）")}
+                </p>
+              </>
+            )}
 
             <div className="mt-4">
               <FullAccessCta

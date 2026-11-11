@@ -375,7 +375,7 @@ const LOCKED_BLOCK_CONFIG: Record<
         あなたの恋人が言えずにいる気持ちを知りましょう。
       </>
     ),
-    source: "love_endure_card",
+    source: "love_failure_card",
   },
   "あなたに合った働き方・避けたほうがいい職場": {
     decoyItems: CAREER_FIT_DECOY_ITEMS,
