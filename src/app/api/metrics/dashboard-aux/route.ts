@@ -35,15 +35,19 @@ async function scan(table:string,select:string,column:string,from:string|null,un
 }
 async function usersFor(values:unknown[],column:'id'|'owner_token',deadline:number){
   const result=new Map<string,Row>(),keys=[...new Set(values.filter((v):v is string=>typeof v==='string'&&!!v))];
-  for(let i=0;i<keys.length;i+=100){
+  for(let i=0;i<keys.length;i+=300){
     if(Date.now()>deadline)throw Error('deadline');
-    const r=await supabaseAdmin.from('users').select('id,owner_token,acquisition_locale,diagnosis_completed_at').in(column,keys.slice(i,i+100)).limit(1000);
-    if(r.error||r.data?.length===1000)throw Error('lookup');
-    for(const u of r.data||[])result.set(String(u[column]),u);
+    const chunks=[keys.slice(i,i+100),keys.slice(i+100,i+200),keys.slice(i+200,i+300)].filter(c=>c.length);
+    const results=await Promise.all(chunks.map(chunk=>supabaseAdmin.from('users').select('id,owner_token,acquisition_locale,diagnosis_completed_at').in(column,chunk).limit(1000)));
+    for(const r of results){if(r.error||r.data?.length===1000)throw Error('lookup');for(const u of r.data||[])result.set(String(u[column]),u);}
   }return result;
 }
 async function funnel(from:string,until:string,deadline:number){
-  const facts=await scan('events','id,event_name,session_id,owner_token,locale,metadata,created_at','created_at',from,until,q=>(q as unknown as {in:(c:string,v:string[])=>unknown}).in('event_name',events),deadline);
+  // Four non-overlapping time ranges bound concurrency and avoid hundreds of
+  // serial cross-region round trips. Deduplication still covers the whole day.
+  const windows=[];for(let a=Date.parse(from);a<Date.parse(until);a+=DAY/4)windows.push([new Date(a).toISOString(),new Date(Math.min(a+DAY/4,Date.parse(until))).toISOString()]);
+  const parts=await Promise.all(windows.map(([a,b])=>scan('events','id,event_name,session_id,owner_token,locale,metadata,created_at','created_at',a,b,q=>(q as unknown as {in:(c:string,v:string[])=>unknown}).in('event_name',events),deadline,60)));
+  const facts=parts.flat();if(facts.length>=220000)throw Error('page cap');
   const owners=await usersFor(facts.filter(r=>!r.locale&&!meta(r).locale).map(r=>r.owner_token),'owner_token',deadline);
   const sets=new Map<string,Set<string>>(),groups=new Map<string,{event:string,page:string,cta:string,count:number,sessions:Set<string>}>();
   for(const r of facts){
@@ -87,5 +91,5 @@ export async function GET(request:NextRequest){
   const q=request.nextUrl.searchParams,kind=q.get('kind'),from=q.get('from')||'',until=q.get('until')||'',a=Date.parse(from),b=Date.parse(until);
   if(!['funnel','membership'].includes(kind||'')||!Number.isFinite(a)||!Number.isFinite(b)||b<=a||b>Date.now()+60000||(a+JST)%DAY!==0||b-a>(kind==='funnel'?DAY:31*DAY))return NextResponse.json({error:'Invalid kind or date range'},{status:400,headers:metricsPrivateHeaders});
   try{const deadline=Date.now()+50000,data=kind==='funnel'?await funnel(from,until,deadline):await membership(from,until,deadline);return NextResponse.json({version:1,kind,from,until,observedAt:new Date().toISOString(),timezone:'Asia/Tokyo',...data},{headers:metricsPrivateHeaders});}
-  catch{return NextResponse.json({error:'Dashboard auxiliary metrics unavailable; keep previous values'},{status:503,headers:metricsPrivateHeaders});}
+  catch(e){const reason=e instanceof Error&&['deadline','query','lookup','page cap','cursor','diagnosis count'].includes(e.message)?e.message:'unknown';console.warn('dashboard_aux_failed',{kind,reason});return NextResponse.json({error:'Dashboard auxiliary metrics unavailable; keep previous values'},{status:503,headers:metricsPrivateHeaders});}
 }
