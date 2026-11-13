@@ -623,6 +623,7 @@ export default function DiagnosisPageContent({
       <DiagnosisAnalyzingLoader
         messages={copy.analyzing.messages}
         steps={copy.analyzing.steps}
+        messageDurationsMs={copy.analyzing.messageDurationsMs}
         fontFamily={isKorean || isEnglish || isIndonesian ? "inherit" : undefined}
       />
     );

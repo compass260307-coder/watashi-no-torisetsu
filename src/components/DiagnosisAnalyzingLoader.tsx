@@ -7,7 +7,8 @@
 //   - チェックリスト: 完了 = Sora ブルーのチェック、未完 = 淡ブルーの空円
 //   - マスコット: 元の5秒ループ動画を透過化。Safari は HEVC、その他は VP9。
 //     reduced-motion / 再生不可時は同じ動画の透過済み先頭フレームを表示。
-//   - MESSAGES / STEPS の文言・タイマー進行は従来のまま
+//   - MESSAGES / STEPS の文言は i18n 側 (copy.analyzing) が正本。メッセージは
+//     messageDurationsMs で個別の表示時間を指定でき、省略時は一律2秒。
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 
@@ -56,28 +57,32 @@ const MESSAGES = [
   "協調性・神経症傾向を分析...",
   "あなたを表すタイプを探しています...",
   "32タイプから絞り込み中...",
-  "あなただけの強みを見つけています...",
-  "あなたの取扱説明書を綴っています...",
-  "最後の仕上げをしています...",
-  "もうすぐお届けします...",
+  "友達から見た性格を予測中...",
+  "あなたの診断結果をまとめています...",
+  "もうすぐ確認できます...",
 ];
 
 const STEPS = [
   "回答データを取得",
-  "性格特性を解析",
-  "タイプを判定",
-  "トリセツを生成",
+  "Big Fiveで解析",
+  "友達から見た性格を予測",
+  "診断結果を生成",
 ];
+
+const DEFAULT_MESSAGE_DURATION_MS = 2000;
 
 // messages / steps は任意。省略時は自己診断の既定文言。
 // (友達診断=friend の生成中でも同デザインを再利用し、文言だけ差し替える。)
 export function DiagnosisAnalyzingLoader({
   messages = MESSAGES,
   steps = STEPS,
+  messageDurationsMs,
   fontFamily = FONT_STACK,
 }: {
   messages?: string[];
   steps?: string[];
+  // messages[i] の表示時間 (ms)。省略時や不足分は一律 DEFAULT_MESSAGE_DURATION_MS。
+  messageDurationsMs?: number[];
   fontFamily?: string;
 } = {}) {
   const [messageIndex, setMessageIndex] = useState(0);
@@ -97,19 +102,21 @@ export function DiagnosisAnalyzingLoader({
   const messageCount = messages.length;
   const stepCount = steps.length;
   useEffect(() => {
-    const messageInterval = setInterval(() => {
+    if (messageIndex >= messageCount - 1) return;
+    const duration =
+      messageDurationsMs?.[messageIndex] ?? DEFAULT_MESSAGE_DURATION_MS;
+    const timeout = setTimeout(() => {
       setMessageIndex((prev) => Math.min(prev + 1, messageCount - 1));
-    }, 2000);
+    }, duration);
+    return () => clearTimeout(timeout);
+  }, [messageIndex, messageCount, messageDurationsMs]);
 
+  useEffect(() => {
     const stepInterval = setInterval(() => {
       setCompletedSteps((prev) => Math.min(prev + 1, stepCount));
     }, 5000);
-
-    return () => {
-      clearInterval(messageInterval);
-      clearInterval(stepInterval);
-    };
-  }, [messageCount, stepCount]);
+    return () => clearInterval(stepInterval);
+  }, [stepCount]);
 
   return (
     <div

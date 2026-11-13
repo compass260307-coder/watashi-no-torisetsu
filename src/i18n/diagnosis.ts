@@ -55,6 +55,9 @@ export interface DiagnosisCopy {
   analyzing: {
     messages: string[];
     steps: string[];
+    // messages[i] の表示時間 (ms)。省略時や不足分は一律2000ms。
+    // 最後のメッセージは画面遷移まで表示され続けるため対応する値は不要。
+    messageDurationsMs?: number[];
   };
 }
 
