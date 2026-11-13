@@ -1,0 +1,106 @@
+name: Notion Dev Sync
+
+# PRの状態をNotionの開発管理ページへ自動同期する。
+# - PRオープン/再オープン/レビュー準備完了: 「開発タスク」DBの一致行(PR・ブランチ=PR URL)を「レビュー・検証」へ
+# - PRマージ: 一致行を「完了」へ + 「開発履歴」DBへ1行追加
+# NOTION_TOKEN 未設定時は何もせず成功終了する。Notion側の失敗はPRをブロックしない(warningのみ)。
+# セットアップ手順: docs/NOTION_DEV_SYNC.md
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, closed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notion-dev-sync-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  notion-sync:
+    name: notion-sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Sync PR state to Notion
+        uses: actions/github-script@v7
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        with:
+          script: |
+            const TASKS_DB = 'dec08d23f6cf49eab08db889e02ffc40';   // 開発タスク
+            const HISTORY_DB = '386f59472bbd4b8db85f06b3fd96cef9'; // 開発履歴
+
+            const token = process.env.NOTION_TOKEN;
+            if (!token) {
+              core.notice('NOTION_TOKEN is not set; skipping Notion sync.');
+              return;
+            }
+
+            const pr = context.payload.pull_request;
+            const action = context.payload.action;
+            if (!pr) return;
+
+            const notion = async (path, body, method = 'POST') => {
+              const res = await fetch(`https://api.notion.com/v1${path}`, {
+                method,
+                headers: {
+                  Authorization: `Bearer ${token}`,
+                  'Notion-Version': '2022-06-28',
+                  'Content-Type': 'application/json',
+                },
+                body: body ? JSON.stringify(body) : undefined,
+              });
+              if (!res.ok) throw new Error(`${method} ${path} -> ${res.status}: ${await res.text()}`);
+              return res.json();
+            };
+
+            try {
+              const merged = action === 'closed' && pr.merged;
+              const newStatus = merged
+                ? '完了'
+                : ['opened', 'reopened', 'ready_for_review'].includes(action)
+                  ? 'レビュー・検証'
+                  : null;
+
+              // PR URLが紐付いたタスク行のステータスを更新
+              if (newStatus) {
+                const q = await notion(`/databases/${TASKS_DB}/query`, {
+                  filter: { property: 'PR・ブランチ', url: { equals: pr.html_url } },
+                });
+                for (const page of q.results) {
+                  await notion(`/pages/${page.id}`, {
+                    properties: { 'ステータス': { status: { name: newStatus } } },
+                  }, 'PATCH');
+                }
+                core.info(`Updated ${q.results.length} task row(s) to ${newStatus}.`);
+              }
+
+              // マージ時は開発履歴へ追記(同じPR番号があれば二重登録しない)
+              if (merged) {
+                const dup = await notion(`/databases/${HISTORY_DB}/query`, {
+                  filter: { property: 'PR番号', number: { equals: pr.number } },
+                });
+                if (dup.results.length === 0) {
+                  await notion('/pages', {
+                    parent: { database_id: HISTORY_DB },
+                    properties: {
+                      'タイトル': { title: [{ text: { content: pr.title.slice(0, 200) } }] },
+                      'PR番号': { number: pr.number },
+                      'PRリンク': { url: pr.html_url },
+                      'マージ日': { date: { start: pr.merged_at } },
+                      '作者': { rich_text: [{ text: { content: pr.user?.login ?? '' } }] },
+                      'ブランチ': { rich_text: [{ text: { content: pr.head?.ref ?? '' } }] },
+                      '記録元': { select: { name: '自動' } },
+                    },
+                  });
+                  core.info(`Added PR #${pr.number} to 開発履歴.`);
+                } else {
+                  core.info(`PR #${pr.number} already in 開発履歴; skipped.`);
+                }
+              }
+            } catch (err) {
+              // Notion側の障害で開発を止めない。ログだけ残して成功扱いにする。
+              core.warning(`Notion sync failed: ${err.message}`);
+            }
