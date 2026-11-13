@@ -25,7 +25,11 @@
     "verify:en": "node scripts/verify-english-parity.mjs",
     "verify:en:prod": "node scripts/verify-english-production.mjs",
     "ephemeris:test": "node scripts/ephemeris-test.mjs",
-    "unmei:prompt:test": "node scripts/unmei-prompt-locale-test.mjs"
+    "unmei:prompt:test": "node scripts/unmei-prompt-locale-test.mjs",
+    "dev:check": "node scripts/check-dev-env.mjs",
+    "dev:team": "npm run dev:check && npm run dev -- --hostname 127.0.0.1",
+    "verify:team": "node --test scripts/check-dev-env.test.mjs",
+    "typecheck": "next typegen && tsc --noEmit"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.40",
@@ -60,5 +64,10 @@
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
     "typescript": "^5"
-  }
+  },
+  "engines": {
+    "node": "24.x",
+    "npm": "11.x"
+  },
+  "packageManager": "npm@11.9.0"
 }
