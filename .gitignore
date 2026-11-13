@@ -32,6 +32,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!/.env.example
 
 # vercel
 .vercel
@@ -66,3 +67,8 @@ public/characters/v3/characters/
 
 # ローカルQA用の使い捨てスクリプト (本番DBを触るためコミットしない)
 scratchpad/
+
+# Personal AI configuration (shared instructions stay tracked)
+/.claude/settings.local.json
+/AGENTS.override.md
+/CLAUDE.local.md

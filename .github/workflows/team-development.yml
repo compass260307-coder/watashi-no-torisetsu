@@ -1,0 +1,42 @@
+name: Team Development Setup
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - scripts/check-dev-env.mjs
+      - scripts/check-dev-env.test.mjs
+      - src/lib/third-party-measurement.ts
+      - package.json
+      - package-lock.json
+      - .nvmrc
+      - .env.example
+      - .github/workflows/team-development.yml
+  push:
+    branches: [main]
+    paths:
+      - scripts/check-dev-env.mjs
+      - scripts/check-dev-env.test.mjs
+      - src/lib/third-party-measurement.ts
+      - package.json
+      - package-lock.json
+      - .nvmrc
+      - .env.example
+      - .github/workflows/team-development.yml
+
+permissions:
+  contents: read
+
+jobs:
+  team-development:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npm run verify:team
+      - run: npx eslint scripts/check-dev-env.mjs scripts/check-dev-env.test.mjs

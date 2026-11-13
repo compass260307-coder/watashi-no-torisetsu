@@ -1,21 +1,24 @@
 # Workspace Backup and Release Policy
 
-この文書は、Mac mini移行後の正式な作業環境、Git整理、バックアップ、DB migration、Vercelリリースに関する運用ルールの正本です。事故を避け、変更を機能単位で検証・復元できる状態に保つことを目的とします。
+この文書は、チームで共有する開発手順と各自の作業環境、Git整理、バックアップ、DB migration、Vercelリリースに関する運用ルールの正本です。事故を避け、変更を機能単位で検証・復元できる状態に保つことを目的とします。
 
 ## 1. 正式な作業環境
 
-- 正式な作業パスはMac miniの `/Users/ryunosukefutami/Developer/sora/watashi-no-torisetsu` です。
+- 各メンバーが、正規リポジトリ `compass260307-coder/watashi-no-torisetsu` から自分専用のcloneまたはworktreeを作成します。Macでの推奨配置は `~/Developer/watashi-no-torisetsu` です。
+- 既存のMac mini作業フォルダは継続利用できます。全員が同じ絶対パスを使う必要はありません。
 - 外付けSSD(WATASHI-SSD)と旧Desktop版はバックアップ専用です。参照はできますが、編集、ビルド、Git書き込み操作の対象にしません。
-- 作業開始時に `pwd` と `git rev-parse --show-toplevel` を実行し、両方が正式パスを示すことを確認します。
-- 作業フォルダ構成を、合意なく変更しません。スクリプトや設定に固定パスがある可能性を考慮します。
-- SSDへのバックアップ書き込み中はSSDを取り外しません。
+- 作業開始時に `pwd`、`git rev-parse --show-toplevel`、`git remote get-url origin`、`git status --short --branch` を確認します。
+- 既存フォルダを合意なく移動・改名しません。SSDへのバックアップ書き込み中はSSDを取り外しません。
+- 初回参加と日常の作業手順は [`TEAM_DEVELOPMENT.md`](TEAM_DEVELOPMENT.md) に従います。
 
 ## 2. 同時作業
 
-- 同じリポジトリでは、原則として一度に1タスクだけがファイルを書き換えます。
-- 別タスクを並行する場合、そのタスクは閲覧・調査だけに限定します。
-- 書き込みタスクが実行中の状態で、別タスクからGit操作、依存関係の更新、ビルド生成を重ねません。
-- 書き込み担当を切り替える前に、実行中プロセス、ステージ状態、作業ツリーの差分を確認します。
+- 1つの作業フォルダに対する書き込み担当は一度に1タスクです。
+- メンバー間、またはCodexとClaude Codeで同時に実装する場合、専用のclone/worktreeと別ブランチを使います。同じフォルダでAIを同時に編集させません。
+- 同一PCの開発サーバーには別ポートを使い、`NEXT_PUBLIC_SITE_URL`と決済の戻り先も合わせます。
+- 同じ作業フォルダで依存関係の更新やビルドを重ねません。worktree間で共有されるGit管理情報の操作は調整して実行します。
+- 共有開発DBのschema変更・データ初期化は担当を決め、他メンバーへの影響を確認します。各自のテストデータを識別できるようにします。
+- 引き継ぎ前に実行中プロセス、ステージ状態、差分、検証結果を記録します。
 
 ## 3. Git運用
 
@@ -28,7 +31,7 @@
 
 ## 4. 変更の検証
 
-- コードを変更する前に、ルートの [`AGENTS.md`](../AGENTS.md) と `node_modules/next/dist/docs/` にあるNext.js 16.2.6の関連ローカル資料を確認します。
+- コードを変更する前に、ルートの [`AGENTS.md`](../AGENTS.md) と `node_modules/next/dist/docs/` にあるインストール済みNext.jsの関連ローカル資料を確認します。
 - コード変更では原則として、対象ESLint、ルートTypeScript、Next.js本番buildを実行します。
 - 大きなコミットや混在した作業ツリーから切り出すコミットでは、親HEADへ対象差分だけを適用した隔離環境でもTypeScriptと本番buildを実行します。
 - 画像は参照パス、大文字・小文字、形式、デコード、寸法、容量を検証します。
@@ -86,7 +89,7 @@
 ## 9. バックアップ
 
 - 大規模変更、push、migration適用、PreviewまたはProductionデプロイの前にバックアップを作成します。
-- Git BundleはMac本体の `/Users/wakan/Documents/WATASHI_BACKUPS/` に保存します。
+- Git Bundleは各自のMac本体の `~/Documents/WATASHI_BACKUPS/` に保存します。
 - ファイル名には日付、ブランチ名、現在HEADの短縮SHAを含め、既存ファイルを上書きしません。
 - `git bundle create`後に `git bundle verify`を実行し、現在HEADがbundle内に存在することを確認します。
 - bundleのSHA-256チェックサムとファイル容量を記録します。
