@@ -85,7 +85,7 @@ npm run dev:team
 | Previewの秘密値 | pull結果には`[SENSITIVE]`が含まれ、接続先・キーの有効性をすべて確認できない。テスト環境として検証済みとは扱わない |
 | 開発DB | コードに`watashi-dev`の参照あり。今回、リモートschema・キーの有効性・データ状態は未確認 |
 | ローカル検証 | 設定チェッカーの回帰テスト、ESLint、Next型生成とTypeScript、本番形式build、商品契約48項目、PDF runtime確認が成功。buildは実サービスへ接続しないダミー設定を使用し、実DB・決済のE2E確認は含まない |
-| 招待 | 対象メンバーはMac。GitHubユーザー名は参加時に確認 |
-| 外部変更 | 今回の準備ではGitHubへのpush、DB適用、Vercel設定変更、デプロイ、招待を実施していない |
+| アカウント | 対象メンバーはMacで、同じGitHubアカウントからすでにアクセス可能。追加招待は不要。作業フォルダとブランチは個別に使用 |
+| 共有状態 | [ドラフトPR #292](https://github.com/compass260307-coder/watashi-no-torisetsu/pull/292)を作成済み。初回pushのCI・Vercel Previewビルドが成功。main統合、DB適用、Vercel設定変更、招待は未実施 |
 
 上表は準備時点の記録です。管理者作業が終わったら、担当者・日付・検証結果を更新してください。秘密値は記録しません。
