@@ -27,8 +27,6 @@ import {
 } from "@/i18n/hoshiyomi";
 import type { HoshiyomiConversationSummary } from "@/lib/hoshiyomi/store";
 import { track } from "@/lib/track";
-import PaywallLineExitModal from "@/components/result/PaywallLineExitModal";
-import LineAliceLinkCard from "@/components/result/LineAliceLinkCard";
 
 // 両言語とも現行の完全版で30回答を解放する。旧完全版は購入世代の回数を維持する。
 const CHAT_ACCESS_PRODUCTS = ["full_access", "premium_bundle"] as const;
@@ -66,7 +64,6 @@ export function HoshiyomiClient({
   const cancelledProduct = useCheckoutCancelledProduct();
   const [remaining, setRemaining] = useState(initialRemaining);
   const [paywallOpen, setPaywallOpen] = useState(false);
-  const [lineExitOpen, setLineExitOpen] = useState(false);
   const [active, setActive] = useState<ActiveConversation | null>(() =>
     selectedConversation
       ? { id: selectedConversation.id, messages: selectedConversation.messages }
@@ -135,18 +132,10 @@ export function HoshiyomiClient({
     );
   };
 
-  const closeLineExitFlow = useCallback(() => {
-    setLineExitOpen(false);
+  // 2026-11-14の決定で、課金カード離脱時のLINE登録ポップを廃止 (購入前のLINE導線削除)。
+  const closePaywall = useCallback(() => {
     setPaywallOpen(false);
   }, []);
-
-  const handlePaywallExitAttempt = () => {
-    if (locale === "ja") {
-      setLineExitOpen(true);
-      return;
-    }
-    closeLineExitFlow();
-  };
 
   if (active) {
     return (
@@ -199,8 +188,6 @@ export function HoshiyomiClient({
           hasChatAccess={hasChatAccess}
           canUpgradeToPremium={canUpgradeToPremium}
           locale={locale}
-          ownerToken={ownerToken}
-          previewMode={previewMode}
           onStart={startConversation}
         />
       </main>
@@ -209,7 +196,7 @@ export function HoshiyomiClient({
       ) : (
         <TopFooter locale={locale === "en" ? "en" : locale === "id" ? "id" : "ja"} />
       )}
-      {paywallOpen && !lineExitOpen ? (
+      {paywallOpen ? (
         <PaywallOverlay
           ownerToken={ownerToken}
           returnTo="hoshiyomi"
@@ -251,16 +238,7 @@ export function HoshiyomiClient({
                   ? "Astrolog AI Alice"
                 : "AI占い師 Alice"
           }
-          onClose={handlePaywallExitAttempt}
-        />
-      ) : null}
-      {lineExitOpen ? (
-        <PaywallLineExitModal
-          ownerToken={ownerToken}
-          onClose={closeLineExitFlow}
-          variant="conversation"
-          trackingSource="hoshiyomi_paywall_exit"
-          previewMode={previewMode}
+          onClose={closePaywall}
         />
       ) : null}
     </>
@@ -275,8 +253,6 @@ function HoshiyomiHome({
   canUpgradeToPremium,
   locale,
   onStart,
-  ownerToken,
-  previewMode,
 }: {
   remaining: number;
   totalCredits: number;
@@ -285,8 +261,6 @@ function HoshiyomiHome({
   canUpgradeToPremium: boolean;
   locale: HoshiyomiLocale;
   onStart: (text: string) => void;
-  ownerToken?: string;
-  previewMode?: boolean;
 }) {
   const copy = HOSHIYOMI_COPY[locale];
   const [input, setInput] = useState("");
@@ -389,12 +363,7 @@ function HoshiyomiHome({
         </div>
       </section>
 
-      {/* 2026-08-31の設置位置を復元。課金カード離脱時の登録ポップも2026-10-21の追加指示で復元。 */}
-      {locale === "ja" && !previewMode && (
-        <div className="mx-auto max-w-[1040px] px-5 pb-10 pt-10 md:px-8 md:pt-14">
-          <LineAliceLinkCard ownerToken={ownerToken} trackingSource="hoshiyomi_home" />
-        </div>
-      )}
+      {/* 2026-11-14の決定で、星読みトップの常設LINE連携カードを廃止 (購入前のLINE導線削除)。 */}
       <section className="mx-auto max-w-[1040px] px-5 pb-10 pt-4 md:px-8 md:pb-14 md:pt-6">
         <p className="text-center text-[11px] font-medium leading-relaxed text-[#2E2E5C]/40">
           {copy.entertainmentNotice}
