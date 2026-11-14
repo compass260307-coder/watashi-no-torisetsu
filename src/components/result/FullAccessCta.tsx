@@ -13,15 +13,6 @@ import { useUiText } from "@/i18n/ui/use-ui-copy";
 import type { AppResultLocale } from "@/i18n/result";
 import {
   accessPaywallVersionForLocale,
-  EN_FULL_ACCESS_PRICE_USD_CENTS,
-  FULL_ACCESS_PRICE_JPY,
-  FULL_ACCESS_PRICE_KRW,
-  ID_FULL_ACCESS_PRICE_IDR_MINOR,
-  PREMIUM_BUNDLE_PRICE_JPY,
-  PREMIUM_BUNDLE_PRICE_KRW,
-  KO_RESULT_UPGRADE_PRICE_KRW,
-  SELF_REPORT_PRICE_JPY,
-  SELF_REPORT_PRICE_KRW,
   type AccessProduct,
   type PaywallPlacement,
   type ThreeCoursePaywallVersion,
@@ -142,8 +133,6 @@ export function FullAccessCta({
       : getLastPaywallSource();
     const { ttclid } = readAdAttribution();
     const ttp = readCookie("_ttp");
-    const fbp = readCookie("_fbp");
-    const fbc = readCookie("_fbc");
     const checkoutAttemptId = createCheckoutAttemptId();
     // クライアント信号は配信欠損の監視用。正規の入口はAPIが記録する
     // checkout_requested、Stripe到達はcheckout_session_createdを使う。
@@ -184,8 +173,6 @@ export function FullAccessCta({
           ...(salesChannel === "line" ? { sales_channel: "line" } : {}),
           ...(ttclid ? { ttclid } : {}),
           ...(ttp ? { ttp } : {}),
-          ...(fbp ? { fbp } : {}),
-          ...(fbc ? { fbc } : {}),
           paywall_version: resolvedPaywallVersion,
           ...(placement ? { paywall_placement: placement } : {}),
         }),
@@ -217,45 +204,9 @@ export function FullAccessCta({
         setLoading(false);
         return;
       }
-      const data = (await res.json()) as {
-        url?: unknown;
-        amount?: unknown;
-        currency?: unknown;
-      };
+      const data = (await res.json()) as { url?: unknown };
       if (typeof data.url === "string" && data.url.length > 0) {
-        // meta_initiate_checkout の value/currency はサーバ応答の実売価格を使う。
-        // 応答に無い場合 (旧レスポンスのキャッシュ等) だけロケール既定にフォールバック。
-        redirectToFullAccessCheckout(data.url, {
-          value:
-            typeof data.amount === "number"
-              ? data.amount
-              : locale === "ko" && product === "premium_bundle" && source === "result_upgrade_after_answers" ? KO_RESULT_UPGRADE_PRICE_KRW
-              : product === "self_report"
-                ? locale === "ko"
-                  ? SELF_REPORT_PRICE_KRW
-                  : SELF_REPORT_PRICE_JPY
-                : product === "premium_bundle"
-                  ? locale === "ko"
-                    ? PREMIUM_BUNDLE_PRICE_KRW
-                    : PREMIUM_BUNDLE_PRICE_JPY
-                : locale === "ko"
-                  ? FULL_ACCESS_PRICE_KRW
-                  : locale === "en"
-                    ? EN_FULL_ACCESS_PRICE_USD_CENTS / 100
-                    : locale === "id"
-                      ? ID_FULL_ACCESS_PRICE_IDR_MINOR / 100
-                    : FULL_ACCESS_PRICE_JPY,
-          currency:
-            typeof data.currency === "string"
-              ? data.currency
-              : locale === "ko"
-                ? "KRW"
-                : locale === "en"
-                  ? "USD"
-                  : locale === "id"
-                    ? "IDR"
-                  : "JPY",
-        });
+        redirectToFullAccessCheckout(data.url);
         return;
       }
       setError(

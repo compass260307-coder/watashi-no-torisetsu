@@ -37,7 +37,6 @@ const indonesianPlans = read(
 const fullAccessPromo = read(
   "src/i18n/ui/messages/id.ts",
 );
-const fullAccessCta = read("src/components/result/FullAccessCta.tsx");
 const hoshiyomiCopy = read("src/i18n/hoshiyomi.ts");
 const indonesianTermsPage = read("src/app/id/terms/page.tsx");
 const emailTemplates = read("src/lib/email.ts");
@@ -224,10 +223,12 @@ const contractChecks = [
       ),
   },
   {
+    // Meta計測の撤去でクライアント側のvalue換算は消えたため、サーバ応答の
+    // amount (checkout API) が IDR を major unit へ換算することを検証する。
     label: "Indonesian checkout analytics report IDR 49,000 in major units",
     valid:
-      fullAccessCta.includes("ID_FULL_ACCESS_PRICE_IDR_MINOR / 100") &&
-      fullAccessCta.includes('? "IDR"'),
+      checkoutRoute.includes('checkoutPricing.currency === "idr"') &&
+      checkoutRoute.includes("chargedAmount / 100"),
   },
   {
     label: "Indonesian Alice FAQ points to regional purchase pricing",

@@ -5,7 +5,6 @@ import { XTrack } from "@/components/XTrack";
 import { wasXPurchaseSent, xPurchaseEventIds } from "@/lib/xPixel";
 
 import {
-  metaPurchaseStorageKey,
   tiktokPurchaseStorageKey,
   type MetaPurchaseProduct,
 } from "@/lib/meta-purchase";
@@ -69,11 +68,10 @@ export function MetaPurchaseDataLayer({
 }) {
   const [xPurchase, setXPurchase] = useState<ClaimResponse | null>(null);
   useEffect(() => {
-    const metaKey = metaPurchaseStorageKey(product, checkoutSessionId);
     const tiktokKey = tiktokPurchaseStorageKey(product, checkoutSessionId);
     const pendingKey = `${product}:${checkoutSessionId}`;
     if (
-      (wasSent(metaKey) && wasSent(tiktokKey) && wasXPurchaseSent(checkoutSessionId)) ||
+      (wasSent(tiktokKey) && wasXPurchaseSent(checkoutSessionId)) ||
       pendingPurchases.has(pendingKey)
     ) {
       return;
@@ -108,27 +106,6 @@ export function MetaPurchaseDataLayer({
         }
 
         const target = window as PurchaseTarget;
-        let metaPushed = false;
-        if (!wasSent(metaKey)) {
-          target.dataLayer = target.dataLayer ?? [];
-          target.dataLayer.push({
-            event: "meta_purchase",
-            event_id: checkoutSessionId,
-            checkout_session_id: checkoutSessionId,
-            ...(typeof claim.value === "number" ? { value: claim.value } : {}),
-            ...(typeof claim.currency === "string"
-              ? { currency: claim.currency }
-              : {}),
-            ...(Array.isArray(claim.contentIds) && claim.contentIds.length > 0
-              ? { content_ids: claim.contentIds }
-              : {}),
-            ...(typeof claim.contentName === "string"
-              ? { content_name: claim.contentName }
-              : {}),
-          });
-          metaPushed = true;
-        }
-
         let tiktokPushed = false;
         if (!wasSent(tiktokKey) && (await waitForTikTok(target))) {
           target.ttq?.track?.(
@@ -163,7 +140,7 @@ export function MetaPurchaseDataLayer({
           );
           tiktokPushed = true;
         }
-        if (!metaPushed && !tiktokPushed) return;
+        if (!tiktokPushed) return;
         // push が同期的に成功した後、サーバー監査まで保存できた時点でだけ
         // ローカルの再送を止める。ack前にタブが閉じた場合は次回もう一度pushするが、
         // 同じevent_idなので媒体側で重複排除され、監査行も回復する。
@@ -179,8 +156,7 @@ export function MetaPurchaseDataLayer({
         })
           .then((response) => {
             if (!response.ok) return;
-            if (metaPushed) rememberSent(metaKey);
-            if (tiktokPushed) rememberSent(tiktokKey);
+            rememberSent(tiktokKey);
           })
           .catch(() => {
             // dataLayerへの受け渡しは完了済み。再訪時に同じevent_idで監査を回復する。

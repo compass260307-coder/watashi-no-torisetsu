@@ -93,18 +93,10 @@ export function metaPurchaseContent(
 }
 
 // ブラウザ側の送信済み抑止キー (localStorage)。
-// v1 (商品なし) から、商品ごとに分けた v2 へ移行。旧 v1 キーは残るが、
 // 同じブラウザからの再送を抑止する。端末・タブをまたぐ重複は Stripe Session IDを
 // 広告側 event_id に使って重複排除する。
-const STORAGE_PREFIX = "wt_meta_purchase_sent_v2:";
+// (旧 wt_meta_purchase_sent_v2: キーは Meta 計測撤去に伴い発行を停止。残存しても無害。)
 const TIKTOK_STORAGE_PREFIX = "wt_tiktok_purchase_sent_v1:";
-
-export function metaPurchaseStorageKey(
-  product: MetaPurchaseProduct,
-  checkoutSessionId: string,
-): string {
-  return `${STORAGE_PREFIX}${product}:${checkoutSessionId}`;
-}
 
 export function tiktokPurchaseStorageKey(
   product: MetaPurchaseProduct,
@@ -113,21 +105,16 @@ export function tiktokPurchaseStorageKey(
   return `${TIKTOK_STORAGE_PREFIX}${product}:${checkoutSessionId}`;
 }
 
-// どの商品でも送信済みなら true (クライアント専用。localStorage 不可環境は false)。
+// どの商品でも TikTok 送信済みなら true (クライアント専用。localStorage 不可環境は false)。
 // 静的ページの着地 (/aisho) で claim token 取得の API を無駄打ちしないための事前判定。
-export function wasAnyMetaPurchaseSent(checkoutSessionId: string): boolean {
+export function wasAnyTikTokPurchaseSent(checkoutSessionId: string): boolean {
   try {
-    return META_PURCHASE_PRODUCTS.some((product) => {
-      const metaSent =
-        localStorage.getItem(
-          metaPurchaseStorageKey(product, checkoutSessionId),
-        ) === "1";
-      const tiktokSent =
+    return META_PURCHASE_PRODUCTS.some(
+      (product) =>
         localStorage.getItem(
           tiktokPurchaseStorageKey(product, checkoutSessionId),
-        ) === "1";
-      return metaSent && tiktokSent;
-    });
+        ) === "1",
+    );
   } catch {
     return false;
   }
