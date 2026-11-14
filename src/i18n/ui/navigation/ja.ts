@@ -99,7 +99,7 @@ const footer: FooterContent = {
           // 内部リンクになる (クロール促進)。ラベルは短縮形・4本まで。
           children: [
             {
-              label: "OCEAN診断とは", href: "/articles/ocean-shindan"
+              label: "ビッグファイブとは", href: "/articles/ocean-shindan"
             },
             {
               label: "他己分析のやり方", href: "/articles/tako-bunseki"
