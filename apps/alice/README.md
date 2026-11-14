@@ -2,7 +2,7 @@
 
 状態: 技術資産として保守中。新規プロダクト開発は休止。
 
-現在の事業方針では、Webが無料集客・招待・初回課金、LINE上のAlice Plusが日本の継続課金、アプリが将来の世界共通コミュニティを担います。事業判断は [`docs/BUSINESS_CONSTITUTION.md`](../../docs/BUSINESS_CONSTITUTION.md) を正本とします。
+事業判断の正は本人の明示指示とNotionの意思決定です(`AGENTS.md` の「参照する正本」参照。旧・事業の憲法は2026-11-14に失効)。このアプリの新規開発・RevenueCat接続・ストア申請は、本人の明示承認なしに進めません。
 
 このディレクトリは、既存の「ワタシのトリセツ」Web診断を入口にするReact Native + Expoアプリとして実装したPhase 1〜3の基盤を保持しています。既存コードの技術仕様は `docs/alice-app-system-design-v3.1.md`、UIは `docs/alice-app-ui/color-system-v1.md` を参照します。ただし、旧サブスクリプションアプリ案を現行ロードマップとして扱いません。
 

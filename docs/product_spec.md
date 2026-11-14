@@ -4,7 +4,7 @@
 
 > この文書は、九州の大学生を起点にした初期MVPの構想と判断経緯を保存するために残している。
 > Compassへの送客、3か月完全無料、診断完了30,000人、段階アンロックなどは当時の計画であり、現行方針として使用しない。
-> 現在の事業目的、チャネルの役割、投資判断は [`BUSINESS_CONSTITUTION.md`](BUSINESS_CONSTITUTION.md) を正本とする。
+> 事業判断の正は本人の明示指示とNotionの意思決定(`AGENTS.md` 参照。旧憲法は2026-11-14失効)。
 > 現在の商品、価格、権利範囲は `src/lib/access-products.ts` と `src/lib/line-plus-products.ts` を確認する。
 
 以下はプロダクト全体の初期構想を含む仕様書です。

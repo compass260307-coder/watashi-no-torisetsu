@@ -3,7 +3,7 @@
 更新日: 2026-09-13
 状態: 既存実装の技術資料（アプリ事業ロードマップとしては休止）
 
-> このファイルは、2026-09-07時点でPhase 1〜3まで実装したAliceアプリ基盤の技術的な正本として保持する。ただし、事業上のアプリの役割は [`BUSINESS_CONSTITUTION.md`](BUSINESS_CONSTITUTION.md) を優先し、現在は「将来の世界共通コミュニティ」と位置づける。本文中のサブスクリプションアプリ構想、RevenueCat課金、Phase 4以降は承認済みロードマップではない。journal・profile・tarot画面は固定サンプルを含むprototypeであり、公開環境フラグの本番初期値はOFFとする。
+> このファイルは、2026-09-07時点でPhase 1〜3まで実装したAliceアプリ基盤の技術的な正本として保持する。事業上のアプリの役割は未確定(旧・事業の憲法は2026-11-14失効。判断の正は本人の明示指示とNotionの意思決定)。本文中のサブスクリプションアプリ構想、RevenueCat課金、Phase 4以降は承認済みロードマップではない。journal・profile・tarot画面は固定サンプルを含むprototypeであり、公開環境フラグの本番初期値はOFFとする。
 
 ## 1. 設計方針
 
@@ -1171,7 +1171,7 @@ RevenueCat は Phase 3 で server 側の sandbox / webhook に着手し、Phase 
 
 ## 16. 現行事業方針との整合
 
-事業判断は [`BUSINESS_CONSTITUTION.md`](BUSINESS_CONSTITUTION.md) を正本とする。
+事業判断の正は本人の明示指示とNotionの意思決定(旧・事業の憲法は2026-11-14失効)。以下は失効前の整理であり、履歴として残す。
 
 - Web: 無料診断、SNS・招待ループによる拡散、¥499買い切りによる初回課金。
 - LINE: 日本におけるAliceとの継続関係とAlice Plusによる継続課金。

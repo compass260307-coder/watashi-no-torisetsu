@@ -35,7 +35,7 @@ npm run dev:team
 
 - [参加・日常作業・引き継ぎ](docs/TEAM_DEVELOPMENT.md)
 - [環境変数と検証環境の準備](docs/TEAM_ENVIRONMENT.md)
-- [事業の憲法](docs/BUSINESS_CONSTITUTION.md)
+- [事業の憲法(2026-11-14失効・履歴資料)](docs/BUSINESS_CONSTITUTION.md)
 - [固定中の商品・価格](docs/COMMERCE_CATALOG.md)
 - [Workspace・バックアップ・リリース方針](docs/WORKSPACE_RELEASE_POLICY.md)
 - [LINE × 診断結果：1タップ連携](docs/LINE_LIFF_LINKING.md)
