@@ -18,7 +18,7 @@ const NAVY = "#2E2E5C";
 export const metadata: Metadata = {
   title: "記事・コラム",
   description:
-    "OCEAN診断（ビッグファイブ）や性格心理学をやさしく解説する、ワタシのトリセツの記事・コラム一覧。性格診断を受ける前の予習にも、結果を深く知るためにも。",
+    "ビッグファイブ（Big Five）や性格心理学をやさしく解説する、ワタシのトリセツの記事・コラム一覧。性格診断を受ける前の予習にも、結果を深く知るためにも。",
   alternates: localizedAlternates(
     "ja",
     "/articles",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     siteName: GLOBAL_SITE_NAME,
     title: "記事・コラム｜ワタシのトリセツ",
     description:
-      "OCEAN診断（ビッグファイブ）や性格心理学をやさしく解説する記事一覧。",
+      "ビッグファイブ（Big Five）や性格心理学をやさしく解説する記事一覧。",
     images: [{ url: "/ogp-v5.jpg", width: 1200, height: 630 }],
   },
 };
@@ -85,7 +85,7 @@ export default function ArticlesPage() {
               className="mt-4 text-[15px] leading-[2]"
               style={{ color: `${NAVY}B3` }}
             >
-              OCEAN診断（ビッグファイブ）のことや、性格心理学の考え方を、
+              ビッグファイブ（Big Five）のことや、性格心理学の考え方を、
               むずかしい言葉を使わずに解説していきます。
             </p>
           </section>
