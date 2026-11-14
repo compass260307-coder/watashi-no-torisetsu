@@ -33,7 +33,7 @@ const jsonLd = {
       "@id": `${BASE_URL}/#app`,
       name: GLOBAL_SITE_NAME,
       description:
-        "約3分でできるOCEAN(Big Five)理論ベースの無料性格診断テスト。16タイプ性格診断よりも細かい32タイプのキャラに分類され、友達の回答で自分では気づかない一面まで見えてくる大学生向けサービス。",
+        "約3分でできるビッグファイブ(Big Five)理論ベースの無料性格診断テスト。16タイプ性格診断よりも細かい32タイプのキャラに分類され、友達の回答で自分では気づかない一面まで見えてくる無料サービス。",
       url: BASE_URL,
       applicationCategory: "LifestyleApplication",
       operatingSystem: "Any",

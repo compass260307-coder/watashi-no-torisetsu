@@ -112,7 +112,7 @@ var p=window.location.pathname;document.documentElement.lang=p.indexOf('/ko')===
 // タイトルは「無料性格診断テスト」を先頭に置く。
 const SHARED_TITLE = "友達と作る無料性格診断テスト｜ワタシのトリセツ";
 const SHARED_DESCRIPTION =
-  "OCEAN(ビッグファイブ)理論ベースの無料性格診断テスト。約3分で、16タイプ性格診断よりも細かい32タイプのキャラからあなたが見つかります。友達の回答で、自分では気づかない一面までわかる自分だけの取扱説明書が完成。";
+  "ビッグファイブ理論ベースの無料性格診断テスト。約3分で、16タイプ性格診断よりも細かい32タイプのキャラからあなたが見つかります。友達の回答で、自分では気づかない一面までわかる自分だけの取扱説明書が完成。";
 const NAVER_SITE_VERIFICATION = "1a6c30462dd160bccda48dddb946fcaaeba0047";
 
 export const metadata: Metadata = {
