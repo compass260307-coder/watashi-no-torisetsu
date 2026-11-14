@@ -12,7 +12,7 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import LineLoveFootprintsClient from "./LineLoveFootprintsClient";
 
 export const metadata: Metadata = {
-  title: "恋の足あと | Alice",
+  title: "恋の足あと",
   robots: { index: false, follow: false },
 };
 

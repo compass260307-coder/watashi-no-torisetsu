@@ -7,7 +7,7 @@ import Image from "next/image";
 import styles from "./LineMenu.module.css";
 
 export const metadata: Metadata = {
-  title: "メニュー | Alice",
+  title: "メニュー",
   robots: { index: false, follow: false },
 };
 

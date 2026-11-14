@@ -7,7 +7,7 @@ import { normalizeResultUpgradeAnswers } from "@/lib/result-upgrade";
 import { LINE_UPGRADE_TALK_URL } from "@/lib/line-upgrade-dialogue";
 
 export const dynamic = "force-dynamic";
-export const metadata = { title: "決済画面を開いています | Alice", robots: { index: false, follow: false } };
+export const metadata = { title: "決済画面を開いています", robots: { index: false, follow: false } };
 
 export default async function Page() {
   const session = await getLineResultUpgradeSession();

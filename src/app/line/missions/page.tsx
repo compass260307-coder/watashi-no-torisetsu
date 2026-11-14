@@ -26,7 +26,7 @@ import { resolveSiteUrl } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
 export const metadata: Metadata = {
-  title: "ミッション | ワタシのトリセツ",
+  title: "ミッション",
   robots: { index: false, follow: false },
 };
 

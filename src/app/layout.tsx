@@ -4,7 +4,7 @@ import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
 import { LocaleUiBoundary } from "@/components/LocaleUiBoundary";
 import { MEASUREMENT_INIT_SCRIPT } from "@/lib/verified-conversions";
 import { isThirdPartyMeasurementEnabled } from "@/lib/third-party-measurement";
-import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
+import { GLOBAL_SITE_NAME, JA_SITE_NAME } from "@/lib/locale-seo";
 import { STATIC_ASSET_RECOVERY_SCRIPT } from "@/lib/static-asset-recovery.mjs";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
@@ -110,7 +110,7 @@ var p=window.location.pathname;document.documentElement.lang=p.indexOf('/ko')===
 // 16Personalities の SERP を参考に、キーワード直球タイトル + 会話調ベネフィット
 // の説明文へ (2026-07-13)。サイト名は WebSite JSON-LD で別途表示されるため、
 // タイトルは「無料性格診断テスト」を先頭に置く。
-const SHARED_TITLE = "友達と作る無料性格診断テスト｜Alice Personalities";
+const SHARED_TITLE = "友達と作る無料性格診断テスト｜ワタシのトリセツ";
 const SHARED_DESCRIPTION =
   "OCEAN(ビッグファイブ)理論ベースの無料性格診断テスト。約3分で、16タイプ性格診断よりも細かい32タイプのキャラからあなたが見つかります。友達の回答で、自分では気づかない一面までわかる自分だけの取扱説明書が完成。";
 const NAVER_SITE_VERIFICATION = "1a6c30462dd160bccda48dddb946fcaaeba0047";
@@ -119,7 +119,8 @@ export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
     default: SHARED_TITLE,
-    template: `%s｜${GLOBAL_SITE_NAME}`,
+    // 日本語ページの接尾辞。ko/en/id は各ロケールの layout が独自テンプレートを持つ。
+    template: `%s｜${JA_SITE_NAME}`,
   },
   description: SHARED_DESCRIPTION,
   applicationName: GLOBAL_SITE_NAME,
