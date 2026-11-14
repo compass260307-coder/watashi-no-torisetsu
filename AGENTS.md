@@ -10,7 +10,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 ## Workspace and release guardrails
 
-- Each team member works in their own clone or worktree of `compass260307-coder/watashi-no-torisetsu`, on a task branch. Before work, verify `pwd`, `git rev-parse --show-toplevel`, and `git remote get-url origin`. The existing Mac mini checkout remains valid; the external SSD (`WATASHI-SSD`) and old Desktop copies remain backup-only. See `docs/TEAM_DEVELOPMENT.md` for onboarding.
+- Each team member works in their own clone or worktree of `compass260307-coder/watashi-no-torisetsu`, on a task branch. Before work, verify `pwd`, `git rev-parse --show-toplevel`, and `git remote get-url origin`. The existing Mac mini checkout remains valid; the external SSD (`WATASHI-SSD`) and `~/Documents/WATASHI_BACKUPS` (30-day retention) are backup-only. Old Desktop copies were removed on 2026-11-13. See `docs/TEAM_DEVELOPMENT.md` for onboarding.
 - Allow only one writing task per checkout at a time. Parallel tasks use separate clones/worktrees and branches, with separate dev-server ports. Coordinate Git metadata operations when worktrees share one Git repository; do not overlap dependency updates or builds in the same checkout.
 - Product lineup, prices, billing types, and trial periods are frozen at the 2026-09-13 catalog in [`docs/COMMERCE_CATALOG.md`](docs/COMMERCE_CATALOG.md). Do not add or remove plans, change prices, run price promotions or price A/B tests, or alter included entitlements unless the user explicitly authorizes that business decision. Copy, funnel, design, and reliability improvements may proceed only when they preserve the frozen catalog.
 - The Japanese Web `full_access` offer is fixed at a JPY 1,290 reference price and JPY 499 checkout price effective 2026-09-21 10:02 JST. Run `npm run verify:commerce`; production builds enforce this contract.
@@ -24,37 +24,30 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 - Read `docs/TEAM_DEVELOPMENT.md` before onboarding or changing shared setup. Use Node from `.nvmrc` and `npm ci`; do not regenerate dependencies with another package manager.
 - Use `npm run dev:team` for routine local development and `npm run dev:check -- --checkout` before testing payments. This checks local configuration only; it does not verify remote keys, schema, or account access.
-- Shared project decisions belong in repository docs and the task Issue/PR. Record the branch, changed areas, checks, and remaining work when handing off between people or AI tools. Do not include credentials, customer data, or capability URLs.
+- Shared project decisions belong in repository docs and the task Issue/PR. Development tasks are tracked in the Notion dev task database; merged PRs are auto-recorded there via GitHub Actions (see `docs/NOTION_DEV_SYNC.md`). Record the branch, changed areas, checks, and remaining work when handing off between people or AI tools. Do not include credentials, customer data, or capability URLs.
 
 # ワタシのトリセツ 開発ルール
 
 ## 参照する正本
 
-- 事業目的、投資優先順位、各チャネルの役割: `docs/BUSINESS_CONSTITUTION.md`
-- 固定中の商品・価格: `docs/COMMERCE_CATALOG.md`
+- 事業判断(戦略・優先順位・チャネル方針): **本人の明示指示と、Notion「情報プラットフォーム」の意思決定を正とする。** `docs/BUSINESS_CONSTITUTION.md` は2026-11-14に失効しており、事業方針の根拠として参照しない。
+- 固定中の商品・価格: `docs/COMMERCE_CATALOG.md`(引き続き有効。CIで機械的に強制)
 - 実装上の商品、価格、権利範囲: `src/lib/access-products.ts`、`src/lib/line-plus-products.ts`
 - Workspace・リリース安全規則: `AGENTS.md`、`docs/WORKSPACE_RELEASE_POLICY.md`
 - `docs/product_spec.md` と `docs/service-overview.md` は初期MVPの履歴資料であり、現行仕様として使用しない。
 
-## プロダクトの核
+## 意思決定の進め方
 
-無料で世界中の人に使われ、友達へ広がり、その中の一部の人が、より深い自己理解やAliceとの継続体験にお金を払うサービスをつくる。
+- 施策・機能・投資の優先順位は固定の基準で評価せず、本人が都度判断する。AIは提案時に、期待効果とリスクをデータで示す。
+- 事業上の決定はNotionの意思決定DBに記録する。リポジトリには技術・安全・表記のルールだけを置く。
 
-全員からお金を取ることを目指さない。無料体験と招待ループを成長の中心に置く。
-
-## 各レイヤーの役割
-
-- Web: 無料診断、SNS・友達招待による拡散、¥499買い切りによる初回課金。
-- LINE: 日本におけるAliceとの継続関係、Alice Plusによる継続課金。
-- アプリ: 将来の世界共通コミュニティ。コミュニティPRDと成功指標の承認までは新規開発を進めない。
-
-## 現行プロダクトの前提
+## 現行プロダクトの前提(実装の事実)
 
 - Web自己診断は50問。
 - 友達診断は1人の30問回答で結果表示の土台が完成する。
 - 日本版Webの新規販売は、原則として¥499買い切りの完全版。
-- 日本の継続課金はAlice Plusを中心に置く。
-- AliceモバイルアプリのPhase 1〜3は技術資産として保持するが、旧サブスクリプション案を現行ロードマップとして扱わない。
+- 日本の継続課金商品は、現状Alice Plus(LINE)のみ。
+- Aliceモバイルアプリ(apps/alice)は技術資産として保持する。
 - 実装と表示が食い違う場合は、推測せず現在の共通定義、権利判定、Checkout実装を確認する。
 
 ## 商品・価格の固定
@@ -62,7 +55,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - 商品、価格、課金形態、trial期間は2026-09-13時点の現行バージョンで固定する。
 - 値引き、期間限定セール、価格A/Bテスト、コース追加・削除を実装しない。
 - コピー、導線、デザインは、商品内容と価格を変えない範囲で改善してよい。
-- ユーザーが商品・価格の変更を明示した場合だけ、`docs/BUSINESS_CONSTITUTION.md`、`docs/COMMERCE_CATALOG.md`、共通定義、計測バージョンを一緒に更新する。
+- ユーザーが商品・価格の変更を明示した場合だけ、`docs/COMMERCE_CATALOG.md`、共通定義、計測バージョンを一緒に更新する。
 
 ## 技術スタック
 
@@ -82,28 +75,24 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - ネガティブ表現は「愛されるクセ」に変換する
 - 友達に送っても恥ずかしくない軽さを優先する
 
-## 最重要判断基準
+## 表記ルール(2026-11-14確定)
 
-新しい施策、機能、投資は、次の4点で評価する。
-
-1. 無料ユーザーが増えるか。
-2. 招待ループが強くなるか。
-3. LTVが伸びるか。
-4. 世界展開しやすくなるか。
-
-どの項目にも寄与しない施策は優先順位を下げる。
+- 日本語のサービス名は「ワタシのトリセツ」のみ。「OCEAN診断」「ビッグファイブ診断」を診断名・サービス名として名乗らない(ビッグファイブ理論への言及は可)。
+- 「Alice」はAIキャラクター名および「Alice Plus」(LINEのプロダクト名)としてのみ使う。カタカナ「アリス」は使わない。
+- ページタイトルの接尾辞はルートレイアウトの `title.template`(「〜｜ワタシのトリセツ」)に委譲し、ページ側でハードコードしない。
+- 韓国語「나의 사용설명서」、英語・インドネシア語「Alice Personalities」は各ロケールの独自ブランドとして維持する。
+- 結果画面・PDFのタイプコード(OCEAn等)はプロダクト要素として維持する。
 
 ## 実装ルール
 
 - まず既存コードを確認してから変更する
-- 仕様を勝手に広げず、事業の憲法と現行実装の両方を確認する
+- 仕様を勝手に広げず、現行実装と本人の指示を確認する
 - 1回の変更は1機能単位にする
 - モバイルファーストで実装する
 - エラー表示、ローディング表示、空状態を用意する
 - TypeScriptの型を崩さない
 - 自由記述や友達回答は、本人を傷つける形で表示しない
-- Compass、スキマ就活、BtoB組織診断を再び優先する場合は、先に事業の憲法を更新する
-- アプリの新規開発、RevenueCat接続、ストア申請は、コミュニティPRDの承認前に進めない
+- アプリの新規開発、RevenueCat接続、ストア申請は、本人の明示承認なしに進めない
 
 ## KPIイベント
 
