@@ -44,19 +44,11 @@ const settings = compile("src/lib/purchase-conversion-config.ts", {
 });
 assert.equal(
   settings.purchaseEventExpiryReason(
-    "meta",
+    "tiktok",
     new Date(now - 7 * day + 1).toISOString(),
     now,
   ),
   null,
-);
-assert.match(
-  settings.purchaseEventExpiryReason(
-    "meta",
-    new Date(now - 7 * day).toISOString(),
-    now,
-  ),
-  /event_expired/,
 );
 assert.match(
   settings.purchaseEventExpiryReason(
@@ -67,12 +59,12 @@ assert.match(
   /local 7-day/,
 );
 assert.match(
-  settings.purchaseEventExpiryReason("meta", "bad", now),
+  settings.purchaseEventExpiryReason("tiktok", "bad", now),
   /invalid_paid_at/,
 );
 assert.match(
   settings.purchaseEventExpiryReason(
-    "meta",
+    "tiktok",
     new Date(now + 1).toISOString(),
     now,
   ),
@@ -114,6 +106,8 @@ function flow(overrides = {}, timing = {}) {
   }
   const env = {
     NODE_ENV: "production",
+    // Meta計測は撤去済み。環境変数が残っていてもMetaへは一切送らないことを
+    // 下のシナリオで検証するため、あえて設定したままにする。
     META_PIXEL_ID: "123456",
     META_CONVERSIONS_API_TOKEN: "isolated-meta-token",
     META_GRAPH_API_VERSION: "v99.0",
@@ -250,14 +244,12 @@ function flow(overrides = {}, timing = {}) {
   const db = {
     from: query,
     async rpc(name, args) {
-      assert.ok(
-        [
-          "claim_due_purchase_conversion_deliveries",
-          "claim_due_configured_purchase_conversion_deliveries",
-        ].includes(name),
+      // Meta撤去後は、残置された旧meta行を拾わない configured 版だけを使う。
+      assert.equal(
+        name,
+        "claim_due_configured_purchase_conversion_deliveries",
       );
-      if (name === "claim_due_configured_purchase_conversion_deliveries")
-        assert.equal(typeof args.p_include_meta, "boolean");
+      assert.equal(args.p_include_meta, false);
       const rows = [...outbox.values()]
         .filter(
           (r) =>
@@ -379,26 +371,26 @@ for (const vars of [
 const f = flow();
 await f.service.enqueueServerPurchaseConversions(f.purchase);
 await f.service.enqueueServerPurchaseConversions(f.purchase);
-assert.equal(f.outbox.size, 4);
+// Meta宛ての行は投入されない(TikTokの3ピクセルのみ)。
+assert.equal(f.outbox.size, 3);
+assert.ok([...f.outbox.values()].every((r) => r.provider === "tiktok"));
 f.faults.set(
   codes[1],
   JSON.stringify({ code: 40001, message: "isolated-token-1" }),
 );
 let summary = await f.service.deliverServerPurchaseConversions(f.purchase);
-assert.equal(summary.sent, 3);
+assert.equal(summary.sent, 2);
 assert.equal(summary.failed, 1);
-assert.equal(f.calls.length, 4);
+assert.equal(f.calls.length, 3);
+// META_* 環境変数が設定されたままでも、Metaへは一切送らない。
+assert.ok(f.calls.every((c) => c.code !== "meta"));
 for (const c of f.calls) {
   assert.equal(c.body.data[0].event_id, f.purchase.session.id);
   assert.equal(
     c.body.data[0].event_time,
     Math.floor(Date.parse(f.purchase.paidAt) / 1000),
   );
-  const value =
-    c.code === "meta"
-      ? c.body.data[0].custom_data.value
-      : c.body.data[0].properties.value;
-  assert.equal(value, 499);
+  assert.equal(c.body.data[0].properties.value, 499);
 }
 assert.equal(
   f.calls.find((c) => c.code === codes[0]).headers["Access-Token"],
@@ -418,7 +410,7 @@ f.makeDue();
 summary = await f.service.processDueServerPurchaseConversions();
 assert.equal(summary.sent, 1);
 assert.equal(f.retrievals.length, 1);
-assert.equal(f.calls.length, 5);
+assert.equal(f.calls.length, 4);
 await f.service.enqueueServerPurchaseConversions(f.purchase);
 assert.equal(
   [...f.outbox.values()].every((r) => r.status === "sent"),
@@ -435,7 +427,7 @@ await missing.service.enqueueServerPurchaseConversions(missing.purchase);
 summary = await missing.service.deliverServerPurchaseConversions(
   missing.purchase,
 );
-assert.equal(summary.sent, 3);
+assert.equal(summary.sent, 2);
 assert.equal(summary.failed, 1);
 
 const malformed = flow({ TIKTOK_PIXELS: "[do-not-leak-token" });
@@ -443,7 +435,7 @@ await malformed.service.enqueueServerPurchaseConversions(malformed.purchase);
 summary = await malformed.service.deliverServerPurchaseConversions(
   malformed.purchase,
 );
-assert.equal(summary.sent, 1);
+assert.equal(summary.sent, 0);
 assert.equal(summary.failed, 3);
 assert.ok(
   ![...malformed.outbox.values()].some((r) =>
@@ -463,8 +455,8 @@ await legacy.service.enqueueServerPurchaseConversions(legacy.purchase);
 summary = await legacy.service.deliverServerPurchaseConversions(
   legacy.purchase,
 );
-assert.equal(summary.sent, 4);
-assert.equal(legacy.calls.length, 3);
+assert.equal(summary.sent, 3);
+assert.equal(legacy.calls.length, 2);
 assert.equal(
   legacy.calls.some((c) => c.code === codes[0]),
   false,
@@ -478,7 +470,7 @@ const expired = flow();
 expired.purchase.paidAt = new Date(now - 8 * day).toISOString();
 await expired.service.enqueueServerPurchaseConversions(expired.purchase);
 summary = await expired.service.processDueServerPurchaseConversions();
-assert.equal(summary.expired, 4);
+assert.equal(summary.expired, 3);
 assert.equal(expired.calls.length, 0);
 assert.equal(expired.retrievals.length, 0);
 assert.equal(
@@ -492,11 +484,10 @@ const badAck = flow();
 await badAck.service.enqueueServerPurchaseConversions(badAck.purchase);
 badAck.faults.set(codes[0], "not JSON");
 badAck.faults.set(codes[1], "{}");
-badAck.faults.set("meta", "{}");
 summary = await badAck.service.deliverServerPurchaseConversions(
   badAck.purchase,
 );
-assert.equal(summary.failed, 3);
+assert.equal(summary.failed, 2);
 assert.equal(summary.sent, 1);
 
 const recovery = flow();
@@ -511,45 +502,41 @@ assert.equal(recovery.calls.length, sentCalls);
 const retrieval = flow();
 await retrieval.service.enqueueServerPurchaseConversions(retrieval.purchase);
 summary = await retrieval.service.processDueServerPurchaseConversions();
-assert.equal(summary.sent, 4);
+assert.equal(summary.sent, 3);
 assert.equal(retrieval.retrievals.length, 1);
 
-// Missing, partial and whitespace-only Meta configuration must consume no leases.
-for (const vars of [
-  {
-    META_PIXEL_ID: "",
-    META_CONVERSIONS_API_TOKEN: "",
-    META_GRAPH_API_VERSION: "",
-  },
-  { META_PIXEL_ID: " " },
-  { META_CONVERSIONS_API_TOKEN: "" },
-  { META_GRAPH_API_VERSION: "" },
-]) {
-  const disabled = flow(vars);
-  await disabled.service.enqueueServerPurchaseConversions(disabled.purchase);
-  const meta = [...disabled.outbox.values()].find((r) => r.provider === "meta");
-  meta.status = "failed";
-  meta.attempts = 7;
-  const before = structuredClone(meta);
-  const result = await disabled.service.processDueServerPurchaseConversions(3);
-  assert.equal(result.sent, 3);
-  assert.deepEqual(meta, before);
-  assert.ok(disabled.calls.every((c) => c.code !== "meta"));
-  Object.assign(disabled.env, {
-    META_PIXEL_ID: "123",
-    META_CONVERSIONS_API_TOKEN: "isolated",
-    META_GRAPH_API_VERSION: "v99.0",
+// Meta計測の撤去後、outboxに残置された旧meta行は(META_*環境変数が設定されて
+// いても)クレーム・送信・更新のいずれも行われず、そのまま残ること。
+{
+  const residue = flow();
+  residue.outbox.set("legacy-meta", {
+    id: "legacy-meta",
+    provider: "meta",
+    destination_id: "",
+    stripe_session_id: residue.purchase.session.id,
+    user_id: null,
+    product: "full_access",
+    paid_at: residue.purchase.paidAt,
+    status: "pending",
+    attempts: 0,
+    next_attempt_at: new Date(now - 1000).toISOString(),
+    last_error: null,
   });
-  assert.equal(
-    (await disabled.service.processDueServerPurchaseConversions()).sent,
-    1,
+  const before = structuredClone(residue.outbox.get("legacy-meta"));
+  await residue.service.enqueueServerPurchaseConversions(residue.purchase);
+  const result = await residue.service.deliverServerPurchaseConversions(
+    residue.purchase,
   );
-  assert.equal(meta.status, "sent");
-  assert.equal(meta.attempts, 8);
+  assert.equal(result.sent, 3);
+  residue.makeDue();
+  before.next_attempt_at = residue.outbox.get("legacy-meta").next_attempt_at;
+  await residue.service.processDueServerPurchaseConversions();
+  assert.deepEqual(residue.outbox.get("legacy-meta"), before);
+  assert.ok(residue.calls.every((c) => c.code !== "meta"));
 }
 
 // A failed delivery keeps its backoff rather than being re-claimed by the next batch.
-const retryBackoff = flow({ META_PIXEL_ID: "" });
+const retryBackoff = flow();
 await retryBackoff.service.enqueueServerPurchaseConversions(
   retryBackoff.purchase,
 );
@@ -568,7 +555,7 @@ assert.equal(
 
 const catchupNow = Date.parse("2026-10-22T04:00:00Z");
 function backlog(paidAt) {
-  const worker = flow({ META_PIXEL_ID: "" }, { now: catchupNow });
+  const worker = flow({}, { now: catchupNow });
   for (let i = 0; i < 120; i++)
     worker.outbox.set(`backlog-${i}`, {
       id: `backlog-${i}`,
@@ -675,5 +662,5 @@ assert.equal(
 );
 assert.equal(runs, 1);
 console.log(
-  "PASS: pixel isolation, partial/malformed config, deduplication, immutable event IDs/times, expiry before Stripe/HTTP, acknowledgements, audit recovery, shared Stripe lookup, Meta cron exclusion/resumption, finite 100-job catch-up, pacing/time budget, and cron authorization (all mocked; no live sends).",
+  "PASS: pixel isolation, partial/malformed config, deduplication, immutable event IDs/times, expiry before Stripe/HTTP, acknowledgements, audit recovery, shared Stripe lookup, Meta removal (no enqueue/claim/send even with META_* env; legacy meta rows untouched), finite 100-job catch-up, pacing/time budget, and cron authorization (all mocked; no live sends).",
 );
