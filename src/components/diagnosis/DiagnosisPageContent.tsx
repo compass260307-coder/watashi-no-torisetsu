@@ -14,6 +14,7 @@ import {
 import { resolveAcquisitionForSave } from "@/lib/acquisition";
 import { hashEmailSha256, readAdAttribution } from "@/lib/ad-attribution";
 import { preloadResultImage } from "@/lib/result-image-preload";
+import { prefetchFullAccessQuote } from "@/lib/use-full-access-quote";
 import { preloadLocalizedPurchaseCopy } from "@/i18n/ui/purchase-copy-loader";
 import type { PrefetchOptions } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { diagnose } from "@/lib/diagnosis";
@@ -582,6 +583,10 @@ export default function DiagnosisPageContent({
           email: data.email ?? null,
         });
         localStorage.setItem("torisetsu_owner_token", data.ownerToken);
+        // 完全版価格の先読み。解析待ちの残り時間で市場判定(IP由来)を済ませ、
+        // 結果ページ到着時から課金カード・モーダルに価格を表示する。
+        // 失敗しても結果ページ側の通常取得にフォールバックする。
+        prefetchFullAccessQuote(locale, data.ownerToken);
         // 帰属を使い切ったら消す (次回以降の無関係な診断を親に紐づけない)。
         clearPendingSourceCode();
         // 友達診断の赤バッジはここでは出さない。/me 側 (TakoAttentionOnResult) が
