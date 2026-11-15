@@ -26,6 +26,22 @@ assert.ok(requestedAt > 0 && requestedAt < stripeCreatedAt);
 assert.match(checkout, /checkout_cancel_signature/);
 assert.match(checkout, /checkout_attempt_id: checkoutAttemptId/g);
 assert.match(checkout, /idempotencyKey: `full-access:\$\{checkoutAttemptId\}`/);
+// 受付→Session作成の処理時間を checkout_session_created に記録している。
+// 計測の起点は POST の先頭、Stripe呼び出しの所要時間も内訳として残す。
+const receivedAt = checkout.indexOf("const requestReceivedAt = Date.now()");
+assert.ok(receivedAt > 0 && receivedAt < requestedAt);
+assert.match(
+  checkout,
+  /server_duration_ms: Date\.now\(\) - requestReceivedAt/,
+);
+assert.match(checkout, /stripe_create_ms: stripeCreateMs/);
+const sessionCreatedEventAt = checkout.indexOf(
+  'event_name: "checkout_session_created"',
+);
+assert.ok(
+  checkout.indexOf("server_duration_ms:") > sessionCreatedEventAt,
+  "server_duration_ms must live in checkout_session_created metadata",
+);
 
 const cancellation = source("src/app/api/checkout/cancelled/route.ts");
 assert.match(cancellation, /verifyCheckoutCancellation/);

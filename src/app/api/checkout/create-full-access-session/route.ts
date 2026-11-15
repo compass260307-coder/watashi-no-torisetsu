@@ -510,6 +510,9 @@ async function getSaleOkCached(
 }
 
 export async function POST(request: NextRequest) {
+  // 受付→Session作成の処理時間計測の起点。checkout_session_created の
+  // metadata (server_duration_ms) に記録する。応答やUXには影響させない。
+  const requestReceivedAt = Date.now();
   const originCheck = checkOrigin(request);
   if (!originCheck.ok) {
     return NextResponse.json({ error: originCheck.error }, { status: 403 });
@@ -1252,6 +1255,7 @@ export async function POST(request: NextRequest) {
   }
 
   let stripeSession;
+  let stripeCreateMs = 0;
   try {
     const automaticTaxEnabled =
       process.env.STRIPE_AUTOMATIC_TAX_ENABLED === "true";
@@ -1380,9 +1384,11 @@ export async function POST(request: NextRequest) {
               : {}),
           }),
     };
+    const stripeCreateStartedAt = Date.now();
     stripeSession = await stripe.checkout.sessions.create(sessionParams, {
       idempotencyKey: `full-access:${checkoutAttemptId}`,
     });
+    stripeCreateMs = Date.now() - stripeCreateStartedAt;
   } catch (err) {
     console.error("[checkout/create-full-access-session] Stripe error:", err);
     return NextResponse.json(
@@ -1418,6 +1424,10 @@ export async function POST(request: NextRequest) {
         upgrade_from: upgradeFrom,
         charged_amount: chargedAmount,
         charged_currency: checkoutPricing.currency,
+        // 受付(POST開始)→Session作成完了のサーバー処理時間と、うち
+        // Stripe API呼び出しの所要時間。遅延調査用で、挙動には影響しない。
+        server_duration_ms: Date.now() - requestReceivedAt,
+        stripe_create_ms: stripeCreateMs,
         ...regionalOfferMetadata,
         source: paywallSource,
         paywall_version: paywallVersion,
