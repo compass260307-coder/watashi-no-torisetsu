@@ -359,9 +359,7 @@ const LOCKED_BLOCK_CONFIG: Record<
     decoyItems: LOVE_DECOY_ITEMS,
     cardCopy: (
       <>
-        自己分析レポートを入手して、これらの結果を見てみましょう。
-        <br className="md:hidden" />
-        恋愛傾向に関してもっと深掘れます。
+        ここから先には、<span className="inline-block">あなたの恋愛の続きが書かれています。</span>
       </>
     ),
     source: "love_payoff_card",
@@ -370,9 +368,7 @@ const LOCKED_BLOCK_CONFIG: Record<
     decoyItems: LOVE_ENDURE_DECOY_ITEMS,
     cardCopy: (
       <>
-        自己分析レポートを入手して、
-        <br className="md:hidden" />
-        あなたの恋人が言えずにいる気持ちを知りましょう。
+        ここから先には、<span className="inline-block">恋人が言えずにいる気持ちが書かれています。</span>
       </>
     ),
     source: "love_endure_card",
@@ -381,9 +377,7 @@ const LOCKED_BLOCK_CONFIG: Record<
     decoyItems: CAREER_FIT_DECOY_ITEMS,
     cardCopy: (
       <>
-        自己分析レポートを入手して、
-        <br className="md:hidden" />
-        あなたに合った働き方と、避けたほうがいい職場を知りましょう。
+        ここから先には、<span className="inline-block">あなたに合う働き方と</span><span className="inline-block">避けたい職場が書かれています。</span>
       </>
     ),
     source: "career_fit_card",
@@ -392,9 +386,7 @@ const LOCKED_BLOCK_CONFIG: Record<
     decoyItems: CAREER_RELATIONS_DECOY_ITEMS,
     cardCopy: (
       <>
-        自己分析レポートを入手して、
-        <br className="md:hidden" />
-        あなたに合った職場の人間関係のつくり方を知りましょう。
+        ここから先には、<span className="inline-block">職場の人間関係のつくり方が書かれています。</span>
       </>
     ),
     source: "career_relations_card",

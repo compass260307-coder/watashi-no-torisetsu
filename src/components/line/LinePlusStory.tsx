@@ -16,7 +16,7 @@ const scenes = [
     conversation: [
       {
         role: "user",
-        text: "今日、友だちに「考えすぎ」って言われてさ。",
+        text: "今日、友達に「考えすぎ」って言われてさ。",
       },
       {
         role: "alice",

@@ -9,7 +9,7 @@ import type { Metadata } from "next";
 import LiffRouterClient from "./LiffRouterClient";
 
 export const metadata: Metadata = {
-  title: "ひらいています… | ワタシのトリセツ",
+  title: "ひらいています... | ワタシのトリセツ",
   robots: { index: false, follow: false },
 };
 

@@ -22,7 +22,7 @@ export function LineUpgradeDeliveryPreview() {
       <h2 className="bg-[#06C755] px-5 py-4 font-black text-white">Alice ─ LINEでのお届け</h2>
       <div aria-live="polite" className="space-y-4 bg-[#92ACC7] p-5">
         <p className="mr-5 rounded-2xl bg-white p-4 text-sm leading-7">{LINE_UPGRADE_PAID_MESSAGE}</p>
-        {!ready ? <p role="status" className="mr-5 rounded-2xl bg-white p-4 text-sm leading-7">キャラクターと鑑定書をつくっているよ…🌙</p> : messages.map((message,index)=>message.type==="text" ?
+        {!ready ? <p role="status" className="mr-5 rounded-2xl bg-white p-4 text-sm leading-7">キャラクターと鑑定書をつくっているよ...🌙</p> : messages.map((message,index)=>message.type==="text" ?
           <p key={index} className="mr-5 whitespace-pre-wrap rounded-2xl bg-white p-4 text-sm leading-7">{message.text.includes("/dev/") ? <>{message.text.split("\n\n")[0]}<br/><Link href="/dev/result-upgrade-result-preview" className="mt-3 inline-block font-bold text-[#0068CC] underline">あなた専用の鑑定書を読む</Link></> : message.text}</p> : message.type==="image" ?
           <div key={index} className="mr-5 overflow-hidden rounded-2xl bg-white"><SmoothImage src={message.originalContentUrl} alt="LINEに届く専用キャラクターのサンプル" width={560} height={560} className="w-full object-contain" /></div>:null)}
       </div>

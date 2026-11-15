@@ -16,7 +16,7 @@ export function LineUpgradeCheckoutRedirect() {
     void pending.current.then(result => {
       if (!active) return;
       if (result.kind === "checkout") {
-        redirectToFullAccessCheckout(result.url, { value: result.amount, currency: result.currency });
+        redirectToFullAccessCheckout(result.url);
       } else if (result.kind === "paid") {
         window.location.replace("/line/result-upgrade?paid=1");
       } else {

@@ -616,9 +616,7 @@ export async function POST(request: NextRequest) {
   }
   const ttclid = normalizeAttributionId(body.ttclid);
   const ttp = normalizeAttributionId(body.ttp);
-  const fbp = normalizeAttributionId(body.fbp);
-  const fbc = normalizeAttributionId(body.fbc);
-  if ([ttclid, ttp, fbp, fbc].some((value) => value === null)) {
+  if ([ttclid, ttp].some((value) => value === null)) {
     return NextResponse.json(
       { error: "Invalid advertising attribution" },
       { status: 400 },
@@ -1363,8 +1361,6 @@ export async function POST(request: NextRequest) {
         locale: checkoutLocale,
         ...(ttclid ? { ttclid } : {}),
         ...(ttp ? { ttp } : {}),
-        ...(fbp ? { fbp } : {}),
-        ...(fbc ? { fbc } : {}),
       },
       locale: checkoutLocale,
       ...(embedded
@@ -1461,8 +1457,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // amount / currency は meta_initiate_checkout (GTM) 用の実売価格。
-  // 実課金額はサーバが確定し、クライアントには計測用として返す。
+  // amount / currency は実売価格の参考値。実課金額はサーバが確定する。
+  // 旧クライアント (キャッシュ済みJS) がこのフィールドを読むため応答からは外さない。
   const response = NextResponse.json({
     sessionId: stripeSession.id,
     ...(embedded

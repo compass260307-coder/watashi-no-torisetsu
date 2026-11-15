@@ -13,14 +13,6 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 
 export const runtime = "nodejs";
 
-function claimId(checkoutSessionId: string): string {
-  const hex = createHash("sha256")
-    .update(`meta_purchase\0${checkoutSessionId}`)
-    .digest("hex")
-    .slice(0, 32);
-  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-}
-
 function tiktokBrowserClaimId(checkoutSessionId: string): string {
   const hex = createHash("sha256")
     .update(`tiktok_browser_purchase\0${checkoutSessionId}`)
@@ -88,28 +80,8 @@ export async function POST(request: Request) {
   }
 
   if (action === "ack") {
-    // dataLayer.push 後だけ記録する。events.id は Session から決定的に作るため、
-    // 複数タブのackや再送は同じ1行へ収束する。
-    const { error } = await supabaseAdmin.from("events").insert({
-      id: claimId(session.id),
-      event_name: "meta_purchase_claimed",
-      locale: session.locale,
-      metadata: {
-        stripe_session_id: session.id,
-        amount_total: session.amountTotal,
-        currency: session.currency,
-        locale: session.locale,
-        product: session.product,
-        delivery: "browser_data_layer_pushed",
-      },
-    });
-    if (error && error.code !== "23505") {
-      console.error("[meta-purchase] acknowledgement insert failed:", error.message);
-      return NextResponse.json(
-        { error: "Unable to acknowledge event" },
-        { status: 503 },
-      );
-    }
+    // ピクセル送信 (ttq.track) 後だけ記録する。events.id は Session から決定的に
+    // 作るため、複数タブのackや再送は同じ1行へ収束する。
     if (parsed.value.tiktok_pushed === true) {
       const { error: tiktokError } = await supabaseAdmin.from("events").insert({
         id: tiktokBrowserClaimId(session.id),

@@ -21,7 +21,7 @@ const SAMPLE_CONVERSATIONS: Record<
           parts: [
             {
               type: "text",
-              text: "恋愛で同じことで悩んでしまいます。星から何かわかりますか？",
+              text: "恋愛で同じことで悩んでしまいます。星から何か分かりますか？",
             },
           ],
         },

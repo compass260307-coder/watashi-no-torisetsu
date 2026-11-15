@@ -17,7 +17,7 @@ import { track } from "@/lib/track";
 
 const CHECKOUT_COPY = {
   ja: {
-    loading: "価格を確認しています…",
+    loading: "価格を確認しています...",
     error: "決済画面をひらけませんでした。",
     retry: "もう一度ためす",
     preview: "ローカルプレビュー用の決済フォームです",
@@ -26,7 +26,7 @@ const CHECKOUT_COPY = {
     pay: "安全に支払う",
     guarantee: "買い切り・30日間の返金保証つき",
     paypay: "PayPay で払う",
-    paypayLoading: "PayPayをひらいています…",
+    paypayLoading: "PayPayをひらいています...",
     paypayError: "PayPay をひらけませんでした。もう一度お試しください。",
     or: "または",
   },

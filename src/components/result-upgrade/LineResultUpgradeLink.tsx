@@ -27,7 +27,7 @@ export function LineResultUpgradeLink({ ownerToken, preview = false, className, 
   }
   return <span className="inline-flex max-w-full flex-col items-center">
     <button type="button" disabled={loading} onClick={openLine} className={className} style={style}>
-      {loading ? "LINEへつないでいます…" : children}
+      {loading ? "LINEへつないでいます..." : children}
     </button>
     {error && <span role="alert" className="mt-3 text-[13px] font-bold text-red-700">{error}</span>}
   </span>;

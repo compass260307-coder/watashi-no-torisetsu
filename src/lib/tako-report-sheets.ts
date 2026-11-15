@@ -313,8 +313,8 @@ export function buildTakoReportSheets(
           : "友達";
 
     // 本文: /tako シート (MinnaTypeProse) と同じ変換。
-    //   - 冒頭を「◯◯さんから見た + あなた…」に
-    //   - 中間再開段落 (Web ではグラフ直後) も「◯◯さんから見た…」で仕切り直す
+    //   - 冒頭を「◯◯さんから見た + あなた...」に
+    //   - 中間再開段落 (Web ではグラフ直後) も「◯◯さんから見た...」で仕切り直す
     const sections =
       locale === "ko"
         ? buildKoSelfSections(type32, f.perceivedScores).slice(0, 2)

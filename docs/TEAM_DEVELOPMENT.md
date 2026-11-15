@@ -42,6 +42,17 @@ npm run dev:check
 
 既存の`.env.local`を上書きしません。キーが入っているだけでは開発専用環境とは限らないため、チェック結果に沿って接続先を確認します。共有設定のマージ前は、PRのブランチに切り替えるか、別worktreeで確認してください。
 
+### 浅いクローン(shallow clone)に注意
+
+チェックアウトによっては取得時の設定で浅いクローンになっており、ローカルには直近の履歴しかありません。その状態で `git log` / `git blame` / `-S` 検索を使うと、履歴が途中から始まって見え、「過去の変更が消えた」と誤認します(2026-11-15の調査で実例あり。実際はGitHub上の履歴は連続していた)。過去のコミットやPRを調査する前に、全履歴の有無を確認してください。
+
+```bash
+git rev-parse --is-shallow-repository  # true なら浅いクローン
+git fetch --unshallow                  # 全履歴を取得する。コードや設定は変わらない
+```
+
+このリポジトリは全履歴で1GBを超えるため、回線によっては一括取得が途中で切断されます。その場合は `git fetch --deepen=25` を繰り返すと、取得済みの分を保持したまま少しずつ深められます。急ぎの調査だけなら、ローカルを深めずに `gh api` でGitHub側の履歴を直接確認する方法もあります。
+
 ### 初めてコードを取得する場合
 
 新しいフォルダに取得します。すでに同名フォルダがあれば、上書きせず内容を確認してください。
@@ -119,6 +130,7 @@ git switch -c feat/short-task-name
 # 実装後。checkは変更内容に応じて追加する。
 npm run verify:team
 npm run verify:commerce
+npm run verify:conversions  # 課金CV配信(購入計測)に触れた場合は必須。buildでも自動実行される
 npm run lint
 npm run typecheck
 npm run build
