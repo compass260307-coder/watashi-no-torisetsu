@@ -320,9 +320,7 @@ function RelationsLocked({ locale }: { locale: AppResultLocale }) {
             "완전판 리포트에서 주변 사람들이 나에게 말하지 못한 것을 확인해 보세요."
           ) : (
             <>
-              自己分析レポートを入手して、
-              <br className="md:hidden" />
-              周りの人があなたに言えずにいることを知りましょう。
+              ここから先には、<span className="inline-block">周りの人が言えずにいることが書かれています。</span>
             </>
           )}
         </p>

@@ -130,6 +130,7 @@ git switch -c feat/short-task-name
 # 実装後。checkは変更内容に応じて追加する。
 npm run verify:team
 npm run verify:commerce
+npm run verify:conversions  # 課金CV配信(購入計測)に触れた場合は必須。buildでも自動実行される
 npm run lint
 npm run typecheck
 npm run build
