@@ -20,7 +20,7 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 export const runtime = "nodejs";
 
 const SHARE_TEXT =
-  "友達診断やってみてほしい!回答してもらうと「まわりから見えているワタシ」がわかるやつです🔮";
+  "友達診断やってみてほしい!回答してもらうと「まわりから見えているワタシ」が分かるやつです🔮";
 
 // Facebookはテキストのプリセット不可 (URLのみ・OGPカードが出る)
 const NETWORKS = {

@@ -36,7 +36,7 @@ export default function UnmeiGenerating({ ready = false, onViewResult }: { ready
       <div className={styles.progress}>
         {ready ? <button type="button" className={styles.resultButton} onClick={onViewResult}><span aria-hidden="true">✦</span>結果を見る</button> : <div role="status">
         <div className={styles.seal} aria-hidden="true"><span>✦</span><i /></div>
-        <p className={styles.label}>Aliceが読み解き中<span className={styles.dots}>…</span></p>
+        <p className={styles.label}>Aliceが読み解き中<span className={styles.dots}>...</span></p>
         </div>}
       </div>
     </section>

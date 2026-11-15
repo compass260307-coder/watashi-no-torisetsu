@@ -454,9 +454,9 @@ export default function LineAliceLinkCard({
               className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[#06C755] px-6 text-[15px] font-black text-white shadow-[0_6px_0_#04933F] transition duration-150 hover:-translate-y-0.5 hover:bg-[#10D55F] active:translate-y-1 active:shadow-none disabled:cursor-not-allowed disabled:opacity-60 md:text-[16px]"
             >
               {linkStatus === "checking"
-                ? "連携状態を確認中…"
+                ? "連携状態を確認中..."
                 : main.status === "loading"
-                  ? "連携コードを発行中…"
+                  ? "連携コードを発行中..."
                   : promotesPersonalized
                     ? "専用のAliceをLINEに連携"
                     : "LINEでAliceと話す"}
@@ -495,7 +495,7 @@ export default function LineAliceLinkCard({
                 <p className="text-[12px] font-black">6桁の連携コード</p>
                 {manual.status === "loading" || manual.status === "idle" ? (
                   <p className="my-5 text-[13px] font-bold text-[#2E2E5C]/50">
-                    コードを発行中…
+                    コードを発行中...
                   </p>
                 ) : manual.status === "issued" ? (
                   <>

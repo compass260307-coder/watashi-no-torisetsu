@@ -15,7 +15,7 @@ const SCENES: { id: string; bubbles: Bubble[] }[] = [
   {
     id: "scene-1",
     bubbles: [
-      { role: "user", text: "気になる人がいるんだけど、脈ありかわからなくて…" },
+      { role: "user", text: "気になる人がいるんだけど、脈ありか分からなくて..." },
       {
         role: "alice",
         text: "きらめきクラゲタイプのあなたは、相手の小さな変化によく気づくはず。最近「おっ」と思った瞬間はありましたか？そこにヒントがありそうです。",

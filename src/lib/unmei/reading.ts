@@ -1,9 +1,9 @@
 // natal_readings の生成状態判定 (single source of truth)。
 // 状態は natal_readings.model + reading(jsonb) に持つ:
-//   model='pending'                 … プレースホルダ(未生成)
-//   model='generating'              … 生成中(並行ロック)。reading={status:'generating',attempts}
-//   model='failed'                  … 失敗。reading={status:'failed',attempts,error}
-//   model=<実モデル> + reading.sections … 生成完了(有効)
+//   model='pending'                 ... プレースホルダ(未生成)
+//   model='generating'              ... 生成中(並行ロック)。reading={status:'generating',attempts}
+//   model='failed'                  ... 失敗。reading={status:'failed',attempts,error}
+//   model=<実モデル> + reading.sections ... 生成完了(有効)
 //   ※ generateWorker.mjs 側にも同じ規律をインライン実装(要一致)。
 
 // 自動再生成の上限 (generateWorker.MAX_GEN_ATTEMPTS と一致させること)。

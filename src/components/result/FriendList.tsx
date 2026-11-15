@@ -68,7 +68,7 @@ export function FriendList({
                     </span>
                   )}
                 </span>
-                {/* メッセージあり: 本文を1行チラ見せ (途中カット・…省略。全文は個別ページ)。
+                {/* メッセージあり: 本文を1行チラ見せ (途中カット・...省略。全文は個別ページ)。
                     メッセージ無し: 従来どおり相互理解度。 */}
                 {f.hasMessage ? (
                   <span className="block text-[#2E2E5C]/70 font-bold text-xs truncate">

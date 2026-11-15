@@ -50,7 +50,7 @@ export default function PurchaseCompleteBirthSection() {
       <h2 className="mb-3 text-lg font-black">レポートのお届けにあたって</h2>
 
       {view === "checking" && (
-        <p className="text-sm text-gray-400">読み込み中…</p>
+        <p className="text-sm text-gray-400">読み込み中...</p>
       )}
 
       {view === "guest" && (

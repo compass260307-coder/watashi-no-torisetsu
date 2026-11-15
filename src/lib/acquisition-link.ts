@@ -1,7 +1,7 @@
 // 共有/招待リンクに流入元 (ref) を付与するヘルパー。
 // app/layout.tsx の acquisition capture スクリプトが URL の ?ref (または ?utm_source) を
 // first-touch で拾い、診断完了時に users.acquisition_source に保存する。
-// これにより「どの経路 (line / x / copy / qr …) から来た人か」が埋まる。
+// これにより「どの経路 (line / x / copy / qr ...) から来た人か」が埋まる。
 //
 // 例: withRef("https://www.watashi-torisetsu.com/friend/abc", "line")
 //     → "https://www.watashi-torisetsu.com/friend/abc?ref=line"

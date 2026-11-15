@@ -379,7 +379,7 @@ export default function LineLoveFootprintsClient({
                 disabled={saving || !title.trim() || !happenedOn}
                 className="w-full rounded-2xl bg-gradient-to-r from-[#5C4FC6] to-[#8068D8] px-6 py-4 text-sm font-black text-white shadow-[0_10px_24px_rgba(80,63,170,0.24)] transition-transform active:scale-[0.98] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#BEB4F4] disabled:cursor-wait disabled:opacity-55"
               >
-                {saving ? "そっと残しています…" : "この日の恋を残す"}
+                {saving ? "そっと残しています..." : "この日の恋を残す"}
               </button>
             </form>
           ) : null}
