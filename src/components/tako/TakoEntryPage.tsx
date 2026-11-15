@@ -95,7 +95,7 @@ export default function TakoEntryPage({ locale = "ja" }: { locale?: TakoEntryLoc
         {isEnglish ? "Start my personality test" : isIndonesian ? "Mulai tes kepribadian saya" : "自己診断をはじめる"}
       </Link>
       <p className="mt-3 text-[10.5px] text-[#9A9585]">
-        {isEnglish ? "About 3 minutes · 50 questions" : isIndonesian ? "Sekitar 3 menit · 50 pertanyaan" : "3分・50問でわかります"}
+        {isEnglish ? "About 3 minutes · 50 questions" : isIndonesian ? "Sekitar 3 menit · 50 pertanyaan" : "3分・50問で分かります"}
       </p>
     </main>
   );

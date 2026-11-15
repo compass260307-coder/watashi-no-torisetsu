@@ -89,7 +89,7 @@ const JA_COPY: HoshiyomiCopy = {
   title: "Aliceと話す",
   heroAlt: "星柄のマントと白い翼をまとい、机で星のノートを書くAI占い師Alice",
   description:
-    "性格診断と星読みでわかるのは、単なるタイプ分けではなく、これからの選択の道しるべです。親しみやすく洞察力のあるAI占い師「Alice」と一緒に、あなたらしい選び方を見つけましょう。",
+    "性格診断と星読みで分かるのは、単なるタイプ分けではなく、これからの選択の道しるべです。親しみやすく洞察力のあるAI占い師「Alice」と一緒に、あなたらしい選び方を見つけましょう。",
   exhaustedPlaceholder: "チャット回数を使い切りました",
   inputPlaceholder: "今、何が気になっていますか？",
   startAria: "会話を始める",
@@ -113,7 +113,7 @@ const JA_COPY: HoshiyomiCopy = {
   backAria: "会話一覧へ戻る",
   guideName: "Alice",
   guideStatus: "あなたの星と性格を見ながらお話しします",
-  composerPlaceholder: "メッセージを入力…",
+  composerPlaceholder: "メッセージを入力...",
   sendAria: "送信",
   chatNotice: "星読みは未来を断定するものではなく、考えを整理するためのヒントです。",
   sentMessages: (used, total) => `${used}/${total}件のメッセージを送信しました。`,

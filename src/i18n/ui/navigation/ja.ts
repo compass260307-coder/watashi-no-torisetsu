@@ -159,7 +159,7 @@ const copy: NavigationCopy = { header, footer,
 nav: {
     "me": "自己診断", "friend": "友達診断", "astrologer": "Alice", "unmei": "占星術", "tarot": "タロット"
   },
-loading: ["読み込み中…", "閉じる", "読み込みに失敗しました。ページを更新すると、入力中の内容が失われる場合があります。", "ページを更新"],
+loading: ["読み込み中...", "閉じる", "読み込みに失敗しました。ページを更新すると、入力中の内容が失われる場合があります。", "ページを更新"],
 lock: {
     friend: {
       ariaLabel: "友達診断はロック中",

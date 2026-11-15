@@ -2,7 +2,7 @@ import type { DiagnosisCopy, DiagnosisLocaleSettings } from "@/i18n/diagnosis";
 import { questions } from "@/lib/questions";
 const JA_COPY: DiagnosisCopy = {
   heroTitle: "無料性格診断テスト",
-  heroSubtitle: "ビッグファイブ理論でわかる32タイプ",
+  heroSubtitle: "ビッグファイブ理論で分かる32タイプ",
   heroImageAlt: "ワタシのトリセツのマスコット",
   nicknameLabel: "ニックネーム",
   nicknameHelper: "結果ページに表示される名前です。",

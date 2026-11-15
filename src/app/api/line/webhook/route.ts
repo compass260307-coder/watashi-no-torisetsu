@@ -156,7 +156,7 @@ const PLUS_DAILY_LIMIT_MESSAGE = [
 ].join("\n");
 
 const NON_TEXT_MESSAGE =
-  "ごめんなさい、スタンプや画像はまだ読み取れなくて…。文字でお話ししてもらえるとうれしいです。";
+  "ごめんなさい、スタンプや画像はまだ読み取れなくて...。文字でお話ししてもらえるとうれしいです。";
 
 const GENERATION_ERROR_MESSAGE =
   "ごめんなさい、いまうまく言葉にできませんでした。少し時間をおいて、もう一度話しかけてみてください。";
@@ -755,7 +755,7 @@ async function handleAishoSessionMessage(
     await replyLineMessages(replyToken, [
       {
         type: "text",
-        text: `わかった。まず、${data.partnerName ?? "お相手"}の生年月日をもう一度教えてね。`,
+        text: `分かった。まず、${data.partnerName ?? "お相手"}の生年月日をもう一度教えてね。`,
       },
     ]);
     return true;
@@ -800,7 +800,7 @@ async function handleAishoSessionMessage(
       {
         type: "text",
         text: [
-          "ふたりの命式を見てみたよ…🌙",
+          "ふたりの命式を見てみたよ...🌙",
           "",
           `♡ ふたりの相性は ${result.score}%`,
           `「${result.title}」`,
@@ -1132,7 +1132,7 @@ async function handleThemeFortune(
     await replyLineMessages(replyToken, [
       {
         type: "text",
-        text: "ごめんなさい、星がうまく読めませんでした…。少し時間をおいて、もう一度試してみてください。",
+        text: "ごめんなさい、星がうまく読めませんでした...。少し時間をおいて、もう一度試してみてください。",
       },
     ]);
   }
@@ -1272,7 +1272,7 @@ async function handleLineCommand(
       await replyLineMessages(replyToken, [
         {
           type: "text",
-          text: "ごめんなさい、今日は恋の空模様がうまく見えなかったみたい…。少し時間をおいて、もう一度会いにきてね。",
+          text: "ごめんなさい、今日は恋の空模様がうまく見えなかったみたい...。少し時間をおいて、もう一度会いにきてね。",
         },
       ]);
     }
@@ -1319,7 +1319,7 @@ async function handleLineCommand(
       {
         type: "text",
         text: [
-          "友達診断は、友達に何問か答えてもらうと「まわりから見えているあなた」がわかるやつです。",
+          "友達診断は、友達に何問か答えてもらうと「まわりから見えているあなた」が分かるやつです。",
           "この招待リンクを、そのまま友達に送ってみてください。",
           "",
           `${resolveSiteUrl()}/friend/${user.invite_code}`,

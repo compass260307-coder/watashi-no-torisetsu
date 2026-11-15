@@ -208,7 +208,7 @@ const ID_CONCERN_TAIL = [
   "Kebiasaan ini dapat diubah sejak disadari. Orang lain justru melihatnya sebagai ruang untuk bertumbuh.",
 ];
 
-// ⑤「ぶっちゃけ嫌われてない…？」の危険信号リスト。/me の「嫌われやすい性格」WarnList と
+// ⑤「ぶっちゃけ嫌われてない...？」の危険信号リスト。/me の「嫌われやすい性格」WarnList と
 // 同じ組版 = 枠なし2カラム・黄色の注意アイコン + 太字タイトル + 字下げ本文。
 // トーンは断罪ではなく「仲がいいからこそ見えるクセ」(傷つけないルール準拠)。
 function ConcernList({ items }: { items: ContentItem[] }) {
@@ -436,7 +436,7 @@ export async function TakoResultPage({
     // ②恋愛のメイン本文: 認識タイプの恋愛コンテンツ (LOVE_BY_TYPE_32・全32タイプ確認済み) を
     // 「◯◯さんから見たあなたの恋は、〜」に変換して流用 (2026-07-20 リッチ化)。
     // 表示は先頭2段落 (具体的な長所の描写) だけ。3段落目以降の内省パート
-    // (でも、じつは…/欠点じゃありません…) は抽象的で、下のモテポイントとも
+    // (でも、じつは.../欠点じゃありません...) は抽象的で、下のモテポイントとも
     // 役割がかぶるため出さない (2026-07-20 指示)。
     const loveContent = isKo
       ? KO_LOVE_BY_TYPE_32[type32]
@@ -457,7 +457,7 @@ export async function TakoResultPage({
     } else if (loveProse[0]?.startsWith("あなたの恋は")) {
       loveProse[0] = `${viewer}から見た${loveProse[0]}`;
     }
-    // ⑤「ぶっちゃけ嫌われてない…？」の危険信号: その友達が見た認識タイプ(32→16)の
+    // ⑤「ぶっちゃけ嫌われてない...？」の危険信号: その友達が見た認識タイプ(32→16)の
     //   surprises (あれっ?) を流用。/me の「嫌われやすい」と同じく DISLIKE_TAIL で
     //   2文化し「仲がいいからこそ見えるクセ」に軟化する (傷つけないルール準拠)。
     //   本文の {B}さん プレースホルダは、この友達の表示名 (viewer) に解決する。
@@ -744,7 +744,7 @@ export async function TakoResultPage({
                               ? `${koSubject(sh.viewer)} 보는 나는…?`
                               : isId
                                 ? `Bagaimana ${sh.viewer} melihat Anda?`
-                              : `${sh.viewer}から見たあなたは…？`}
+                              : `${sh.viewer}から見たあなたは...？`}
                           </h2>
                           <p className="mx-auto mb-8 max-w-[440px] text-center text-[13px] font-bold leading-[1.75] text-[#8A8AA3]">
                             {isKo
@@ -1097,7 +1097,7 @@ export async function TakoResultPage({
                               ))}
                             </div>
 
-                            {/* 小見出し②「ぶっちゃけ嫌われていない…？」= 相性の中の不安フック。
+                            {/* 小見出し②「ぶっちゃけ嫌われていない...？」= 相性の中の不安フック。
                                 未購入時はコンテンツを完全に隠し、見出し＋解除カードのみ (2026-07-23 指示)。
                                 解放時のみ 安心ブロック + “危険信号”(surprises を軟化) を全部見せる。 */}
                             {sh.concernItems.length > 0 && (
@@ -1107,7 +1107,7 @@ export async function TakoResultPage({
                                     ? `솔직히, ${koSubject(sh.viewer)} 나를 싫어하는 건 아닐까…?`
                                     : isId
                                       ? `Sejujurnya, apakah ${sh.viewer} tidak menyukai saya?`
-                                    : `ぶっちゃけ、${sh.viewer}に嫌われていない…？`}
+                                    : `ぶっちゃけ、${sh.viewer}に嫌われていない...？`}
                                 </h3>
 
                                 {sheetLocked ? (

@@ -119,7 +119,7 @@ export function FriendLoveSection({
     <div>
       {/* あなたに沼る人 */}
       <h3 className="mb-5 text-[20px] font-black leading-snug text-[#2E2E5C] md:text-[22px]">
-        {who}の回答でわかった、あなたに沼る人
+        {who}の回答で分かった、あなたに沼る人
       </h3>
       {lockedBlocks?.numa ??
         (numa && (

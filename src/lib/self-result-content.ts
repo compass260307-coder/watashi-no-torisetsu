@@ -19,7 +19,7 @@ export interface SelfSection {
   body: string;
 }
 
-/** 3 セクションの固定順 (index 0 = 取扱説明書 … index 2 = 相性の良いお相手)。 */
+/** 3 セクションの固定順 (index 0 = 取扱説明書 ... index 2 = 相性の良いお相手)。 */
 export const SELF_SECTION_TITLES = [
   "取扱説明書",
   "取扱注意ポイント",

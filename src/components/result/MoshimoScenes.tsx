@@ -122,7 +122,7 @@ export function MoshimoScenes({
                 ? "Buka Edisi Lengkap untuk melihat responsmu dalam setiap situasi."
                 : isKorean
                 ? "완전판 리포트를 열고,"
-                : "自己分析レポートを入手して、"}
+                : "ここから先には、"}
               <br className="md:hidden" />
               {locale === "en"
                 ? null
@@ -130,7 +130,7 @@ export function MoshimoScenes({
                 ? null
                 : isKorean
                 ? "다양한 상황에서 드러나는 내 모습을 모두 확인해 보세요."
-                : "もしもの時のあなたをぜんぶ見てみましょう。"}
+                : <><span className="inline-block">予想外の瞬間に出る</span><span className="inline-block">あなたの本性が書かれています。</span></>}
             </p>
             <PaywallScrollButton
               source="moshimo_card"

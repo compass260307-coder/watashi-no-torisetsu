@@ -1,8 +1,8 @@
 // ③「あなたの注意点」直下の「シーン別の注意点」(2026-07-14 指示 / 2026-07-15 本文投入)。
 //
-// - 未解放: SceneCautionTeaser … 深掘りロック (DeepDiveSections) と同じ体裁
+// - 未解放: SceneCautionTeaser ... 深掘りロック (DeepDiveSections) と同じ体裁
 //   (色付きの鍵円を横並び + 中央に解除カード)。
-// - 解放済み: SceneCautionList … 本文 (part-two-resolve の buildSceneCautions)。
+// - 解放済み: SceneCautionList ... 本文 (part-two-resolve の buildSceneCautions)。
 //   組版は武器/関係別と同じチェックリスト風で、アイコンはシーン色の注意マーク。
 //
 // サーバコンポーネント (状態なし)。CTA は PaywallScrollButton (client) に委譲。
@@ -150,9 +150,7 @@ export function SceneCautionTeaser({
               "완전판 리포트에서 상황마다 주의할 점을 확인해 보세요."
             ) : (
               <>
-                自己分析レポートを入手して、これらの結果を見てみましょう。
-                <br className="md:hidden" />
-                シーンごとのつまずきポイントが分かります。
+                ここから先には、<span className="inline-block">シーン別のつまずきポイントが書かれています。</span>
               </>
             )}
           </p>

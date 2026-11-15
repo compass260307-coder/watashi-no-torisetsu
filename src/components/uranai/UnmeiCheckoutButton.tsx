@@ -10,7 +10,7 @@ import { displayedFullAccessPrice, type FullAccessQuoteState } from "@/lib/use-f
 const BUTTON_COPY = {
   ja: {
     defaultLabel: "運命の設計図を占う",
-    loading: "ひらいています…",
+    loading: "ひらいています...",
     retry: "もう一度ためす →",
     openError: "うまく開けませんでした。少し待ってからもう一度お試しください。",
     networkError: "通信に失敗しました。電波のいい場所でもう一度お試しください。",
