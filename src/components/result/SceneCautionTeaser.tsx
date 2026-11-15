@@ -150,9 +150,7 @@ export function SceneCautionTeaser({
               "완전판 리포트에서 상황마다 주의할 점을 확인해 보세요."
             ) : (
               <>
-                自己分析レポートを入手して、これらの結果を見てみましょう。
-                <br className="md:hidden" />
-                シーンごとのつまずきポイントが分かります。
+                ここから先には、<span className="inline-block">シーン別のつまずきポイントが書かれています。</span>
               </>
             )}
           </p>

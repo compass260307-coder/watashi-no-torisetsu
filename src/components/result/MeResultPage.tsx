@@ -1647,9 +1647,7 @@ async function MeResultPageContent({
                     <>Buka Edisi Lengkap untuk melihat bagian diri yang mungkin disalahpahami oleh teman.</>
                   ) : (
                     <>
-                      自己分析レポートを入手して、
-                      <br className="md:hidden" />
-                      あなたが友達から誤解されやすいポイントを知りましょう。
+                      ここから先には、友達から<span className="inline-block">誤解されやすいポイントが書かれています。</span>
                     </>
                   )}
                 </p>
@@ -1849,9 +1847,9 @@ async function MeResultPageContent({
                           {isEnglish ? "Unlock now" : isKorean ? "지금 잠금 해제" : isIndonesian ? "Buka sekarang" : "今すぐロックを解除"}
                         </p>
                         <p className="mb-4 text-[11px] font-bold leading-[1.55] text-[#2E2E5C]/65 md:mb-6 md:text-[13px] md:leading-relaxed">
-                          {isEnglish ? "Unlock the remaining guidance " : isKorean ? "남은 주의점과 대처법을 열어" : isIndonesian ? "Buka panduan lainnya " : "残りの注意点と対処法を解放して、"}
+                          {isEnglish ? "Unlock the remaining guidance " : isKorean ? "남은 주의점과 대처법을 열어" : isIndonesian ? "Buka panduan lainnya " : "ここから先には、"}
                           <br className="md:hidden" />
-                          {isEnglish ? "and complete your personal manual." : isKorean ? "나의 사용설명서를 완성해 보세요." : isIndonesian ? "dan lengkapi panduan pribadi Anda." : "あなたのトリセツを完成させましょう。"}
+                          {isEnglish ? "and complete your personal manual." : isKorean ? "나의 사용설명서를 완성해 보세요." : isIndonesian ? "dan lengkapi panduan pribadi Anda." : "残りの注意点と対処法が書かれています。"}
                         </p>
                         <PaywallScrollButton
                           source="caution_lock_card"
