@@ -91,7 +91,7 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     unknownCharm:
       "強そうに見えて、信頼した相手にはめちゃくちゃ甘い",
     lovedQuirk:
-      "率直すぎる発言で場が一瞬止まるところ。でもみんな内心「正論…」って思ってる。",
+      "率直すぎる発言で場が一瞬止まるところ。でもみんな内心「正論...」って思ってる。",
     detailDescription:
       "プレッシャーや困難な状況でも冷静に判断できる強さの持ち主。決断が早く、信念がブレない。信頼した相手にはとことん尽くす情の厚さも持つ。",
     traits: ["決断力", "メンタル強い", "信念が強い", "情に厚い"],
@@ -176,11 +176,11 @@ export const torisetsuTypes: Record<TorisetsuTypeId, TorisetsuType> = {
     shortName: "冷静系",
     emoji: "🧊",
     color: "#1E90FF",
-    subtitle: "周りに流されない独自路線。クールに見えて実は…",
+    subtitle: "周りに流されない独自路線。クールに見えて実は...",
     basicSpec:
       "冷静さ：氷点下 ／ 自立度：MAX ／ 分析力：コンピュータ級",
     happyWords:
-      "「わかってるね」「ブレないよね」「〇〇の意見が聞きたい」",
+      "「分かってるね」「ブレないよね」「〇〇の意見が聞きたい」",
     weakEnvironment: "ペースを乱される状況、中身のない付き合い",
     handlingTips:
       "適度な距離感がベスト。信頼を示しつつ、ペースを尊重してあげて。",

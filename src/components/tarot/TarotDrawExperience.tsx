@@ -414,7 +414,7 @@ export default function TarotDrawExperience({
                 isReading ? (
                   <div role="status" className={styles.roomAction}>
                     <span aria-hidden="true" className="mb-1 text-base motion-safe:animate-pulse">✧</span>
-                    Aliceが<br />読み解き中…
+                    Aliceが<br />読み解き中...
                   </div>
                 ) : (
                   <button type="button" disabled={!readingReady} onClick={revealReading} className={`${styles.roomAction} ${readingReady ? styles.roomActionReady : ""}`}><span aria-hidden="true" className="mb-1 text-base">✧</span>{readingReady ? "結果をみる" : `${selectedCards.length} / ${config.selectionCount}`}</button>
@@ -718,7 +718,7 @@ function ThemeReading({ theme, cards }: { theme: TarotTheme; cards: number[] }) 
     work: "その場ではなんとか進められても、あとで「あれでよかったかな」と考えることってあるよね。忙しいと、自分の気持ちを確かめる時間も取りにくいと思う。",
     friendship: "仲のいい相手でも、言葉を選んだり、遠慮したりすることはあるよね。家に帰ってから、あの会話がふと気になる日もあると思う。",
   }[theme];
-  const topic = { love: "恋愛で", work: "仕事で", friendship: "友だちとの間で" }[theme];
+  const topic = { love: "恋愛で", work: "仕事で", friendship: "友達との間で" }[theme];
 
   return (
     <section aria-label={`${TAROT_THEMES[theme].title}の占い結果`} className="overflow-hidden rounded-[24px] bg-[#faf2df] text-[#342d3d]">

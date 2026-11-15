@@ -50,7 +50,7 @@ export default function UnmeiPriceCta({
   align?: "start" | "center";
   /**
    * full: 大きな価格行 + 取り消し線/バッジ + ボタン + 返金保証 (ヒーロー用)。
-   * compact: 「料金はわずか¥…です。」の一文 + ボタンのみ (締めCTA用。16P 参考)。
+   * compact: 「料金はわずか¥...です。」の一文 + ボタンのみ (締めCTA用。16P 参考)。
    */
   variant?: "full" | "compact";
   /** true = リダイレクトせず全画面チャット決済を起動する (チャット決済フロー)。 */

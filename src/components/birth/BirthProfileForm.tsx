@@ -176,7 +176,7 @@ export function BirthProfileForm({
           />
           <label className="inline-flex items-center gap-2">
             <input type="checkbox" checked={timeUnknown} onChange={(e) => setTimeUnknown(e.target.checked)} />
-            わからない（正午で計算します）
+            分からない（正午で計算します）
           </label>
         </div>
       </div>
@@ -206,7 +206,7 @@ export function BirthProfileForm({
 
       <div className="flex gap-3">
         <button type="submit" disabled={submitting} className="rounded-full bg-[#5B5BEF] px-5 py-2 font-bold text-white">
-          {submitting ? "保存中…" : "保存する"}
+          {submitting ? "保存中..." : "保存する"}
         </button>
         <button type="button" onClick={handleSkip} disabled={submitting} className="rounded-full border px-4 py-2">
           あとで入力する

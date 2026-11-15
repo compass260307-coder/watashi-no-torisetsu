@@ -7,7 +7,7 @@ import { localizedAlternates } from "@/lib/locale-seo";
 export const metadata: Metadata = {
   title: "相性診断",
   description:
-    "気になるあの子との相性を、キャラを選ぶだけで診断。自分の診断がなくてもOK。ワタシのトリセツの性格タイプで、ふたりのバランス・いいところ・シーン別の相性がわかる。",
+    "気になるあの子との相性を、キャラを選ぶだけで診断。自分の診断がなくてもOK。ワタシのトリセツの性格タイプで、ふたりのバランス・いいところ・シーン別の相性が分かる。",
   alternates: localizedAlternates(
     "ja",
     "/aisho",
