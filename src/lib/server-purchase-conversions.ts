@@ -18,7 +18,7 @@ import { getStripe } from "@/lib/stripe-server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { isThirdPartyMeasurementEnabled } from "@/lib/third-party-measurement";
 
-type Provider = "meta" | "tiktok";
+type Provider = "tiktok";
 
 export type ServerPurchaseConversionInput = {
   session: Stripe.Checkout.Session;
@@ -78,7 +78,7 @@ function deterministicEventId(
   // The original integration sent only to the first site pixel. Keep its
   // audit key so an old success never suppresses either additional pixel.
   const scope =
-    provider === "tiktok" && destinationId !== SITE_TIKTOK_PIXEL_CODES[0]
+    destinationId !== SITE_TIKTOK_PIXEL_CODES[0]
       ? `${provider}:${destinationId}`
       : provider;
   const hex = sha256(
@@ -202,7 +202,7 @@ async function recordDelivery(
             : "ja",
     metadata: {
       provider,
-      ...(provider === "tiktok" ? { pixel_code: destinationId } : {}),
+      pixel_code: destinationId,
       stripe_session_id: session.id,
       product: input.product,
       amount_total: session.amount_total,
@@ -216,88 +216,6 @@ async function recordDelivery(
       `[purchase-conversion] ${provider} audit insert failed: ${error.message}`,
     );
   }
-}
-
-async function sendMeta(
-  input: ServerPurchaseConversionInput,
-  config: { pixelId: string; accessToken: string; apiVersion: string },
-): Promise<void> {
-  if (await wasDelivered("meta", input.session.id)) return;
-  const { session, userId, product, paidAt } = input;
-  if (session.amount_total === null || !session.currency) {
-    throw new Error(`[purchase-conversion] missing amount for ${session.id}`);
-  }
-  const currency = session.currency.toLowerCase();
-  const locale =
-    session.metadata?.locale === "ko"
-      ? "ko"
-      : session.metadata?.locale === "en"
-        ? "en"
-        : session.metadata?.locale === "id"
-          ? "id"
-          : "ja";
-  const content = productContent(
-    product,
-    locale,
-    session.amount_total,
-    currency,
-  );
-  const email = normalizedEmail(session);
-  const userData = {
-    ...(email ? { em: [sha256(email)] } : {}),
-    ...(userId ? { external_id: [sha256(userId.trim().toLowerCase())] } : {}),
-    ...(session.metadata?.fbp ? { fbp: session.metadata.fbp } : {}),
-    ...(session.metadata?.fbc ? { fbc: session.metadata.fbc } : {}),
-  };
-  const endpoint = new URL(
-    `https://graph.facebook.com/${encodeURIComponent(config.apiVersion)}/${encodeURIComponent(config.pixelId)}/events`,
-  );
-  endpoint.searchParams.set("access_token", config.accessToken);
-  assertFreshEvent(input);
-  const result = await fetchJsonWithTimeout(endpoint.toString(), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      data: [
-        {
-          event_name: "Purchase",
-          event_time: Math.floor(Date.parse(paidAt) / 1000),
-          event_id: session.id,
-          action_source: "website",
-          event_source_url: sourceUrl(session),
-          user_data: userData,
-          custom_data: {
-            currency: currency.toUpperCase(),
-            value: valueInMajorUnit(session.amount_total, currency),
-            content_ids: content.contentIds,
-            content_name: content.contentName,
-            content_type: "product",
-          },
-        },
-      ],
-    }),
-  });
-  if (!result.ok) {
-    throw new Error(`[purchase-conversion] Meta HTTP ${result.status}`);
-  }
-  let acknowledgement: { events_received?: unknown; error?: unknown };
-  try {
-    acknowledgement = JSON.parse(result.body);
-  } catch {
-    throw new Error(
-      "[purchase-conversion] Meta returned an invalid acknowledgement",
-    );
-  }
-  if (
-    !acknowledgement ||
-    acknowledgement.error ||
-    acknowledgement.events_received !== 1
-  ) {
-    throw new Error(
-      "[purchase-conversion] Meta did not acknowledge the purchase event",
-    );
-  }
-  await recordDelivery("meta", input);
 }
 
 async function sendTikTok(
@@ -398,7 +316,6 @@ async function sendTikTok(
 function messageFromError(error: unknown): string {
   let message = error instanceof Error ? error.message : String(error);
   const secrets = [
-    process.env.META_CONVERSIONS_API_TOKEN,
     process.env.TIKTOK_EVENTS_API_TOKEN,
     ...[...readTikTokSettings().pixels.values()].map(
       (pixel) => pixel.accessToken,
@@ -413,7 +330,7 @@ class ExpiredPurchaseError extends Error {}
 
 function assertFreshEvent(input: ServerPurchaseConversionInput): void {
   // Called immediately before the HTTP request as well as when claiming a row.
-  const reason = purchaseEventExpiryReason("meta", input.paidAt);
+  const reason = purchaseEventExpiryReason("tiktok", input.paidAt);
   if (reason) throw new ExpiredPurchaseError(reason);
 }
 
@@ -495,16 +412,15 @@ async function markOutboxFailed(
 async function claimOutboxRows(
   limit: number,
   sessionId: string | null,
-  includeMeta?: boolean,
 ): Promise<PurchaseConversionOutboxRow[]> {
+  // Meta 計測の撤去後も outbox には過去の meta 行が残りうる。配信先を持つ
+  // プロバイダだけを返す configured 版 RPC を常に使い、meta 行は拾わない。
   const { data, error } = await supabaseAdmin.rpc(
-    includeMeta === undefined
-      ? "claim_due_purchase_conversion_deliveries"
-      : "claim_due_configured_purchase_conversion_deliveries",
+    "claim_due_configured_purchase_conversion_deliveries",
     {
       p_limit: Math.max(1, Math.min(limit, 100)),
       p_session_id: sessionId,
-      ...(includeMeta === undefined ? {} : { p_include_meta: includeMeta }),
+      p_include_meta: false,
     },
   );
   if (error) {
@@ -513,29 +429,6 @@ async function claimOutboxRows(
     );
   }
   return (data ?? []) as PurchaseConversionOutboxRow[];
-}
-
-function readMetaConfig(): {
-  pixelId: string;
-  accessToken: string;
-  apiVersion: string;
-} | null {
-  const pixelId = process.env.META_PIXEL_ID?.trim();
-  const accessToken = process.env.META_CONVERSIONS_API_TOKEN?.trim();
-  const apiVersion = process.env.META_GRAPH_API_VERSION?.trim();
-  return pixelId && accessToken && apiVersion
-    ? { pixelId, accessToken, apiVersion }
-    : null;
-}
-
-function metaConfig() {
-  const config = readMetaConfig();
-  if (!config) {
-    throw new Error(
-      "[purchase-conversion] Meta server tracking configuration is incomplete",
-    );
-  }
-  return config;
 }
 
 type DeliveryResult = "sent" | "failed" | "expired";
@@ -548,11 +441,7 @@ async function deliverClaimedRow(
   input = { ...input, paidAt: row.paid_at };
   try {
     if (await expireClaimedRow(row)) return "expired";
-    if (row.provider === "meta") {
-      await sendMeta(input, metaConfig());
-    } else {
-      await sendTikTok(input, tikTokConfigForPixel(row.destination_id));
-    }
+    await sendTikTok(input, tikTokConfigForPixel(row.destination_id));
     await markOutboxSent(row);
     return "sent";
   } catch (error) {
@@ -589,13 +478,10 @@ function summarize(
 export async function enqueueServerPurchaseConversions(
   input: ServerPurchaseConversionInput,
 ): Promise<void> {
-  const destinations = [
-    { provider: "meta" as const, destination_id: "" },
-    ...readTikTokSettings().pixelCodes.map((pixelCode) => ({
-      provider: "tiktok" as const,
-      destination_id: pixelCode,
-    })),
-  ];
+  const destinations = readTikTokSettings().pixelCodes.map((pixelCode) => ({
+    provider: "tiktok" as const,
+    destination_id: pixelCode,
+  }));
   const rows = destinations.map((destination) => ({
     ...destination,
     stripe_session_id: input.session.id,
@@ -672,7 +558,6 @@ export async function processDueServerPurchaseConversions(
     1,
     Math.min(limit ?? (await purchaseConversionCronLimit()), 100),
   );
-  const includeMeta = readMetaConfig() !== null;
   const stripe = getStripe();
   const sessionRequests = new Map<string, Promise<Stripe.Checkout.Session>>();
   const getSession = (sessionId: string) => {
@@ -702,7 +587,6 @@ export async function processDueServerPurchaseConversions(
     const batch = await claimOutboxRows(
       Math.min(4, runLimit - summary.claimed),
       null,
-      includeMeta,
     );
     if (!batch.length) break;
     const batchResults = await Promise.all(

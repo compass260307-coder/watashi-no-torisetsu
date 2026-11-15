@@ -1,6 +1,6 @@
 import "server-only";
 
-export type PurchaseProvider = "meta" | "tiktok";
+export type PurchaseProvider = "tiktok";
 
 // Keep durable jobs for the site's three pixels even before tokens are entered.
 export const SITE_TIKTOK_PIXEL_CODES = [
@@ -12,7 +12,6 @@ export const SITE_TIKTOK_PIXEL_CODES = [
 const PIXEL_CODE = /^[A-Z0-9]{20}$/;
 const DAY_MS = 86_400_000;
 export const PURCHASE_EVENT_MAX_AGE_MS: Record<PurchaseProvider, number> = {
-  meta: 7 * DAY_MS,
   // Conservative replay policy: TikTok's current web reference does not
   // explicitly state an upload age limit. Do not confuse CTA with upload age.
   tiktok: 7 * DAY_MS,
@@ -28,9 +27,7 @@ export function purchaseEventExpiryReason(
     return "invalid_paid_at: event time is invalid";
   if (timestamp > now) return "invalid_paid_at: event time is in the future";
   if (timestamp <= now - PURCHASE_EVENT_MAX_AGE_MS[provider]) {
-    return provider === "meta"
-      ? "event_expired: Meta web event exceeds the 7-day upload window"
-      : "event_expired: TikTok web event exceeds the local 7-day replay policy";
+    return "event_expired: TikTok web event exceeds the local 7-day replay policy";
   }
   return null;
 }

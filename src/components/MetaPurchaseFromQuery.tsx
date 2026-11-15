@@ -14,7 +14,7 @@ import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
 import { wasXPurchaseSent } from "@/lib/xPixel";
 import {
   isCheckoutSessionId,
-  wasAnyMetaPurchaseSent,
+  wasAnyTikTokPurchaseSent,
   type MetaPurchaseProduct,
 } from "@/lib/meta-purchase";
 
@@ -37,7 +37,7 @@ export function MetaPurchaseFromQuery() {
   useEffect(() => {
     if (!paid || !isCheckoutSessionId(sessionId)) return;
     // 送信済み (どの商品でも) なら token 取得の API を打たない (再訪・リロード対策)。
-    if (wasAnyMetaPurchaseSent(sessionId) && wasXPurchaseSent(sessionId)) return;
+    if (wasAnyTikTokPurchaseSent(sessionId) && wasXPurchaseSent(sessionId)) return;
 
     void fetch("/api/checkout/meta-purchase-token", {
       method: "POST",
