@@ -79,7 +79,11 @@ export function TakoFriendTabs({
   const isEn = locale === "en";
   const isId = locale === "id";
   const [idx, setIdx] = useState(0);
-  const [inviteOpen, setInviteOpen] = useState(false);
+  // 友達0人の空状態では、共有パネルをクリック不要で最初から開く
+  // (計測で、ページ到達者の79%が招待UIに触れずに離脱していたため)。
+  const [inviteOpen, setInviteOpen] = useState(
+    () => tabs.length === 0 && Boolean(invitePanel),
+  );
   // メッセージ吹き出し: 開いているタブ index (null = 閉)。
   const [msgOpenIdx, setMsgOpenIdx] = useState<number | null>(null);
   // 吹き出しの矢印位置 (対象ボタン中央) とバー幅。タブ行ラッパー基準の px。
