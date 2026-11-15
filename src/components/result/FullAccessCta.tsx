@@ -285,7 +285,7 @@ export function FullAccessCta({
       >
         {/* エラー後はリトライを明示 (ボタンは再度タップ可能=再試行できる) */}
         {loading
-          ? uiText("ひらいています…")
+          ? uiText("ひらいています...")
           : error || (needsQuote && priceFailed)
             ? uiText("もう一度ためす →")
             : children}

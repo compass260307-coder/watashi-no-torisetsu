@@ -27,7 +27,7 @@ const MeUnmeiChat = lazy(() =>
 );
 
 const CHAT_FEEDBACK = {
-  ja: { loading: "Aliceを呼んでいます…", failed: "チャットを読み込めませんでした。", reload: "ページを再読み込み" },
+  ja: { loading: "Aliceを呼んでいます...", failed: "チャットを読み込めませんでした。", reload: "ページを再読み込み" },
   en: { loading: "Loading Alice…", failed: "The chat could not be loaded.", reload: "Reload this page" },
   ko: { loading: "Alice를 부르고 있어요…", failed: "채팅을 불러오지 못했어요.", reload: "페이지 새로고침" },
   id: { loading: "Memuat Alice…", failed: "Chat tidak dapat dimuat.", reload: "Muat ulang halaman" },

@@ -258,7 +258,7 @@ function PageCard({ children }: { children: ReactNode }) {
 export default function LiffRouterClient() {
   const [state, setState] = useState<ViewState>({
     kind: "loading",
-    message: "LINEと診断結果をつないでいます…",
+    message: "LINEと診断結果をつないでいます...",
   });
   const [retryCount, setRetryCount] = useState(0);
   const attemptIdRef = useRef(createAttemptId());
@@ -549,7 +549,7 @@ export default function LiffRouterClient() {
       attemptIdRef.current = rotateAttemptId();
       setState({
         kind: "loading",
-        message: "もう一度、LINEと診断結果をつないでいます…",
+        message: "もう一度、LINEと診断結果をつないでいます...",
       });
       setRetryCount((count) => count + 1);
     };
@@ -596,7 +596,7 @@ export default function LiffRouterClient() {
         </div>
         <p className="mt-4 text-sm font-bold text-[#2E2E5C]/60">
           {state.kind === "switching"
-            ? "連携先を切り替えています…"
+            ? "連携先を切り替えています..."
             : state.message}
         </p>
       </div>

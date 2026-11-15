@@ -1081,7 +1081,7 @@ async function MeResultPageContent({
             claimToken={metaPurchaseClaimToken}
           />
         )}
-      {/* 決済直後 (?paid=1) だが webhook 反映がまだで未課金表示のとき、「決済処理中…」を出して
+      {/* 決済直後 (?paid=1) だが webhook 反映がまだで未課金表示のとき、「決済処理中...」を出して
           status をポーリング → full 反映で自動的にロック解除表示へ (払ったのにロック→再購入 を防ぐ)。 */}
       {isOwnedResult && sp.paid === "1" && waitingForPaidAccess && (
         <PaidUnlockWatcher
@@ -1883,7 +1883,7 @@ async function MeResultPageContent({
                   ? "친구나 가족에게 답을 받아 ‘주변이 바라본 나’와의 차이를 비교해 보세요."
                   : isIndonesian
                   ? "Undang teman atau keluarga, lalu bandingkan cara mereka melihat Anda dengan cara Anda melihat diri sendiri."
-                  : "友だちや家族に答えてもらって、「まわりから見たあなた」とのギャップを比べてみましょう。"}
+                  : "友達や家族に答えてもらって、「まわりから見たあなた」とのギャップを比べてみましょう。"}
               </p>
               <Link
                 href={`${localePrefix}/tako/${encodeURIComponent(token)}`}

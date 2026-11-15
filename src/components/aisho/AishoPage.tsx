@@ -1145,7 +1145,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
     ownerToken: string | null;
   }>({ locked: null, ownerToken: null });
   // Stripe 決済完了直後 (?paid=1 / return_to='aisho' で戻ってきた)。webhook 反映前は
-  // シーンがロックのままなので、PaidUnlockWatcher で「決済処理中…」を出して反映を待つ。
+  // シーンがロックのままなので、PaidUnlockWatcher で「決済処理中...」を出して反映を待つ。
   const paidPending = searchParams.get("paid") === "1";
   // 反映ポーリング用の owner_token。session 由来 (aishoGate) を優先し、
   // Cookie が無い端末では localStorage (診断時に保存) へフォールバック。
@@ -1176,7 +1176,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
     const b = searchParams.get("b");
     return isValid(a) && isValid(b) && a !== b;
   });
-  // 選択操作で2枠そろった直後の「診断中…」演出 (直リンクでは出さない)。
+  // 選択操作で2枠そろった直後の「診断中...」演出 (直リンクでは出さない)。
   const [analyzing, setAnalyzing] = useState(false);
   useEffect(() => {
     if (!analyzing) return;
@@ -1215,7 +1215,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
   const pick = useCallback(
     (id: ThirtyTwoTypeId) => {
       // 選ぶだけでは診断しない。2枠そろうと CTA「相性を見る」が押せるようになり、
-      // 押した時に「診断中…」演出 → 結果表示。
+      // 押した時に「診断中...」演出 → 結果表示。
       if (slotA === null) {
         setSlotA(id);
         syncUrl(id, slotB);
@@ -1306,7 +1306,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
                   ? "Reading this pair’s compatibility…"
                   : isIndonesian
                     ? "Membaca kecocokan pasangan ini…"
-                    : "ふたりの相性を診断中…"}
+                    : "ふたりの相性を診断中..."}
             </p>
           </div>
         ) : resultShown ? (
@@ -1435,7 +1435,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
         相性診断の結果全体は全部入りで解放する。
         ※ カードは結果表示 (resultShown) かつ 未課金確定 (aishoGate.locked===true) のときだけ出す。
         選択モード・診断中(analyzing)・課金済み(locked===false)・読込中には出さない。 */}
-    {/* 決済直後 (?paid=1) だが webhook 反映がまだでロック表示のとき、「決済処理中…」を
+    {/* 決済直後 (?paid=1) だが webhook 反映がまだでロック表示のとき、「決済処理中...」を
         出して反映を待つ (/me・/tako の PaidUnlockWatcher と同じ。反映後は paid= を外して再読込)。 */}
     {paidPending && aishoGate.locked !== false && watcherToken && (
       <PaidUnlockWatcher

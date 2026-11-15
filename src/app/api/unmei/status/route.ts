@@ -14,10 +14,10 @@ export const runtime = "nodejs";
 // GET /api/unmei/status
 //   /unmei クライアントのポーリング用。本人の鑑定状態を返す。
 //   state:
-//     'unpurchased' … 未購入
-//     'no_birth'    … 購入済み・出生データ未入力
-//     'pending'     … 生成中 (natal_readings が未作成 or model='pending')
-//     'ready'       … 生成完了 (reading を同梱)
+//     'unpurchased' ... 未購入
+//     'no_birth'    ... 購入済み・出生データ未入力
+//     'pending'     ... 生成中 (natal_readings が未作成 or model='pending')
+//     'ready'       ... 生成完了 (reading を同梱)
 export async function GET(request: Request) {
   const originCheck = checkOrigin(request);
   if (!originCheck.ok) return NextResponse.json({ error: originCheck.error }, { status: 403 });

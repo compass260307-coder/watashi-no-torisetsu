@@ -21,7 +21,7 @@ export function LineUpgradeReceipt({ failed = false, preview = false }: {failed?
     <a href={preview?"#line-delivery-preview":"https://line.me/R/oaMessage/%40867domoo"} className="mt-7 inline-flex rounded-full bg-[#06C755] px-7 py-3 font-bold text-white">{preview?"LINEでの受け取りを見る":"AliceとのLINEトークに戻る"}</a>
     {(failed || !preview) && <div className="mt-5 text-sm leading-7">
       <p>{failed ? "お届けの途中で止まっているみたい。追加購入せずに、もう一度確認してね。" : "LINEに届かないときは、追加購入せずに確認してね。"}</p>
-      <button disabled={retrying || preview} onClick={retry} className="mt-3 font-bold text-[#007A33] underline disabled:opacity-50">{retrying?"確認しています…":"お届けをもう一度確認する"}</button>
+      <button disabled={retrying || preview} onClick={retry} className="mt-3 font-bold text-[#007A33] underline disabled:opacity-50">{retrying?"確認しています...":"お届けをもう一度確認する"}</button>
     </div>}
     {message && <p role="status" className="mt-4 text-sm leading-7">{message}</p>}
   </section>;

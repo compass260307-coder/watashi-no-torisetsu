@@ -4,10 +4,10 @@
 //   CTA押下 → このシートが即出て“送る相手を選ぶ”ところまで一気に運ぶ。
 //
 // 方針 (shareTargetPicker は現状 infra 未整備のため使えない):
-//   1) tryLiffPicker() … 将来 LIFF SDK 復活時の抜き差し口。今は capability 検知で即 unavailable。
+//   1) tryLiffPicker() ... 将来 LIFF SDK 復活時の抜き差し口。今は capability 検知で即 unavailable。
 //   2) 日本版は LINEで送る / 韓国版は KakaoTalkで送る を主役化。
-//   3) 他アプリで送る … navigator.share (Web Share API)。
-//   4) リンクをコピー … clipboard。
+//   3) 他アプリで送る ... navigator.share (Web Share API)。
+//   4) リンクをコピー ... clipboard。
 //   末尾に QR (面前用)。どの経路でも「送れずに詰む」を作らない。
 //
 // 送信後: 呼び出し側に onSent を返し、空スロットを楽観的に pending へ (クライアント表示のみ)。
