@@ -1636,7 +1636,7 @@ async function MeResultPageContent({
                   </svg>
                 </span>
                 <p className="mb-2 text-[16px] font-black text-[#2E2E5C] md:text-[19px]">
-                  {isEnglish ? "Unlock now" : isKorean ? KO_ME_COPY.unlockNow : isIndonesian ? "Buka sekarang" : "今すぐロックを解除"}
+                  {isEnglish ? "Unlock now" : isKorean ? KO_ME_COPY.unlockNow : isIndonesian ? "Buka sekarang" : "ここから先はロック中"}
                 </p>
                 <p className="mb-4 text-[11px] font-bold leading-[1.55] text-[#2E2E5C]/65 md:mb-6 md:text-[13px] md:leading-relaxed">
                   {isEnglish ? (
@@ -1657,7 +1657,7 @@ async function MeResultPageContent({
                   source="friend_dislike_card"
                   className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-2.5 text-[12px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4] md:px-6 md:py-3 md:text-[13px]"
                 >
-                  {isEnglish ? "See the complete result" : isKorean ? KO_ME_COPY.accessNow : isIndonesian ? "Lihat hasil lengkap" : "今すぐアクセス"}
+                  {isEnglish ? "See the complete result" : isKorean ? KO_ME_COPY.accessNow : isIndonesian ? "Lihat hasil lengkap" : "続きを読む"}
                 </PaywallScrollButton>
               </div>
             );
@@ -1846,7 +1846,7 @@ async function MeResultPageContent({
                           </svg>
                         </span>
                         <p className="mb-2 text-[16px] font-black text-[#2E2E5C] md:text-[19px]">
-                          {isEnglish ? "Unlock now" : isKorean ? "지금 잠금 해제" : isIndonesian ? "Buka sekarang" : "今すぐロックを解除"}
+                          {isEnglish ? "Unlock now" : isKorean ? "지금 잠금 해제" : isIndonesian ? "Buka sekarang" : "ここから先はロック中"}
                         </p>
                         <p className="mb-4 text-[11px] font-bold leading-[1.55] text-[#2E2E5C]/65 md:mb-6 md:text-[13px] md:leading-relaxed">
                           {isEnglish ? "Unlock the remaining guidance " : isKorean ? "남은 주의점과 대처법을 열어" : isIndonesian ? "Buka panduan lainnya " : "残りの注意点と対処法を解放して、"}
@@ -1857,7 +1857,7 @@ async function MeResultPageContent({
                           source="caution_lock_card"
                           className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-2.5 text-[12px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4] md:px-6 md:py-3 md:text-[13px]"
                         >
-                          {isEnglish ? "See the complete result" : isKorean ? "지금 확인하기" : isIndonesian ? "Lihat hasil lengkap" : "今すぐアクセス"}
+                          {isEnglish ? "See the complete result" : isKorean ? "지금 확인하기" : isIndonesian ? "Lihat hasil lengkap" : "続きを読む"}
                         </PaywallScrollButton>
                       </div>
                     </div>

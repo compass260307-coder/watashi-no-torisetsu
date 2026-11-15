@@ -4,7 +4,7 @@
 //
 // 挙動:
 //   - ヘッダー部分は従来の ScrollHideHeader と同じ (下スクロールで隠れ、上で出る)
-//   - その直下のバー (シェア + すべての結果のロックを解除) は「常時表示」。
+//   - その直下のバー (シェア + 続きをすべて読む) は「常時表示」。
 //     ヘッダーが隠れるときはヘッダーの高さぶんだけ全体を持ち上げ、バーが最上部に残る。
 //   - 解放後もバー自体 (シェアボタン) は出し続ける (2026-07-15 指示)。
 //     解除 CTA ボタンだけ未解放時限定 (showUnlockCta)。
@@ -52,7 +52,7 @@ class QrCodeBoundary extends Component<{ children: ReactNode }, { failed: boolea
 interface MeStickyHeaderProps {
   /** ヘッダー本体 (TopHeader)。 */
   children: ReactNode;
-  /** 「すべての結果のロックを解除」CTA を出すか (第二部が未解放のときのみ true)。
+  /** 「続きをすべて読む」CTA を出すか (第二部が未解放のときのみ true)。
       false でもシェアボタンのバー自体は shareUrl があれば表示する。 */
   showUnlockCta: boolean;
   /** 解除CTAの文言差し替え (/tako は「結果をアップグレード」・2026-08-26)。
@@ -920,7 +920,7 @@ export function MeStickyHeader({
                   type="button"
                   aria-label={
                     unlockCtaLabel ??
-                    (isEn ? "Unlock all results" : isId ? "Buka semua hasil" : isKo ? "모든 결과 잠금 해제" : "すべての結果のロックを解除")
+                    (isEn ? "Unlock all results" : isId ? "Buka semua hasil" : isKo ? "모든 결과 잠금 해제" : "続きをすべて読む")
                   }
                   onClick={() => scrollToPaywall("sticky_bar", paywallTargetId)}
                   className="relative inline-flex min-h-10 w-[190px] min-w-[150px] shrink items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-1.5 text-center text-[12px] font-black leading-[1.15] text-white shadow-[0_2px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] active:scale-[0.99] sm:min-h-11 sm:w-[248px] sm:min-w-[220px] sm:px-5 sm:text-[13px]"
@@ -976,7 +976,7 @@ export function MeStickyHeader({
                           ロックを解除
                         </span>
                         <span className="hidden sm:inline">
-                          すべての結果のロックを解除
+                          続きをすべて読む
                         </span>
                       </>
                     ))}

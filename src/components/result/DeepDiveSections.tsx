@@ -326,7 +326,7 @@ function LockedBlock({
                 ? "Buka sekarang"
               : locale === "ko"
                 ? "지금 잠금 해제"
-                : "今すぐロックを解除"}
+                : "ここから先はロック中"}
           </p>
           <p className="mb-4 text-[11px] font-bold leading-[1.55] text-[#2E2E5C]/65 md:mb-6 md:text-[13px] md:leading-relaxed">
             {cardCopy}
@@ -341,7 +341,7 @@ function LockedBlock({
                 ? "Lihat hasil lengkap"
               : locale === "ko"
                 ? "지금 확인하기"
-                : "今すぐアクセス"}
+                : "続きを読む"}
           </PaywallScrollButton>
         </div>
       </div>
@@ -674,7 +674,7 @@ export function DeepDiveSections({
               source="deepdive_card"
               className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
             >
-              {locale === "id" ? "Lihat sekarang" : locale === "ko" ? "지금 확인하기" : "今すぐアクセス"}
+              {locale === "id" ? "Lihat sekarang" : locale === "ko" ? "지금 확인하기" : "続きを読む"}
             </PaywallScrollButton>
           </div>
         </div>

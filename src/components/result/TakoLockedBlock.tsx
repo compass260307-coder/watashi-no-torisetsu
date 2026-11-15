@@ -105,7 +105,7 @@ export function TakoLockedBlock({
             </svg>
           </span>
           <p className="mb-2 text-[16px] font-black text-[#2E2E5C]">
-            {isEn ? "Unlock now" : isKo ? "지금 잠금 해제" : isId ? "Buka sekarang" : "今すぐロックを解除"}
+            {isEn ? "Unlock now" : isKo ? "지금 잠금 해제" : isId ? "Buka sekarang" : "ここから先はロック中"}
           </p>
           <p className="mb-4 text-[13px] font-bold leading-[1.75] text-[#8A8AA3]">
             {description}
@@ -116,7 +116,7 @@ export function TakoLockedBlock({
             targetId="tako-promo"
             className="flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
           >
-            {isEn ? "View complete results" : isKo ? "지금 확인하기" : isId ? "Lihat hasil lengkap" : "今すぐアクセス"}
+            {isEn ? "View complete results" : isKo ? "지금 확인하기" : isId ? "Lihat hasil lengkap" : "続きを読む"}
           </PaywallScrollButton>
         </div>
       </div>

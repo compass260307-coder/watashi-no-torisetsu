@@ -113,7 +113,7 @@ export function MoshimoScenes({
               <LockGlyph size={14} />
             </span>
             <p className="mb-1.5 text-[19px] font-black text-[#2E2E5C]">
-              {locale === "en" ? "Unlock now" : isIndonesian ? "Buka sekarang" : isKorean ? "지금 잠금 해제" : "今すぐロックを解除"}
+              {locale === "en" ? "Unlock now" : isIndonesian ? "Buka sekarang" : isKorean ? "지금 잠금 해제" : "ここから先はロック中"}
             </p>
             <p className="mb-4 text-[13px] font-bold leading-relaxed text-[#2E2E5C]/65">
               {locale === "en"
@@ -136,7 +136,7 @@ export function MoshimoScenes({
               source="moshimo_card"
               className="result-themed-cta flex w-full items-center justify-center rounded-full bg-[#5B5BEF] px-6 py-3 text-[13px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
             >
-              {locale === "en" ? "See the complete result" : isIndonesian ? "Lihat hasil lengkap" : isKorean ? "지금 확인하기" : "今すぐアクセス"}
+              {locale === "en" ? "See the complete result" : isIndonesian ? "Lihat hasil lengkap" : isKorean ? "지금 확인하기" : "続きを読む"}
             </PaywallScrollButton>
           </div>
         </div>
