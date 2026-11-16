@@ -14,6 +14,9 @@ export default function AnalyzingPreviewPage() {
       messages={analyzing.messages}
       steps={analyzing.steps}
       messageDurationsMs={analyzing.messageDurationsMs}
+      totalMs={analyzing.minLoadingMs}
+      slides={analyzing.slides}
+      slidesLabel={analyzing.slidesLabel}
     />
   );
 }
