@@ -320,6 +320,14 @@ export default function DiagnosisPageContent({
     window.scrollTo({ top: 0, behavior: "auto" });
   }, [currentPage, hydrated]);
 
+  // 「結果を見る」は最終ページの最下部にあるため、解析待ち画面へ差し替わった直後は
+  // スクロール位置が下に残る (モバイルは 100vh > 表示領域なので下端に寄って見える)。
+  // 差し替えのコミット後に先頭へ戻す。
+  useEffect(() => {
+    if (!submitting) return;
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [submitting]);
+
   // 送信失敗でローディングから質問ページへ戻ったとき、最下部のエラー文と
   // 再送信 CTA が視界に入るようスクロールする (回答は保持されている)。
   useEffect(() => {
