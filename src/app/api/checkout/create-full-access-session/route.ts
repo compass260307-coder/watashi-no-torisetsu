@@ -160,8 +160,8 @@ function getCheckoutBaseUrl(request: NextRequest): string {
     : BASE_URL;
 }
 
-// 日本版の現行オファーは、Stripe Checkoutでも結果カードと同じ二重価格を見せる。
-// 元値からの固定額クーポンを自動適用し、最終請求額を実売価格に一致させる。
+// 日本版コースの元値・実売価格・固定額クーポンの対応表。完全版の通常購入は
+// クーポンを使わず実売価格だけを表示する（JA_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION）。
 const JA_COURSE_CHECKOUT_PRICING = {
   self_report: {
     listAmount: SELF_REPORT_LIST_PRICE_JPY,
@@ -183,6 +183,11 @@ const JA_COURSE_CHECKOUT_PRICING = {
   { listAmount: number; saleAmount: number; couponId: string }
 >;
 const JA_COURSE_COUPON_NAME = "リリース記念";
+// 日本版完全版のStripe Checkoutは、2026-11-16の明示判断により二重価格（クーポン）を
+// 表示せず、実売価格だけを「商品名 → 価格」の2段で見せる。請求額は変えない。
+// 表示変更の前後を比較できるよう、Checkoutの表示バージョンとして記録する。
+const JA_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION =
+  "ja_full_access_checkout_plain_499_v1_20261116";
 
 // 値引きアンカー用クーポン (once・amount_off=discountAmount)。
 // id に金額と通貨を埋めて、ロケール間の取り違えを防止する。
@@ -237,10 +242,12 @@ const CHECKOUT_COPY: Record<
 
 const CURRENT_FULL_ACCESS_COPY = {
   ja: {
-    productName: "ワタシのトリセツ 完全版開放",
-    productDescription:
-      "自己診断・友達診断・専用PDF・相性診断に加え、運命の設計図、あなたの専属AI占い師「Alice」とのチャット、3種類のタロット占いをすべてを買い切りで楽しめます。",
-    submitMessage: null,
+    // 店舗名「ワタシのトリセツ」はCheckout左上に出るため、商品名は安心材料に使う。
+    // 説明文は価格の下に出て「文章→価格→文章」になり読みにくいので表示しない。
+    productName: "完全版｜買い切り・30日間返金保証つき",
+    productDescription: null,
+    submitMessage:
+      "お支払い後、すべての診断結果が解放されます。**自動更新・追加請求はありません。**",
   },
   ko: {
     productName: "나의 사용설명서 완전판 코스",
@@ -707,6 +714,8 @@ export async function POST(request: NextRequest) {
             ...CURRENT_FULL_ACCESS_COPY.ja,
             productName: SELF_REPORT_COPY.ja.productName,
             productDescription: SELF_REPORT_COPY.ja.productDescription,
+            // 完全版向けの支払い直前コピーは引き継がない（従来どおり非表示）。
+            submitMessage: null,
           }
         : SELF_REPORT_COPY[checkoutLocale]
         : product === "premium_bundle"
@@ -986,17 +995,25 @@ export async function POST(request: NextRequest) {
 
   // ===== 「買いたくなる」表示: 商品説明/画像 + ロケール別の値引き表示 =====
   // 安全設計:
-  //   - 日本版3コースはサーバ定数の元値 + 固定額クーポンを使い、解決失敗時は
-  //     実売価格の price_data へフォールバックする。
+  //   - 日本版完全版はクーポンを使わず、実売価格の price_data を直接表示する。
+  //     それ以外の日本版コースはサーバ定数の元値 + 固定額クーポンを使い、
+  //     解決失敗時は実売価格の price_data へフォールバックする。
   //   - 英語版完全版も同じ構造で $12.90 − $7.91 = $4.99 を表示し、
   //     クーポン解決失敗時は $4.99 の直接課金へフォールバックする。
   //   - 韓国版完全版は Price ID の実額検証とクーポン解決の両方が成功した場合だけ
   //     二重価格を表示する。
   // どの経路でもクーポン失敗によって元値を誤請求しない。
   const productImage = checkoutProductImage(checkoutLocale, product);
+  const productDescription = lineUpgradeCheckout
+    ? `5つの自由回答から専用キャラクター・タイプ名・自己診断結果・5章の鑑定書を作成。税込${RESULT_UPGRADE_PRICE_JPY}円の買い切り。`
+    : isResultUpgradeCheckout && checkoutLocale === "ja"
+    ? "5つの回答から作る専用キャラクター・専用タイプ名・自己診断結果・鑑定書。Webで受け取れる買い切り。"
+    : isResultUpgradeCheckout && checkoutLocale === "ko"
+    ? "5개 답변으로 만드는 나만의 캐릭터, 유형 이름, 자기 분석 결과와 전용 보고서 · 1회 결제"
+    : checkoutCopy.productDescription;
   const productData: {
     name: string;
-    description: string;
+    description?: string;
     images?: string[];
     tax_code?: string;
   } = {
@@ -1012,13 +1029,7 @@ export async function POST(request: NextRequest) {
               ? `Upgrade ke ${checkoutCopy.productName}`
             : `${checkoutCopy.productName}へのアップグレード`
         : checkoutCopy.productName,
-    description: lineUpgradeCheckout
-      ? `5つの自由回答から専用キャラクター・タイプ名・自己診断結果・5章の鑑定書を作成。税込${RESULT_UPGRADE_PRICE_JPY}円の買い切り。`
-      : isResultUpgradeCheckout && checkoutLocale === "ja"
-      ? "5つの回答から作る専用キャラクター・専用タイプ名・自己診断結果・鑑定書。Webで受け取れる買い切り。"
-      : isResultUpgradeCheckout && checkoutLocale === "ko"
-      ? "5개 답변으로 만드는 나만의 캐릭터, 유형 이름, 자기 분석 결과와 전용 보고서 · 1회 결제"
-      : checkoutCopy.productDescription,
+    ...(productDescription ? { description: productDescription } : {}),
     ...(productImage ? { images: [productImage] } : {}),
     ...(process.env.STRIPE_TAX_CODE_DIGITAL_SERVICES
       ? { tax_code: process.env.STRIPE_TAX_CODE_DIGITAL_SERVICES }
@@ -1046,8 +1057,16 @@ export async function POST(request: NextRequest) {
     usesCurrentOffer &&
     upgradeFrom === "none" &&
     effectivePrice === coursePrice;
+  // 完全版はクーポンを使わず、下の inline price_data で実売価格を直接表示・課金する。
+  const usesPlainJapaneseFullAccessCheckout =
+    isStandardJapaneseCoursePurchase && product === "full_access";
+  const checkoutDisplayMetadata: Record<string, string> =
+    usesPlainJapaneseFullAccessCheckout
+      ? { checkout_display_version: JA_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION }
+      : {};
   const japaneseCourseCouponId =
     isStandardJapaneseCoursePurchase &&
+    !usesPlainJapaneseFullAccessCheckout &&
     JA_COURSE_CHECKOUT_PRICING[product].listAmount >
       JA_COURSE_CHECKOUT_PRICING[product].saleAmount
       ? await getJapaneseCourseCouponIdCached(stripe, product)
@@ -1342,6 +1361,7 @@ export async function POST(request: NextRequest) {
               : AISHO_ACCESS_POLICY_PREMIUM_ONLY,
         upgrade_from: upgradeFrom,
         ...regionalOfferMetadata,
+        ...checkoutDisplayMetadata,
         course_price_minor: String(coursePrice),
         course_price_jpy:
           checkoutPricing.currency === "jpy" ? String(coursePrice) : "",
@@ -1425,6 +1445,7 @@ export async function POST(request: NextRequest) {
         server_duration_ms: Date.now() - requestReceivedAt,
         stripe_create_ms: stripeCreateMs,
         ...regionalOfferMetadata,
+        ...checkoutDisplayMetadata,
         source: paywallSource,
         paywall_version: paywallVersion,
         ...(isResultUpgradeCheckout

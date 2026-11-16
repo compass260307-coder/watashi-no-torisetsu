@@ -172,6 +172,25 @@ for (const quote of [{}, { displayed_price_market: 'en', displayed_price_minor: 
   assert.equal(result.calls.length, 0);
 }
 const japan = { ...stale, displayed_price_market: 'ja', displayed_price_minor: 499 };
+// 日本版完全版のCheckoutはクーポンを使わず、¥499だけを「商品名 → 価格」で表示する。
+const japanPlain = await checkout({ ...japan, locale: 'ja', paywall_version: policy.accessPaywallVersionForLocale('ja') });
+assert.equal(japanPlain.status, 200, JSON.stringify(japanPlain.data));
+assert.equal(japanPlain.data.amount, 499);
+assert.equal(japanPlain.calls[0].discounts, undefined);
+assert.equal(japanPlain.calls[0].line_items[0].price_data.unit_amount, 499);
+assert.equal(japanPlain.calls[0].line_items[0].price_data.currency, 'jpy');
+assert.equal(japanPlain.calls[0].line_items[0].price_data.product_data.name, '完全版｜買い切り・30日間返金保証つき');
+assert.equal('description' in japanPlain.calls[0].line_items[0].price_data.product_data, false);
+assert.equal(japanPlain.calls[0].custom_text.submit.message,
+  'お支払い後、すべての診断結果が解放されます。**自動更新・追加請求はありません。**');
+assert.equal(japanPlain.calls[0].metadata.checkout_display_version, 'ja_full_access_checkout_plain_499_v1_20261116');
+// 日本語表示でも他市場の価格では従来どおりの値引き表示を維持し、表示バージョンを付けない。
+const japaneseAbroad = await checkout({ ...fullPurchase, country: 'FR', locale: 'ja',
+  displayed_price_market: 'en', displayed_price_minor: 499, paywall_version: policy.accessPaywallVersionForLocale('ja') });
+assert.equal(japaneseAbroad.status, 200, JSON.stringify(japaneseAbroad.data));
+assert.equal(japaneseAbroad.calls[0].line_items[0].price_data.unit_amount, 1290);
+assert.match(japaneseAbroad.calls[0].discounts[0].coupon, /-usd$/);
+assert.equal(japaneseAbroad.calls[0].metadata.checkout_display_version, undefined);
 const paypay = await checkout({ ...japan, payment_method: 'paypay' });
 assert.equal(paypay.status, 200);
 assert.equal(paypay.calls[0].payment_method_types[0], 'paypay');
