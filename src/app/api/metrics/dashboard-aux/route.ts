@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from "next/server";
 export const maxDuration = 60;
 type Row = Record<string, unknown>;
 const DAY=86400000, JST=9*3600000;
-const events=['page_view','landing_view','diagnosis_started','diagnosis_completed','share_clicked','share_click','share_completed','share_success','share_link_opened','friend_answer_started','friend_answer_completed','friend_v2_started','friend_v2_completed','friend_invite_clicked','friend_share_clicked','friend_link_copied','result_viewed','result_revisited','friend_to_diagnosis_clicked','friend_v2_self_cta_clicked','friend_landing_viewed','share_landing_viewed','paywall_scroll_clicked','hoshiyomi_page_viewed','paywall_viewed','paywall_plan_viewed','purchase_cta_clicked','checkout_requested','checkout_session_created','purchase_completed','unmei_lp_view','unmei_purchase_start','unmei_purchase_complete','line_follow','line_unfollow','line_message_received','line_alice_plus_subscribed','line_alice_plus_cancelled'];
+const events=['page_view','landing_view','diagnosis_started','diagnosis_completed','share_clicked','share_click','share_completed','share_success','share_link_opened','friend_answer_started','friend_answer_completed','friend_v2_started','friend_v2_completed','friend_invite_clicked','tako_invite_ui_shown','friend_share_clicked','friend_link_copied','result_viewed','result_revisited','friend_to_diagnosis_clicked','friend_v2_self_cta_clicked','friend_landing_viewed','share_landing_viewed','paywall_scroll_clicked','hoshiyomi_page_viewed','paywall_viewed','paywall_plan_viewed','purchase_cta_clicked','checkout_requested','checkout_session_created','purchase_completed','unmei_lp_view','unmei_purchase_start','unmei_purchase_complete','line_follow','line_unfollow','line_message_received','line_alice_plus_subscribed','line_alice_plus_cancelled'];
 const date=(at:unknown)=>new Date(Date.parse(String(at))+JST).toISOString().slice(0,10);
 function week(at:unknown){const d=new Date(date(at)+'T00:00:00Z');d.setUTCDate(d.getUTCDate()-(d.getUTCDay()+6)%7);return d.toISOString().slice(0,10);}
 function days(from:string,until:string){const out:string[]=[];for(let n=Date.parse(from);n<Date.parse(until);n+=DAY)out.push(date(new Date(n).toISOString()));return out;}
@@ -33,6 +33,12 @@ async function scan(table:string,select:string,column:string,from:string|null,un
   }
   throw Error('page cap');
 }
+// Bounded concurrency: at most `size` tasks in flight; the first failure rejects the batch.
+async function pool<T>(tasks:(()=>Promise<T>)[],size:number):Promise<T[]>{
+  const out=new Array<T>(tasks.length);let next=0;
+  await Promise.all(Array.from({length:Math.min(size,tasks.length)},async()=>{while(next<tasks.length){const i=next++;out[i]=await tasks[i]();}}));
+  return out;
+}
 async function usersFor(values:unknown[],column:'id'|'owner_token',deadline:number){
   const result=new Map<string,Row>(),keys=[...new Set(values.filter((v):v is string=>typeof v==='string'&&!!v))];
   for(let i=0;i<keys.length;i+=300){
@@ -43,11 +49,13 @@ async function usersFor(values:unknown[],column:'id'|'owner_token',deadline:numb
   }return result;
 }
 async function funnel(from:string,until:string,deadline:number){
-  // Four non-overlapping time ranges bound concurrency and avoid hundreds of
-  // serial cross-region round trips. Deduplication still covers the whole day.
-  const windows=[];for(let a=Date.parse(from);a<Date.parse(until);a+=DAY/4)windows.push([new Date(a).toISOString(),new Date(Math.min(a+DAY/4,Date.parse(until))).toISOString()]);
-  const parts=await Promise.all(windows.map(([a,b])=>scan('events','id,event_name,session_id,owner_token,locale,metadata,created_at','created_at',a,b,q=>(q as unknown as {in:(c:string,v:string[])=>unknown}).in('event_name',events),deadline,60)));
-  const facts=parts.flat();if(facts.length>=220000)throw Error('page cap');
+  // A day is cut into 15-minute slices drained by a fixed pool of workers. The
+  // previous four 6-hour ranges paged serially inside each range and hit the
+  // deadline on every run once daily volume grew (2026-11-13 onward).
+  // Deduplication still covers the whole day.
+  const windows:[string,string][]=[];for(let a=Date.parse(from);a<Date.parse(until);a+=DAY/96)windows.push([new Date(a).toISOString(),new Date(Math.min(a+DAY/96,Date.parse(until))).toISOString()]);
+  const parts=await pool(windows.map(([a,b])=>()=>scan('events','id,event_name,session_id,owner_token,locale,metadata,created_at','created_at',a,b,q=>(q as unknown as {in:(c:string,v:string[])=>unknown}).in('event_name',events),deadline,60)),12);
+  const facts=parts.flat();if(facts.length>=400000)throw Error('page cap');
   const owners=await usersFor(facts.filter(r=>!r.locale&&!meta(r).locale).map(r=>r.owner_token),'owner_token',deadline);
   const sets=new Map<string,Set<string>>(),groups=new Map<string,{event:string,page:string,cta:string,count:number,sessions:Set<string>}>();
   for(const r of facts){
