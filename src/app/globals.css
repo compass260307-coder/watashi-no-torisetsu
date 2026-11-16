@@ -747,6 +747,16 @@ html[lang="ko"] .top-hero-sub {
   word-break: auto-phrase;
 }
 
+/* 診断の質問文など、iOS Safari (auto-phrase 未対応) でも文節で折り返したいテキスト用。
+   BudouX (src/lib/ja-phrase.ts) が文節境界に挟んだ ZWSP の位置でだけ改行する:
+   keep-all で語中改行を禁止し、balance で行長を均等化。anywhere は ZWSP が
+   入らない長い連続文字列がはみ出さないための保険。 */
+.phrase-jp {
+  text-wrap: balance;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 /* ヘッダーロゴ「ワタシのトリセツ」wordmark / Koi タグに寄せたレタリング:
    M PLUS Rounded 極太 / 彩度高めの logoBlue 塗り / 太い白フチ + 白のにじみ (薄背景でも
    くっきり浮く＝視認性の主役) + ごく薄い影で立体感。「{name}のトリセツ」タグに使用。 */
