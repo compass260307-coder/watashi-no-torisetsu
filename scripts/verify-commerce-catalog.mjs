@@ -153,10 +153,16 @@ const contractChecks = [
     valid: regionalPricing.includes("saleAmount: FULL_ACCESS_PRICE_JPY,"),
   },
   {
-    label: "Stripe Checkout derives the fixed discount from shared constants",
-    valid: checkoutRoute.includes(
-      "FULL_ACCESS_LIST_PRICE_JPY - FULL_ACCESS_PRICE_JPY",
-    ),
+    label: "Japanese full access Stripe Checkout shows JPY 499 directly without a coupon",
+    valid:
+      checkoutRoute.includes(
+        'isStandardJapaneseCoursePurchase && product === "full_access";',
+      ) &&
+      checkoutRoute.includes("!usesPlainJapaneseFullAccessCheckout &&") &&
+      checkoutRoute.includes(
+        '"ja_full_access_checkout_plain_499_v1_20261116"',
+      ) &&
+      catalogIncludes("`ja_full_access_checkout_plain_499_v1_20261116`"),
   },
   {
     label: "English Stripe Checkout uses the frozen reference price",
