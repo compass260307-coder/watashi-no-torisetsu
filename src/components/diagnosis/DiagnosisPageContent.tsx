@@ -50,7 +50,7 @@ type SavedProgress = {
 };
 // Phase 1.5-α Day 12-Polish-B: ニックネームの localStorage 保存先 (再訪時の自動入力)
 const NICKNAME_MAX = 20;
-const MIN_LOADING_MS = 20000;
+const DEFAULT_MIN_LOADING_MS = 20000;
 const DIAGNOSIS_COMPLETE_DATA_LAYER_STORAGE_PREFIX =
   "wt_diagnosis_complete_sent_v1:";
 
@@ -492,7 +492,9 @@ export default function DiagnosisPageContent({
     }
     const startedAt = Date.now();
     const waitMin = async () => {
-      const remaining = MIN_LOADING_MS - (Date.now() - startedAt);
+      const minLoadingMs =
+        copy.analyzing.minLoadingMs ?? DEFAULT_MIN_LOADING_MS;
+      const remaining = minLoadingMs - (Date.now() - startedAt);
       if (remaining > 0) {
         await new Promise((resolve) => setTimeout(resolve, remaining));
       }
@@ -629,6 +631,9 @@ export default function DiagnosisPageContent({
         messages={copy.analyzing.messages}
         steps={copy.analyzing.steps}
         messageDurationsMs={copy.analyzing.messageDurationsMs}
+        totalMs={copy.analyzing.minLoadingMs}
+        slides={copy.analyzing.slides}
+        slidesLabel={copy.analyzing.slidesLabel}
         fontFamily={isKorean || isEnglish || isIndonesian ? "inherit" : undefined}
       />
     );
