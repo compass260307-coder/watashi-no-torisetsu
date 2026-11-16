@@ -46,6 +46,7 @@ import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import type { AnswerValue } from "@/lib/types";
 import type { AppResultLocale } from "@/i18n/result";
 import { FRIEND_COPY, friendQuestionText } from "@/i18n/friend";
+import { phraseWrapJa } from "@/lib/ja-phrase";
 
 // =========================================================================
 // 状態管理
@@ -558,8 +559,9 @@ function ScaleScreen({
                   answered ? "opacity-50 hover:opacity-100 focus-within:opacity-100" : ""
                 }`}
               >
-                <p className="mx-auto mb-7 max-w-3xl text-center text-[17px] font-bold leading-relaxed text-[#2E2E5C] sm:text-[20px]">
-                  {friendQuestionText(locale, q, inviteeName)}
+                {/* phrase-jp + phraseWrapJa: 自己診断の QuestionCard と同じく文節で折り返す */}
+                <p className="phrase-jp mx-auto mb-7 max-w-3xl text-center text-[17px] font-bold leading-relaxed text-[#2E2E5C] sm:text-[20px]">
+                  {phraseWrapJa(friendQuestionText(locale, q, inviteeName))}
                 </p>
                 <LikertScale
                   value={scaleAnswers[q.id]}

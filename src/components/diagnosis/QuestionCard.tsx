@@ -1,6 +1,7 @@
 "use client";
 
 import type { AnswerValue, Question } from "@/lib/types";
+import { phraseWrapJa } from "@/lib/ja-phrase";
 import { LikertScale } from "./LikertScale";
 
 interface QuestionCardProps {
@@ -43,8 +44,9 @@ export function QuestionCard({
         answered ? "opacity-50 hover:opacity-100 focus-within:opacity-100" : "",
       ].join(" ")}
     >
-      <p className="text-center text-[17px] sm:text-[20px] font-bold text-[#2E2E5C] leading-relaxed mb-7">
-        {question.text}
+      {/* phrase-jp + phraseWrapJa: 語中 (「はっきり」等) で改行しないよう文節で折り返す */}
+      <p className="phrase-jp text-center text-[17px] sm:text-[20px] font-bold text-[#2E2E5C] leading-relaxed mb-7">
+        {phraseWrapJa(question.text)}
       </p>
       {/* スケール(ラベル+○)はカード幅いっぱいに広げ、質問文・進捗バーと左右端を揃える。
           size="lg": 横幅の広い自己診断ページでは PC の○を一回り大きくする。 */}
