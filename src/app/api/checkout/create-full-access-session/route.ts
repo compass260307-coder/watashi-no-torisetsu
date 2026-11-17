@@ -188,6 +188,10 @@ const JA_COURSE_COUPON_NAME = "リリース記念";
 // 表示変更の前後を比較できるよう、Checkoutの表示バージョンとして記録する。
 const JA_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION =
   "ja_full_access_checkout_plain_499_v1_20261116";
+// 韓国版完全版も、2026-11-17の明示判断により日本版と同じ表示にする。通常価格₩12,900と
+// 「출시 기념」クーポンを出さず、実売価格₩4,900だけを表示・課金する。請求額は変えない。
+const KO_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION =
+  "ko_full_access_checkout_plain_4900_v1_20261117";
 
 // 値引きアンカー用クーポン (once・amount_off=discountAmount)。
 // id に金額と通貨を埋めて、ロケール間の取り違えを防止する。
@@ -250,11 +254,12 @@ const CURRENT_FULL_ACCESS_COPY = {
       "お支払い後、すべての診断結果が解放されます。**自動更新・追加請求はありません。**",
   },
   ko: {
-    productName: "나의 사용설명서 완전판 코스",
-    productDescription:
-      "자기 진단·친구 진단·전용 PDF·궁합 진단과 함께 운명의 설계도, 전담 점성술사 Alice와의 채팅 30회, 타로 세 종류를 모두 해제합니다.",
+    // 日本語版と同じ構成。店舗名「앨리스 진단」がCheckout左上に出るため、商品名は安心材料に使い、
+    // 説明文は出さない。販売・返金案内へのリンクは koreanCheckoutSubmitMessage が後ろに付ける。
+    productName: "완전판｜1회 결제 · 30일 환불 보장",
+    productDescription: null,
     submitMessage:
-      "한 번만 결제하면 궁합 진단·운명의 설계도·Alice와의 채팅 30회·타로를 포함한 완전판을 이용할 수 있어요. 30일 환불 보장.",
+      "결제 후 모든 진단 결과가 열려요. **자동 갱신·추가 청구는 없어요.**",
   },
   en: {
     productName: "Alice Personalities — Complete Edition",
@@ -1022,7 +1027,7 @@ export async function POST(request: NextRequest) {
         ? "결과 업그레이드"
         : upgradeFrom !== "none"
         ? checkoutLocale === "ko"
-          ? `${checkoutCopy.productName} 업그레이드`
+          ? "완전판 업그레이드"
           : checkoutLocale === "en"
             ? `${checkoutCopy.productName} upgrade`
             : checkoutLocale === "id"
@@ -1060,10 +1065,20 @@ export async function POST(request: NextRequest) {
   // 完全版はクーポンを使わず、下の inline price_data で実売価格を直接表示・課金する。
   const usesPlainJapaneseFullAccessCheckout =
     isStandardJapaneseCoursePurchase && product === "full_access";
+  // 韓国市場の完全版の通常購入も同じく、実売価格だけを直接表示・課金する。
+  const usesPlainKoreanFullAccessCheckout =
+    !isResultUpgradeCheckout &&
+    priceMarket === "ko" &&
+    product === "full_access" &&
+    usesCurrentOffer &&
+    upgradeFrom === "none" &&
+    effectivePrice === coursePrice;
   const checkoutDisplayMetadata: Record<string, string> =
     usesPlainJapaneseFullAccessCheckout
       ? { checkout_display_version: JA_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION }
-      : {};
+      : usesPlainKoreanFullAccessCheckout
+        ? { checkout_display_version: KO_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION }
+        : {};
   const japaneseCourseCouponId =
     isStandardJapaneseCoursePurchase &&
     !usesPlainJapaneseFullAccessCheckout &&
@@ -1167,9 +1182,10 @@ export async function POST(request: NextRequest) {
       },
     ];
     chargedAmount = effectivePrice;
-  } else if (priceMarket !== "ko") {
+  } else if (priceMarket !== "ko" || usesPlainKoreanFullAccessCheckout) {
     // 日本版の完全版は、paywall_versionごとにサーバ確定した実売価格を
     // inlineで表示・課金する。旧カードを開いたままの利用者にも表示額を守る。
+    // 韓国版の完全版の通常購入も、同じく実売価格だけを表示する。
     lineItems = [
       {
         price_data: {
@@ -1202,7 +1218,7 @@ export async function POST(request: NextRequest) {
     }
     const useDiscount = !!couponId;
 
-    // 韓国版は従来どおり、検証済みの値引き経路かPrice IDへフォールバックする。
+    // 韓国版の通常購入以外 (旧ペイウォール版など) は従来どおり、検証済みの値引き経路かPrice IDへフォールバックする。
     lineItems = useDiscount
       ? [
           {

@@ -136,8 +136,15 @@ const fullPurchase = { full: false, product: 'full_access', paywall_source: 'dir
 const full = await checkout({ ...fullPurchase, displayed_price_market: 'ko', displayed_price_minor: 4900 });
 assert.equal(full.status, 200);
 assert.equal(full.data.amount, 4900);
-assert.equal(full.calls[0].line_items[0].price_data.unit_amount, 12900);
-assert.equal(full.calls[0].discounts[0].coupon, 'full-access-anchor-off8000-krw');
+// 韓国版完全版のCheckoutも日本版と同じく、クーポンを使わず₩4,900だけを「商品名 → 価格」で表示する。
+assert.equal(full.calls[0].discounts, undefined);
+assert.equal(full.calls[0].line_items[0].price_data.unit_amount, 4900);
+assert.equal(full.calls[0].line_items[0].price_data.currency, 'krw');
+assert.equal(full.calls[0].line_items[0].price_data.product_data.name, '완전판｜1회 결제 · 30일 환불 보장');
+assert.equal('description' in full.calls[0].line_items[0].price_data.product_data, false);
+assert.match(full.calls[0].custom_text.submit.message,
+  /^결제 후 모든 진단 결과가 열려요\. \*\*자동 갱신·추가 청구는 없어요\.\*\* \[판매 및 환불 안내\]\(https?:\/\/[^)]+\/ko\/legal\/commerce\)를 확인해 주세요\.$/);
+assert.equal(full.calls[0].metadata.checkout_display_version, 'ko_full_access_checkout_plain_4900_v1_20261117');
 assert.equal(full.calls[0].metadata.offer_version, undefined);
 assert.match(full.cookie, /wt_checkout_commerce_locale=ko/);
 assert.match(full.calls[0].custom_text.submit.message, /\/ko\/legal\/commerce/);
