@@ -17,7 +17,8 @@ const KOREAN_FONTS_CSS_URL =
 export const metadata: Metadata = {
   title: {
     default: KO_DEFAULT_TITLE,
-    template: "%s｜앨리스 진단",
+    // 区切りは各ページの絶対指定・OGタイトルと同じ「 | 」に統一する。
+    template: "%s | 앨리스 진단",
   },
   description: KO_DEFAULT_DESCRIPTION,
   applicationName: KO_SITE_NAME,
