@@ -98,6 +98,7 @@ import { ResultViewTracker } from "@/components/result/ResultViewTracker";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import { TakoAttentionOnResult } from "@/components/result/TakoAttentionOnResult";
+import { TakoBubbleReplayTrigger } from "@/components/result/TakoBubbleReplayTrigger";
 import { UnmeiAttentionOnPaid } from "@/components/result/UnmeiAttentionOnPaid";
 import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
 import { PreferredLocaleSync } from "@/components/result/PreferredLocaleSync";
@@ -1677,6 +1678,9 @@ async function MeResultPageContent({
         {showUnmeiPromo && unmeiPromoCard && (
           <div className="mt-16">{unmeiPromoCard}</div>
         )}
+
+        {/* ここまで読み進めたら、下部ナビの吹き出し「友達診断はここから！」をもう一度出す。 */}
+        {isOwnedResult && <TakoBubbleReplayTrigger />}
 
         {/* ===== ⑥ あなたの注意点 (① 五つの性格傾向 と同じ 16P 風スタイル) =====
             2026-07-14 指示: 友達から見たあなた の後ろに配置。 */}
