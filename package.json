@@ -48,7 +48,7 @@
     "jose": "5.10.0",
     "lunar-javascript": "^1.7.7",
     "nanoid": "^5.1.11",
-    "next": "^16.4.1",
+    "next": "^16.4.6",
     "pdf-lib": "^1.17.1",
     "puppeteer-core": "^25.3.0",
     "qrcode.react": "^4.2.0",
