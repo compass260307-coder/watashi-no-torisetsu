@@ -47,7 +47,7 @@ const labels: Record<string, Record<string, string>> = {
   "result.FullAccessCta": {
     "うまく開けませんでした。少し待ってからもう一度お試しください。": "We couldn't open checkout. Please try again in a moment.",
     "通信に失敗しました。電波のいい場所でもう一度お試しください。": "Connection failed. Check your connection and try again.",
-    "ひらいています…": "Opening…",
+    "ひらいています...": "Opening…",
     "もう一度ためす →": "Try again →",
     "上のボタンでもう一度お試しください。": "上のボタンでもう一度お試しください。"
   },
