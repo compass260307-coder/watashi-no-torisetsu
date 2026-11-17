@@ -26,6 +26,7 @@ import {
 import { DIRECT_PAYWALL_SOURCE } from "@/lib/paywall-source";
 import {
   TAKO_ATTENTION_GRANTED_EVENT,
+  TAKO_BUBBLE_REPLAY_EVENT,
   TAKO_ATTENTION_PENDING_KEY,
   takoAttentionImpressionKey,
 } from "@/lib/tako-attention";
@@ -325,8 +326,17 @@ export function BottomNav() {
   const [ownerToken, setOwnerToken] = useState<string | null>(null);
   const [showTakoAttention, setShowTakoAttention] = useState(false);
   // 吹き出しが消えた瞬間に、友達診断タブの「!」を1回弾ませる。
-  const [takoBubbleAbsorbed, setTakoBubbleAbsorbed] = useState(false);
-  const markTakoBubbleAbsorbed = useCallback(() => setTakoBubbleAbsorbed(true), []);
+  // 何回目に吸い込まれたか。回ごとに「!」を弾ませ直すため、真偽値ではなく回数で持つ。
+  const [takoBubbleAbsorbed, setTakoBubbleAbsorbed] = useState(0);
+  const markTakoBubbleAbsorbed = useCallback(() => setTakoBubbleAbsorbed((n) => n + 1), []);
+  // 吹き出しを出し直した回数。/me を「あなたの注意点」まで読み進めたときに1つ増え、
+  // 吹き出しを作り直して最初から (出る → 約2.5秒 → 吸い込まれる) もう一度見せる。
+  const [takoBubbleRound, setTakoBubbleRound] = useState(0);
+  useEffect(() => {
+    const replay = () => setTakoBubbleRound((n) => n + 1);
+    window.addEventListener(TAKO_BUBBLE_REPLAY_EVENT, replay);
+    return () => window.removeEventListener(TAKO_BUBBLE_REPLAY_EVENT, replay);
+  }, []);
   const [showUnmeiAttention, setShowUnmeiAttention] = useState(false);
   // 未診断者への「自己診断」誘いバッジ (評価送信後ページで付与 / 2026-08-04)。
   const [showMeAttention, setShowMeAttention] = useState(false);
@@ -947,11 +957,15 @@ export function BottomNav() {
               <span className="relative">
                 <Icon />
                 {hasAttention ? (
-                  <AttentionBadge pulse={it.key === "friend" && takoBubbleAbsorbed} />
+                  <AttentionBadge
+                    key={it.key === "friend" ? takoBubbleAbsorbed : 0}
+                    pulse={it.key === "friend" && takoBubbleAbsorbed > 0}
+                  />
                 ) : null}
               </span>
               {hasAttention && it.key === "friend" && locale === "ja" ? (
                 <AttentionBubble
+                  key={takoBubbleRound}
                   text="友達診断はここから！"
                   onAbsorbed={markTakoBubbleAbsorbed}
                 />
