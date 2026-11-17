@@ -536,11 +536,11 @@ function GapVisual({
         <div className="flex items-center justify-end gap-3 text-[11px] font-bold" style={{ color: NAVY }}>
           <span className="inline-flex items-center gap-1">
             <span className="h-2 w-2 rotate-45" style={{ backgroundColor: NAVY }} />
-            自分
+            {visual.selfLabel ?? "自分"}
           </span>
           <span className="inline-flex items-center gap-1">
             <span className="h-3 w-3 rounded-full border-2 bg-white" style={{ borderColor: SORA }} />
-            友達
+            {visual.friendLabel ?? "友達"}
           </span>
         </div>
         {GAP_ROWS.map((row, i) => {
@@ -549,7 +549,7 @@ function GapVisual({
           return (
             <div key={row.label} className="flex items-center gap-2.5">
               <span className="w-10 shrink-0 text-left text-[11px] font-bold" style={{ color: NAVY }}>
-                {row.label}
+                {visual.rowLabels?.[i] ?? row.label}
               </span>
               <div className="relative h-2.5 flex-1 rounded-full" style={{ backgroundColor: `${row.color}2E` }}>
                 <div
