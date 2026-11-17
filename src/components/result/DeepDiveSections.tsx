@@ -258,22 +258,23 @@ const KO_CAREER_FIT_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
 ];
 
-const KO_CAREER_TALENT_DECOY_ITEMS: { heading: string; body: string }[] = [
+// 「직장에서의 인간관계」ロック用デコイ (★本文ではない)。日本語版 CAREER_RELATIONS_DECOY_ITEMS と同じ4項目。
+const KO_CAREER_RELATIONS_DECOY_ITEMS: { heading: string; body: string }[] = [
   {
-    heading: "너무 당연해서 놓친 능력",
-    body: "당신이 평범하다고 여기는 행동이 사실은 가장 희소한 강점일 수 있어요.",
+    heading: "나에게 맞는 거리감",
+    body: "너무 가깝지도, 너무 멀지도 않게. 내가 가장 편하게 있을 수 있는 거리에는 유형이 있어요.",
   },
   {
-    heading: "막다른 순간에 드러나는 저력",
-    body: "어려운 상황에서 자연스럽게 취하는 행동에 다른 사람에게 없는 힘이 숨어 있어요.",
+    heading: "부탁에 선을 긋는 법",
+    body: "거절하지 못하고 떠안기 전에, 내 성격에 맞는 거절 방법을 알아 두면 좋아요.",
   },
   {
-    heading: "주변이 조용히 의지하는 부분",
-    body: "스스로는 잘 모르지만 팀은 오래전부터 그 능력의 도움을 받고 있어요.",
+    heading: "안 맞는 사람과 함께 일하는 요령",
+    body: "도저히 안 맞는 그 사람과, 지치지 않고 함께 일하기 위한 거리 두는 법이 있어요.",
   },
   {
-    heading: "키우면 크게 달라지는 자질",
-    body: "조금만 의식해도 커리어의 선택지를 넓혀 줄 잠재력이 있어요.",
+    heading: "주변이 조용히 도움받고 있는 부분",
+    body: "내가 생각하는 것보다, 팀은 나의 그 움직임에 많이 기대고 있어요.",
   },
 ];
 
@@ -439,14 +440,13 @@ const ID_LOCKED_BLOCK_CONFIG: typeof LOCKED_BLOCK_CONFIG = {
   },
 };
 
+// 説明文は日本語版と同じ「ここから先には、〜が書かれています。」の型。
 const KO_LOCKED_BLOCK_CONFIG: typeof LOCKED_BLOCK_CONFIG = {
   "나를 좋아하게 된 사람이 읽는 사용설명서": {
     decoyItems: KO_LOVE_DECOY_ITEMS,
     cardCopy: (
       <>
-        완전판 리포트에서 이 결과를 확인해 보세요.
-        <br className="md:hidden" />
-        나의 연애 성향을 더 깊이 이해할 수 있어요.
+        여기서부터는 <span className="inline-block">내 연애의 다음 이야기가 담겨 있어요.</span>
       </>
     ),
     source: "love_payoff_card",
@@ -455,9 +455,7 @@ const KO_LOCKED_BLOCK_CONFIG: typeof LOCKED_BLOCK_CONFIG = {
     decoyItems: KO_LOVE_ENDURE_DECOY_ITEMS,
     cardCopy: (
       <>
-        완전판 리포트에서,
-        <br className="md:hidden" />
-        연인이 말하지 못하고 삼키는 지점을 확인해 보세요.
+        여기서부터는 <span className="inline-block">연인이 말하지 못한 마음이 담겨 있어요.</span>
       </>
     ),
     source: "love_endure_card",
@@ -466,23 +464,21 @@ const KO_LOCKED_BLOCK_CONFIG: typeof LOCKED_BLOCK_CONFIG = {
     decoyItems: KO_CAREER_FIT_DECOY_ITEMS,
     cardCopy: (
       <>
-        완전판 리포트에서,
-        <br className="md:hidden" />
-        나에게 잘 맞는 일과 피하면 좋은 환경을 확인해 보세요.
+        여기서부터는 <span className="inline-block">나에게 잘 맞는 일과</span>{" "}
+        <span className="inline-block">피하면 좋은 환경이 담겨 있어요.</span>
       </>
     ),
     source: "career_fit_card",
   },
-  "일에서 인정받는 뜻밖의 재능": {
-    decoyItems: KO_CAREER_TALENT_DECOY_ITEMS,
+  // 見出しは src/i18n/ko/me.ts の KO_CAREER_RELATIONS_HEADING と一致させる。
+  "직장에서의 인간관계": {
+    decoyItems: KO_CAREER_RELATIONS_DECOY_ITEMS,
     cardCopy: (
       <>
-        완전판 리포트에서,
-        <br className="md:hidden" />
-        일할 때 인정받는 나의 뜻밖의 재능을 발견해 보세요.
+        여기서부터는 <span className="inline-block">직장에서 관계를 만들어 가는 법이 담겨 있어요.</span>
       </>
     ),
-    source: "career_talent_card",
+    source: "career_relations_card",
   },
 };
 

@@ -125,3 +125,10 @@ Checkout を停止する。
 - 本番への適用は別途承認後に修正migrationだけを対象に行う。無関係な未適用migrationをまとめて適用しない。適用後に制約が `ja / th / ko`、validatedであること、NOT NULL・既定値 `ja`・RLS・grantが維持されていること、および適用履歴を再確認する。
 
 - 2026-10-12、明示承認後に本番へ修正migrationだけを適用。`ja / th / ko`・validated、NOT NULL・既定値 `ja`・RLS・policy・grantの維持を確認。既存764件（日本語）の件数も維持。履歴のSQL MD5 `1ed0bacfb4368ab54ad954abf5c8a6cf` はリリースSQLと一致。
+
+## 2026-11-17 完全版Checkoutのシンプル表示
+
+- 明示判断により、完全版の通常購入のStripe Checkoutは日本語版と同じく、クーポンを使わず₩4,900だけを inline `price_data`（税込・KRW）で表示・課金する。商品名「완전판｜1회 결제 · 30일 환불 보장」、説明文なし。販売・返金案内へのリンクは従来どおり支払いボタン直上に付ける。
+- 表示バージョン: `ko_full_access_checkout_plain_4900_v1_20261117`（Session metadata `checkout_display_version`）。ペイウォールの計測バージョンは変更しない。
+- この経路は `STRIPE_PRICE_FULL_ACCESS_KRW` の Price とクーポン `full-access-anchor-off8000-krw` を参照しない。旧ペイウォール版からの購入は従来の検証済み経路のまま。
+- `npm run verify:ko:upgrade` が、韓国市場の完全版が₩4,900・クーポンなし・上記の商品名と文言で作成されることを検証する。

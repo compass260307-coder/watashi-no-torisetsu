@@ -331,12 +331,17 @@ export function FullAccessPromoCard({
       ? promoteUnlockItem(baseUnlocks, copy.fortune, copy.unmei)
       : baseUnlocks;
   const reportCharacterSource = reportCharacterImageSrc ?? imageSrc;
-  const characterFriendCover = friendReportPeekImagePath(reportCharacterSource);
-  const characterSelfCover = selfReportPeekImagePath(reportCharacterSource);
+  // 韓国語は韓国語PDFから書き出したキャラ別画像 (560×793) を使う。
+  const peekLocale = isKorean ? "ko" : "ja";
+  const peekCoverHeight = isKorean ? 793 : 841;
+  const peekStoryHeight = isKorean ? 793 : 792;
+  const characterFriendCover = friendReportPeekImagePath(reportCharacterSource, peekLocale);
+  const characterSelfCover = selfReportPeekImagePath(reportCharacterSource, peekLocale);
   const characterSelfStoryPage =
-    selfReportStoryPreviewPagePath(reportCharacterSource);
-  const ebookPeek = basePeeks.ebook;
-  const friendsPeek = basePeeks.friends;
+    selfReportStoryPreviewPagePath(reportCharacterSource, peekLocale);
+  // 韓国語は説明文も韓国語の定義 (peeks) を土台にし、画像だけキャラ別に差し替える。
+  const ebookPeek = isKorean ? peeks.ebook : basePeeks.ebook;
+  const friendsPeek = isKorean ? peeks.friends : basePeeks.friends;
   // English previews use dedicated localized artwork. The per-character report
   // assets are Japanese PDFs, so substituting them here leaks Japanese text
   // into the English paywall modal.
@@ -351,9 +356,11 @@ export function FullAccessPromoCard({
               img: characterSelfStoryPage,
               alt: isEnglish
                 ? `A story page starring ${imageAlt || "your character"}`
-                : `${imageAlt || "あなた"}を主人公にした短編小説の本文`,
+                : isKorean
+                  ? `${imageAlt || "나"}의 성격 스토리 본문`
+                  : `${imageAlt || "あなた"}を主人公にした短編小説の本文`,
               width: 560,
-              height: 792,
+              height: peekStoryHeight,
             };
           }
           if (index === 1) {
@@ -362,9 +369,11 @@ export function FullAccessPromoCard({
               img: characterSelfCover,
               alt: isEnglish
                 ? `The story cover for ${imageAlt || "your character"}`
-                : `${imageAlt || "あなた"}の短編ストーリー表紙`,
+                : isKorean
+                  ? `${imageAlt || "나"}의 성격 스토리 표지`
+                  : `${imageAlt || "あなた"}の短編ストーリー表紙`,
               width: 560,
-              height: 841,
+              height: peekCoverHeight,
             };
           }
           return page;
@@ -382,9 +391,11 @@ export function FullAccessPromoCard({
                 img: characterFriendCover,
                 alt: isEnglish
                   ? `The friends' perspective report cover for ${imageAlt || "your character"}`
-                  : `${imageAlt || "あなた"}の友達診断まとめレポート表紙`,
+                  : isKorean
+                    ? `${imageAlt || "나"}의 친구 진단 종합 리포트 표지`
+                    : `${imageAlt || "あなた"}の友達診断まとめレポート表紙`,
                 width: 560,
-                height: 841,
+                height: peekCoverHeight,
               }
             : page,
         ),
@@ -397,7 +408,7 @@ export function FullAccessPromoCard({
     ) {
       return {
         ...item,
-        peek: isKorean ? peeks.ebook : characterEbookPeek,
+        peek: characterEbookPeek,
       };
     }
     if (
@@ -406,7 +417,7 @@ export function FullAccessPromoCard({
     ) {
       return {
         ...item,
-        peek: isKorean ? peeks.friends : characterFriendsPeek,
+        peek: characterFriendsPeek,
       };
     }
     return item;

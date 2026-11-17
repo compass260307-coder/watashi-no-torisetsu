@@ -317,7 +317,7 @@ function RelationsLocked({ locale }: { locale: AppResultLocale }) {
           ) : locale === "id" ? (
             "Buka Edisi Lengkap untuk melihat hal yang mungkin sulit dikatakan orang-orang di setiap bagian hidup Anda."
           ) : locale === "ko" ? (
-            "완전판 리포트에서 주변 사람들이 나에게 말하지 못한 것을 확인해 보세요."
+            "여기서부터는 주변 사람들이 말하지 못한 이야기가 담겨 있어요."
           ) : (
             <>
               ここから先には、<span className="inline-block">周りの人が言えずにいることが書かれています。</span>

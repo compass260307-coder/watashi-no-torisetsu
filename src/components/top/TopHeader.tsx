@@ -478,7 +478,7 @@ export default function TopHeader({
                     <button
                       type="button"
                       tabIndex={open ? 0 : -1}
-                      onClick={resetLocalData}
+                      onClick={() => resetLocalData()}
                       className="flex-1 rounded-full bg-[#B4415C] py-2.5 text-[14px] font-bold text-white transition-colors hover:bg-[#8f2f45]"
                     >
                       {content.reset.run}

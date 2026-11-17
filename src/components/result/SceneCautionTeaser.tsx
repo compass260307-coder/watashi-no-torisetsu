@@ -147,7 +147,7 @@ export function SceneCautionTeaser({
             ) : locale === "id" ? (
               "Buka Edisi Lengkap untuk melihat situasi yang mungkin membutuhkan perhatian ekstra."
             ) : locale === "ko" ? (
-              "완전판 리포트에서 상황마다 주의할 점을 확인해 보세요."
+              "여기서부터는 상황별로 걸려 넘어지기 쉬운 지점이 담겨 있어요."
             ) : (
               <>
                 ここから先には、<span className="inline-block">シーン別のつまずきポイントが書かれています。</span>
