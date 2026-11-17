@@ -1,4 +1,9 @@
 import type { DiagnosisCopy, DiagnosisLocaleSettings } from "@/i18n/diagnosis";
+import {
+  KO_DEFAULT_QUESTION_SET_ID,
+  type QuestionSetId,
+} from "@/lib/question-sets";
+import { localizeQuestionsV2 } from "@/lib/questions-v2";
 import type { Question } from "@/lib/types";
 const KO_QUESTIONS: Question[] = [
   {
@@ -152,6 +157,84 @@ const KO_QUESTIONS: Question[] = [
     id: 50, text: "무슨 일이 생기면 그때 해결하면 된다고 생각할 수 있다.", facetId: "N_anxiety", dimension: "N", reversed: true
   },
 ];
+// 新セット (v2)。日本語版 src/lib/questions-v2.ts の各ファセット 5 問と同じ並びで訳す。
+// 出題順・id・逆転は日本語版の定義をそのまま使う (localizeQuestionsV2)。
+const KO_QUESTIONS_V2: Question[] = localizeQuestionsV2({
+  E_assertiveness: [
+    "회의나 모임에서 아무도 말을 꺼내지 않을 때, 먼저 입을 여는 사람은 대개 나다.",
+    "어디서 먹을지 정할 때 ‘아무 데나 좋아’라고 하지 않고 내가 먼저 후보를 낸다.",
+    "식당에서 주문한 것과 다른 음식이 나와도 아무 말 없이 그냥 먹는다.",
+    "상대가 나이가 많거나 윗사람이어도, 아니라고 생각한 건 그 자리에서 말한다.",
+    "자기소개 순서는 가능하면 뒤쪽이면 좋겠다.",
+  ],
+  E_warmth: [
+    "사람들이 나에게 고민이나 속마음을 털어놓는 일이 많다.",
+    "누가 불러 주기를 기다리기보다 내가 먼저 만나자고 하는 일이 더 많다.",
+    "길에서 아는 사람을 봐도, 상대가 나를 못 봤으면 그냥 지나친다.",
+    "기쁜 일이 생기면 먼저 누군가에게 말하고 싶어진다.",
+    "친한 사이여도 상대가 쉬는 날에 뭘 하는지는 잘 모른다.",
+  ],
+  A_cooperation: [
+    "의견이 갈리면 내가 양보하는 게 빠르다고 생각한다.",
+    "부탁을 받으면 내키지 않아도 결국 들어주게 된다.",
+    "게임이나 내기는 상대가 누구든 진심으로 이기려고 한다.",
+    "내 몫이 끝나면 아직 끝내지 못한 사람을 도우러 간다.",
+    "다른 사람이 하는 방식을 보고 있으면 나도 모르게 한마디 하고 싶어진다.",
+  ],
+  A_sympathy: [
+    "우는 사람을 보면 이유를 몰라도 나도 따라 울 것 같다.",
+    "영화나 드라마에서 등장인물이 창피를 당하는 장면은 차마 못 보겠다.",
+    "남의 고민을 듣다 보면 속으로 ‘그래서 결론이 뭐야?’ 하고 생각할 때가 있다.",
+    "상대의 답장이 평소보다 짧으면 무슨 일이 있나 신경 쓰인다.",
+    "상대가 왜 화났는지, 설명을 듣기 전까지 모를 때가 있다.",
+  ],
+  O_adventurousness: [
+    "메뉴에 처음 보는 음식이 있으면 나도 모르게 시켜 보게 된다.",
+    "목적지를 정하지 않고 외출할 때가 있다.",
+    "마음에 든 물건은 같은 걸 몇 년씩 계속 산다.",
+    "‘해 본 적 없다’는 거절할 이유보다 가 볼 이유가 된다.",
+    "이사나 부서 이동처럼 환경이 바뀌는 일은 가능하면 피하고 싶다.",
+  ],
+  O_imagination: [
+    "거짓말인 걸 아는 이야기라도 재미있으면 그걸로 됐다고 생각한다.",
+    "논리로 설명할 수 없는 이야기일수록 더 끌린다.",
+    "멍하니 있을 때는 머릿속으로 정말 아무 생각도 하지 않는다.",
+    "영화나 책의 결말이 마음에 들지 않으면 나만의 다른 결말을 생각해 본다.",
+    "‘로또에 당첨되면’ 같은 이야기에는 솔직히 별로 흥이 나지 않는다.",
+  ],
+  C_achievement: [
+    "합격점을 받아도 만점이 아니면 조금 아쉽다.",
+    "쓸 일이 없어도 자격증이나 급수가 있으면 따고 싶어진다.",
+    "아무것도 하지 않고 보낸 휴일도 ‘좋은 하루였다’고 생각할 수 있다.",
+    "‘초보자용’이라고 쓰여 있으면 조금 시시하게 느껴진다.",
+    "‘5년 뒤에 어떤 모습이고 싶어?’라는 질문을 받아도 딱히 떠오르는 게 없다.",
+  ],
+  C_orderliness: [
+    "쇼핑할 때는 살 것을 정하고 나서 가게에 간다.",
+    "알람은 딱 떨어지는 시각에 맞춘다.",
+    "물건을 찾는 데 쓰는 시간이 남들보다 긴 것 같다.",
+    "설명서나 레시피가 있어도 결국 내 방식대로 한다.",
+    "마감이 있는 일은 코앞에 닥쳐야 손을 댄다.",
+  ],
+  N_volatility: [
+    "짜증이 나면 나도 모르게 표정이나 태도에 드러난다.",
+    "사람들 앞에서 참지 못하고 울어 버린 적이 있다.",
+    "꽤 화가 나 있어도 주변 사람들은 눈치채지 못한다.",
+    "욱해서 보낸 메시지를 나중에 지우고 싶었던 적이 있다.",
+    "남에게 언성을 높인 기억이 거의 없다.",
+  ],
+  N_anxiety: [
+    "몸이 조금만 안 좋아도 ‘큰 병 아닐까’ 하고 검색해 본다.",
+    "집을 나선 뒤 ‘문 잠갔나?’ 하고 불안해진다.",
+    "중요한 일정 전날 밤에도 ‘어떻게든 되겠지’ 하고 금방 잠든다.",
+    "대화가 끊기면 ‘내가 재미없다고 생각했나’ 싶어 신경 쓰인다.",
+    "길을 잃어도 ‘곧 도착하겠지’ 하며 별로 조급해하지 않는다.",
+  ],
+});
+const KO_QUESTION_SETS: Record<QuestionSetId, Question[]> = {
+  v1: KO_QUESTIONS,
+  v2: KO_QUESTIONS_V2,
+};
 const KO_COPY: DiagnosisCopy = {
   heroTitle: "무료 성격 진단 테스트",
   heroSubtitle: "OCEAN으로 알아보는 32가지 유형",
@@ -217,6 +300,7 @@ const KO_COPY: DiagnosisCopy = {
     copyFallback: "복사가 안 되면 아래 URL을 길게 눌러 복사해 주세요:",
     continueButton: "그대로 계속하기",
   },
+  // 解析待ち画面は日本語版 (src/i18n/ja/diagnosis.ts) と同じ構成。文だけ韓国語。
   analyzing: {
     messages: [
       "답변을 불러오고 있어요...",
@@ -224,19 +308,84 @@ const KO_COPY: DiagnosisCopy = {
       "개방성·성실성·외향성을 확인하고 있어요...",
       "우호성·정서적 민감성을 분석하고 있어요...",
       "나를 나타내는 유형을 찾고 있어요...",
-      "32가지 유형 중 가장 가까운 유형을 찾고 있어요...",
-      "나만의 강점을 발견하고 있어요...",
-      "나의 사용설명서를 만들고 있어요...",
-      "마지막으로 다듬고 있어요...",
-      "곧 결과를 보여 드릴게요...",
+      "32가지 유형 중에서 좁혀 가고 있어요...",
+      "친구가 보는 내 성격을 예측하고 있어요...",
+      "진단 결과를 정리하고 있어요...",
+      "곧 확인할 수 있어요...",
     ],
-    steps: ["답변 확인", "성격 특성 분석", "유형 판정", "사용설명서 생성"],
+    messageDurationsMs: [1400, 3000, 1400, 3000, 1400, 3000, 3000, 2000],
+    minLoadingMs: 22500,
+    slidesLabel: "친구 진단이란?",
+    slides: [
+      {
+        visual: {
+          kind: "voices",
+          selfLabel: "나",
+          selfFace: "/characters/face/penguin_N.webp",
+          voices: [
+            { face: "/characters/face/seal_R.webp", color: "#5BC6DB", text: "믿음직해!" },
+            { face: "/characters/face/fox_N.webp", color: "#E8B84A", text: "애교쟁이?" },
+            { face: "/characters/face/rabbit_N.webp", color: "#8FCE70", text: "분위기 메이커!" },
+          ],
+        },
+        tint: "#EAF6F9",
+        text: "친구가 나를 진단해 줘요!",
+        highlight: "친구",
+      },
+      {
+        // 日本語版は「LINEで」。韓国では招待の主な手段がカカオトークなので置き換える。
+        visual: {
+          kind: "send",
+          selfLabel: "나",
+          selfFace: "/characters/face/penguin_N.webp",
+          friendLabel: "친구",
+          friendFace: "/characters/face/seal_R.webp",
+          linkLabel: "링크",
+        },
+        tint: "#EEF7E9",
+        text: "카카오톡으로 링크만 보내면 OK!",
+        highlight: "링크만 보내면",
+      },
+      {
+        visual: {
+          kind: "answer",
+          friendLabel: "친구",
+          friendFace: "/characters/face/seal_R.webp",
+          countLabel: "30문항",
+          badge: "답변 완료!",
+        },
+        tint: "#FFF5DC",
+        text: "친구가 30문항에 답하면 완성!",
+        highlight: "30문항에 답하면",
+      },
+      {
+        visual: {
+          kind: "gap",
+          badge: "차이 발견!",
+          selfLabel: "나",
+          friendLabel: "친구",
+          rowLabels: ["외향성", "우호성", "개방성"],
+        },
+        tint: "#F1ECFA",
+        text: "친구 진단으로 의외의 모습을 발견!",
+        highlight: "친구 진단",
+      },
+    ],
+    steps: [
+      "답변 데이터 분석",
+      "Big Five 이론으로 해석",
+      "친구가 보는 성격 예측",
+      "진단 결과 생성",
+    ],
   },
 };
 export const KO_DIAGNOSIS_SETTINGS: DiagnosisLocaleSettings = {
   locale: "ko",
-  questions: KO_QUESTIONS,
-  persistProgress: true,
+  // 出す質問は src/lib/question-sets.ts の KO_DEFAULT_QUESTION_SET_ID で決まる。
+  questions: KO_QUESTION_SETS[KO_DEFAULT_QUESTION_SET_ID],
+  questionSet: { id: KO_DEFAULT_QUESTION_SET_ID, sets: KO_QUESTION_SETS },
+  // 日本語版と同じく途中回答は端末に保存しない (再訪時は最初から)。
+  persistProgress: false,
   progressStorageKey: "torisetsu_answers_v2_ko",
   nicknameStorageKey: "torisetsu_nickname_v2_ko",
   genderStorageKey: "torisetsu_gender_v1_ko",

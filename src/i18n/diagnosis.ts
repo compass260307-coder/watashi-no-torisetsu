@@ -94,7 +94,14 @@ export interface AnalyzingSlide {
         linkLabel: string;
       }
     | { kind: "answer"; friendLabel: string; friendFace: string; countLabel: string; badge: string }
-    | { kind: "gap"; badge: string };
+    | {
+        kind: "gap";
+        badge: string;
+        // 図の中のラベル。省略時は日本語 (自分 / 友達 / 外向性・協調性・開放性)。
+        selfLabel?: string;
+        friendLabel?: string;
+        rowLabels?: [string, string, string];
+      };
   // 絵を載せる帯の色。
   tint: string;
   // スライドの文は1つだけ。改行は "\n"。highlight に一致する部分だけ色を変える。
@@ -106,7 +113,7 @@ export interface DiagnosisLocaleSettings {
   locale: DiagnosisLocale;
   // 既定で出す質問セット。
   questions: Question[];
-  // 質問セットを切り替えられる言語だけが持つ (現状は日本語のみ)。
+  // 質問セットを切り替えられる言語だけが持つ (日本語と韓国語)。
   //   id:   questions がどのセットか。回答と一緒に API と計測へ送る。
   //   sets: URL の ?qset=<id> で上書きできるセット。
   // 省略した言語では ?qset は無視され、セット id も送らない (API は従来セットで採点)。

@@ -47,7 +47,7 @@ const labels: Record<string, Record<string, string>> = {
   "result.FullAccessCta": {
     "うまく開けませんでした。少し待ってからもう一度お試しください。": "Halaman pembayaran tidak dapat dibuka. Coba lagi sebentar lagi.",
     "通信に失敗しました。電波のいい場所でもう一度お試しください。": "Koneksi gagal. Periksa koneksi lalu coba lagi.",
-    "ひらいています…": "Membuka…",
+    "ひらいています...": "Membuka…",
     "もう一度ためす →": "Coba lagi →",
     "上のボタンでもう一度お試しください。": "Coba lagi dengan tombol di atas."
   },

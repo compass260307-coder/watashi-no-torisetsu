@@ -141,13 +141,22 @@ export async function sendFriendPerceptionEmail(
   args: SendFriendPerceptionArgs,
 ): Promise<void> {
   const locale = args.locale ?? "ja";
-  const siteName = locale === "en" || locale === "id" ? EN_SITE_NAME : SITE_NAME;
+  const siteName =
+    locale === "en" || locale === "id"
+      ? EN_SITE_NAME
+      : locale === "ko"
+        ? KO_SITE_NAME
+        : SITE_NAME;
   const resend = getResendClient();
   const from = getFromAddress(siteName);
   if (!resend || !from) return;
 
   const ownerDisplay =
-    (args.ownerName ?? "").trim() || (locale === "en" ? "you" : locale === "id" ? "Anda" : "あなた");
+    (args.ownerName ?? "").trim() ||
+    (locale === "en" ? "you" : locale === "id" ? "Anda" : locale === "ko" ? "회원" : "あなた");
+  // 日本語と韓国語は同じレイアウトのテンプレートを使い、文言だけ切り替える。
+  const friendPerceptionCopy =
+    locale === "ko" ? FRIEND_PERCEPTION_COPY.ko : FRIEND_PERCEPTION_COPY.ja;
   const localePrefix =
     locale === "ko"
       ? "/ko"
@@ -162,7 +171,7 @@ export async function sendFriendPerceptionEmail(
       ? `${args.perceiverName} shared a new perspective on you`
       : locale === "id"
         ? `${args.perceiverName} membagikan sudut pandang baru tentang Anda`
-      : `${args.perceiverName}さんから新しい印象が届きました`;
+      : friendPerceptionCopy.subject(args.perceiverName);
 
   try {
     const result = await resend.emails.send({
@@ -186,13 +195,16 @@ export async function sendFriendPerceptionEmail(
               perceptionType: args.perceptionType,
               perceptionModifierLabel: args.perceptionModifierLabel ?? null,
             })
-          : renderFriendPerceptionHtml({
-              meUrl,
-              perceiverName: args.perceiverName,
-              ownerDisplay,
-              perceptionType: args.perceptionType,
-              perceptionModifierLabel: args.perceptionModifierLabel ?? null,
-            }),
+          : renderFriendPerceptionHtml(
+              {
+                meUrl,
+                perceiverName: args.perceiverName,
+                ownerDisplay,
+                perceptionType: args.perceptionType,
+                perceptionModifierLabel: args.perceptionModifierLabel ?? null,
+              },
+              friendPerceptionCopy,
+            ),
       text:
         locale === "id"
           ? renderFriendPerceptionTextId({
@@ -210,13 +222,16 @@ export async function sendFriendPerceptionEmail(
               perceptionType: args.perceptionType,
               perceptionModifierLabel: args.perceptionModifierLabel ?? null,
             })
-          : renderFriendPerceptionText({
-              meUrl,
-              perceiverName: args.perceiverName,
-              ownerDisplay,
-              perceptionType: args.perceptionType,
-              perceptionModifierLabel: args.perceptionModifierLabel ?? null,
-            }),
+          : renderFriendPerceptionText(
+              {
+                meUrl,
+                perceiverName: args.perceiverName,
+                ownerDisplay,
+                perceptionType: args.perceptionType,
+                perceptionModifierLabel: args.perceptionModifierLabel ?? null,
+              },
+              friendPerceptionCopy,
+            ),
     });
     if (result.error) {
       console.error(
@@ -1433,8 +1448,70 @@ function renderFriendPerceptionTextId(args: FriendPerceptionTemplateArgs): strin
   ].join("\n");
 }
 
+// 友達評価到着メールの文言。日本語と韓国語は同じレイアウトで、ここだけが違う。
+// name / owner は呼び出し側で必要に応じて escapeHtml 済みの値を渡す。
+interface FriendPerceptionCopy {
+  htmlLang: string;
+  fontFamily: string;
+  brandLabel: string;
+  siteName: string;
+  subject: (name: string) => string;
+  heading: string;
+  lead: (name: string, owner: string) => string;
+  cta: string;
+  noteLine1: string;
+  noteLine2: string;
+  urlFallback: string;
+  textTypeHeading: string;
+  textTypeLabel: string;
+  textModifierLabel: string;
+}
+
+const FRIEND_PERCEPTION_COPY: Record<"ja" | "ko", FriendPerceptionCopy> = {
+  ja: {
+    htmlLang: "ja",
+    fontFamily: "'Hiragino Mincho ProN','Yu Mincho',serif",
+    brandLabel: "WATASHI NO TORISETSU",
+    siteName: SITE_NAME,
+    subject: (name) => `${name}さんから新しい印象が届きました`,
+    heading: "新しい印象が届きました",
+    lead: (name, owner) =>
+      `${name}さんから、${owner}さんへの新しい印象が届きました。`,
+    cta: "マイ図鑑で詳しく見る",
+    noteLine1:
+      "友達ごとに違う「眼」が集まると、もっと立体的な自分が見えてきます。",
+    noteLine2: "3 人以上の眼で見てもらうと「真のトリセツ」も作れます。",
+    urlFallback:
+      "ボタンが押せない場合は、以下の URL をブラウザに貼り付けてください。",
+    textTypeHeading: "友達から見たあなた",
+    textTypeLabel: "タイプ",
+    textModifierLabel: "雰囲気",
+  },
+  ko: {
+    htmlLang: "ko",
+    fontFamily:
+      "'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif",
+    brandLabel: KO_SITE_NAME,
+    siteName: KO_SITE_NAME,
+    subject: (name) => `${name}님이 새로운 인상을 보냈어요`,
+    heading: "새로운 인상이 도착했어요",
+    lead: (name, owner) =>
+      `${name}님이 ${owner}님에 대한 새로운 인상을 보냈어요.`,
+    cta: "결과 페이지에서 자세히 보기",
+    noteLine1:
+      "친구마다 다른 ‘시선’이 모이면 더 입체적인 나를 볼 수 있어요.",
+    noteLine2: "3명 이상의 시선이 모이면 ‘진짜 사용설명서’도 만들 수 있어요.",
+    urlFallback:
+      "버튼이 눌리지 않으면 아래 URL을 브라우저에 붙여 넣어 주세요.",
+    textTypeHeading: "친구가 본 나",
+    textTypeLabel: "유형",
+    textModifierLabel: "분위기",
+  },
+};
+
 function renderFriendPerceptionHtml(
   args: FriendPerceptionTemplateArgs,
+  copy: FriendPerceptionCopy,
 ): string {
   // XSS 対策: perceiverName / ownerDisplay / perceptionType / perceptionModifierLabel
   // はユーザー入力 / 派生計算ラベルが入る。escapeHtml を通す。
@@ -1449,23 +1526,23 @@ function renderFriendPerceptionHtml(
     : "";
 
   return `<!DOCTYPE html>
-<html lang="ja">
+<html lang="${copy.htmlLang}">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>${perceiverName}さんから新しい印象が届きました</title>
+    <title>${copy.subject(perceiverName)}</title>
   </head>
-  <body style="margin:0;padding:0;background:#FAF7F2;font-family:'Hiragino Mincho ProN','Yu Mincho',serif;color:#2A2520;">
+  <body style="margin:0;padding:0;background:#FAF7F2;font-family:${copy.fontFamily};color:#2A2520;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FAF7F2;padding:40px 16px;">
       <tr>
         <td align="center">
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E8E1D5;border-radius:12px;padding:40px 32px;">
             <tr>
               <td>
-                <p style="margin:0 0 24px;font-size:11px;letter-spacing:0.2em;color:#A89E8E;text-align:center;">WATASHI NO TORISETSU</p>
-                <h1 style="margin:0 0 24px;font-size:21px;font-weight:600;line-height:1.6;text-align:center;color:#2A2520;">新しい印象が届きました</h1>
+                <p style="margin:0 0 24px;font-size:11px;letter-spacing:0.2em;color:#A89E8E;text-align:center;">${copy.brandLabel}</p>
+                <h1 style="margin:0 0 24px;font-size:21px;font-weight:600;line-height:1.6;text-align:center;color:#2A2520;">${copy.heading}</h1>
                 <p style="margin:0 0 20px;font-size:15px;line-height:1.85;">
-                  ${perceiverName}さんから、${ownerDisplay}さんへの新しい印象が届きました。
+                  ${copy.lead(perceiverName, ownerDisplay)}
                 </p>
                 <div style="margin:0 0 28px;padding:20px 16px;background:#FAF7F2;border:1px solid #E8E1D5;border-radius:8px;text-align:center;">
                   <p style="margin:0 0 6px;font-size:11px;letter-spacing:0.15em;color:#A89E8E;">PERCEIVED TYPE</p>
@@ -1473,15 +1550,15 @@ function renderFriendPerceptionHtml(
                   ${modifierLine}
                 </div>
                 <p style="margin:0 0 32px;text-align:center;">
-                  <a href="${args.meUrl}" style="display:inline-block;padding:14px 36px;background:#2A2520;color:#FAF7F2;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:0.05em;border-radius:999px;">マイ図鑑で詳しく見る</a>
+                  <a href="${args.meUrl}" style="display:inline-block;padding:14px 36px;background:#2A2520;color:#FAF7F2;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:0.05em;border-radius:999px;">${copy.cta}</a>
                 </p>
                 <p style="margin:0 0 20px;font-size:13px;line-height:1.85;color:#6B6359;">
-                  友達ごとに違う「眼」が集まると、もっと立体的な自分が見えてきます。
+                  ${copy.noteLine1}
                   <br />
-                  3 人以上の眼で見てもらうと「真のトリセツ」も作れます。
+                  ${copy.noteLine2}
                 </p>
                 <p style="margin:0 0 24px;font-size:13px;line-height:1.85;color:#6B6359;">
-                  ボタンが押せない場合は、以下の URL をブラウザに貼り付けてください。
+                  ${copy.urlFallback}
                 </p>
                 <p style="margin:0;font-size:12px;line-height:1.65;color:#A89E8E;word-break:break-all;">
                   ${args.meUrl}
@@ -1489,7 +1566,7 @@ function renderFriendPerceptionHtml(
               </td>
             </tr>
           </table>
-          <p style="margin:24px 0 0;font-size:11px;color:#A89E8E;">${SITE_NAME}</p>
+          <p style="margin:24px 0 0;font-size:11px;color:#A89E8E;">${copy.siteName}</p>
         </td>
       </tr>
     </table>
@@ -1499,34 +1576,33 @@ function renderFriendPerceptionHtml(
 
 function renderFriendPerceptionText(
   args: FriendPerceptionTemplateArgs,
+  copy: FriendPerceptionCopy,
 ): string {
   const lines = [
-    `${args.perceiverName}さんから新しい印象が届きました`,
+    copy.subject(args.perceiverName),
     "",
-    `${args.perceiverName}さんから、${args.ownerDisplay}さんへの新しい印象が届きました。`,
+    copy.lead(args.perceiverName, args.ownerDisplay),
     "",
-    "■ 友達から見たあなた",
-    `タイプ: ${args.perceptionType}`,
+    `■ ${copy.textTypeHeading}`,
+    `${copy.textTypeLabel}: ${args.perceptionType}`,
   ];
   if (args.perceptionModifierLabel) {
-    lines.push(`雰囲気: ${args.perceptionModifierLabel}`);
+    lines.push(`${copy.textModifierLabel}: ${args.perceptionModifierLabel}`);
   }
   lines.push(
     "",
-    "■ マイ図鑑で詳しく見る",
+    `■ ${copy.cta}`,
     args.meUrl,
     "",
-    "友達ごとに違う「眼」が集まると、もっと立体的な自分が見えてきます。",
-    "3 人以上の眼で見てもらうと「真のトリセツ」も作れます。",
+    copy.noteLine1,
+    copy.noteLine2,
     "",
     "--",
-    SITE_NAME,
+    copy.siteName,
   );
   return lines.join("\n");
 }
 
-// HTML テンプレ内で文字を埋め込む際の最低限のエスケープ。
-// owner name や title はユーザー入力 (display_name) / AI 生成テキストが入る可能性あり。
 function escapeHtml(input: string): string {
   return input
     .replace(/&/g, "&amp;")

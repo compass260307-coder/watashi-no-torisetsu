@@ -1,5 +1,12 @@
 # 韓国X広告のコンバージョン計測復旧（2026-10-21）
 
+> **2026-11-17 追記（現行の状態）**: 以下の rh617 直接実装は、同日の #247 でコードから外れ、X への送信は GTM に移っている。現在の韓国語の計測は次のとおり。
+>
+> - 公開 GTM（`GTM-K39CJGCF` version 29、公開 `gtm.js` を読み取りで確認）は、パスが `/ko` 配下のとき Pixel `rj3sa` を初期化し、`diagnosis_completed` で `tw-rj3sa-rj3sf`、`purchase_verified` で `tw-rj3sa-rj3sg`（`conversion_id` / `value` / `currency` 付き）を送る。`rh617` は `/ko` 以外で初期化される日本向けの一覧に入っている。
+> - サイトは従来、`purchase_verified` を JPY 決済のときだけ dataLayer に渡していたため、韓国語 Checkout（KRW）の購入は X に届いていなかった。2026-11-17 に `src/lib/x-pixel-config.ts` へ韓国語の行を追加し、Stripe で検証済みの言語が `ko` の購入を通貨を問わず渡すようにした。診断完了の受け渡しは変更していない。
+> - 日本向けの購入タグは GTM 側で `currency == JPY` かつ `/ko` 以外に限定されている。X 側の受信は、自然に発生する韓国語の購入で別途確認する（テスト購入は送らない）。
+> - `scripts/x-pixel-regression-test.mjs` は Meta 計測の削除（#300）以降 `metaPurchaseStorageKey` の参照で失敗する状態で、今回は修復していない。
+
 ## 対象と動作
 
 - Pixel: `rh617`

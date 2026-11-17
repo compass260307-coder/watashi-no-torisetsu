@@ -3,8 +3,9 @@ import { questionsV2 } from "./questions-v2";
 import type { Question } from "./types";
 
 // 自己診断の質問セット。
-//   v1: 従来の 50 問 (src/lib/questions.ts)。日本語以外の言語は常にこれ。
-//   v2: 場面具体型に書き換え、出題順を混ぜた 50 問 (src/lib/questions-v2.ts)。日本語版のみ。
+//   v1: 従来の 50 問 (src/lib/questions.ts)。英語・インドネシア語は常にこれ。
+//   v2: 場面具体型に書き換え、出題順を混ぜた 50 問 (src/lib/questions-v2.ts)。日本語版と韓国語版。
+//       韓国語の文は src/i18n/ko/diagnosis.ts にあり、id・出題順・ファセット・逆転は日本語版と同一。
 //
 // 採点は「id → ファセット / 逆転」の対応に依存し、その対応はセットごとに違う。
 // そのため回答を送るときは必ずどのセットの回答かを一緒に渡し、クライアントとサーバーで
@@ -23,15 +24,21 @@ export type QuestionSetId = "v1" | "v2";
 export const JA_DEFAULT_QUESTION_SET_ID: QuestionSetId = "v2";
 
 /**
+ * 韓国語版 /ko/diagnosis で出す質問セット (2026-11-17 に日本語版と同じ v2 へ切り替え)。
+ * 元に戻すときは、この 1 行を "v1" に変えてデプロイする。確認用: /ko/diagnosis?qset=v1
+ */
+export const KO_DEFAULT_QUESTION_SET_ID: QuestionSetId = "v2";
+
+/**
  * セット指定のない回答の扱い。v2 導入前のクライアント (デプロイ時点で開いていた画面) と
- * 日本語以外の言語はセットを送らないため、従来の v1 として採点する。
+ * 英語・インドネシア語はセットを送らないため、従来の v1 として採点する。
  */
 export const LEGACY_QUESTION_SET_ID: QuestionSetId = "v1";
 
 /** URL クエリのキー (例: /diagnosis?qset=v1)。 */
 export const QUESTION_SET_QUERY_KEY = "qset";
 
-/** 日本語版で選べるセット。 */
+/** 日本語版で選べるセット。採点用の定義 (id → ファセット / 逆転) は韓国語版も同じものを使う。 */
 export const JA_QUESTION_SETS: Record<QuestionSetId, Question[]> = {
   v1: questions,
   v2: questionsV2,
@@ -39,13 +46,17 @@ export const JA_QUESTION_SETS: Record<QuestionSetId, Question[]> = {
 
 /**
  * サーバー側の採点用。信頼できない入力 (リクエスト body) からセットを解決する。
- * 日本語版で既知の id が指定されたときだけそのセット、それ以外は従来の v1。
+ * 日本語版・韓国語版で既知の id が指定されたときだけそのセット、それ以外は従来の v1。
+ * 採点は文を見ないので、韓国語の回答も日本語版と同じ定義で計算できる。
  */
 export function resolveQuestionSet(
   value: unknown,
   locale: string,
 ): { id: QuestionSetId; questions: Question[] } {
-  if (locale === "ja" && (value === "v1" || value === "v2")) {
+  if (
+    (locale === "ja" || locale === "ko") &&
+    (value === "v1" || value === "v2")
+  ) {
     return { id: value, questions: JA_QUESTION_SETS[value] };
   }
   return { id: LEGACY_QUESTION_SET_ID, questions };

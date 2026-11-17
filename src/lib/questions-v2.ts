@@ -124,3 +124,24 @@ export const questionsV2: Question[] = DISPLAY_ORDER.map(
     ...DEFINED[definitionNumber - 1],
   }),
 );
+
+/** 1 ファセット分の翻訳文 (上の ITEMS_BY_FACET と同じ並びの 5 問)。 */
+export type QuestionV2FacetTexts = readonly [string, string, string, string, string];
+
+/**
+ * v2 の他言語版を作る。文だけを差し替え、id・出題順・ファセット・逆転は日本語版と同一にする。
+ * サーバーの採点は「id → ファセット / 逆転」しか見ないので、どの言語の回答も
+ * 日本語版と同じ v2 の定義で採点できる (src/lib/question-sets.ts)。
+ */
+export function localizeQuestionsV2(
+  textsByFacet: Readonly<Record<FacetId, QuestionV2FacetTexts>>,
+): Question[] {
+  return DISPLAY_ORDER.map((definitionNumber, index) => {
+    const base = DEFINED[definitionNumber - 1];
+    return {
+      ...base,
+      id: index + 1,
+      text: textsByFacet[base.facetId][(definitionNumber - 1) % 5],
+    };
+  });
+}

@@ -37,6 +37,8 @@ import {
 } from "@/lib/friend-questions-v2";
 import { sendFriendPerceptionEmail } from "@/lib/email";
 import { torisetsuTypes } from "@/lib/torisetsu-data";
+import { classifyThirtyTwoType } from "@/lib/thirty-two-types";
+import { KO_RESULT_TYPES } from "@/i18n/ko/result";
 import type { AnswerValue, TorisetsuTypeId } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -425,9 +427,14 @@ export async function POST(request: NextRequest) {
   // 冪等は users.last_notified_friend_count の条件付き UPDATE で担保する。
   const perceiverDisplayName = perceiverName;
   const perceivedTypeId = perception.typeId as TorisetsuTypeId;
+  // 韓国語のメールには、韓国語サイトと同じ32タイプの名前を載せる。
+  // 補足ラベル (例「計画 × 繊細」) は日本語しかないため、韓国語では付けない。
   const perceivedTypeName =
-    torisetsuTypes[perceivedTypeId]?.name ?? perceivedTypeId;
-  const perceivedModifierLabel = perception.modifierLabel;
+    submissionLocale === "ko"
+      ? KO_RESULT_TYPES[classifyThirtyTwoType(perception.scores)].name
+      : (torisetsuTypes[perceivedTypeId]?.name ?? perceivedTypeId);
+  const perceivedModifierLabel =
+    submissionLocale === "ko" ? null : perception.modifierLabel;
   const ownerUserId = owner.id as string;
 
   const notificationLimit = await consumeRateLimit(request, {

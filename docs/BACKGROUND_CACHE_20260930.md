@@ -8,7 +8,7 @@
 
 `src/lib/top-hero-background.ts` で2枚を静的importし、Next.jsが生成する画像内容のハッシュ付きURLを共有するよう変更した。ヘッダーを広い範囲で変更する必要はない。
 
-- TopHero（日本語・英語・インドネシア語）とKoTopHero（韓国語）のpreloadとCSS背景は、同じURLから生成する。
+- TopHero（日本語・韓国語・英語・インドネシア語）のpreloadとヒーロー画像は、同じURLから生成する（韓国語は2026-11-17にKoTopHeroからTopHeroへ統合）。
 - PC／モバイルの切り替え条件を維持し、その幅で使う1枚だけを取得する。
 - URLは画像内容の変更に応じて自動更新される。手動の版番号更新は不要。
 - CSS変数はサーバーから返すHTMLのstyleに含めるため、JavaScriptの実行を待たずに背景を表示できる。
