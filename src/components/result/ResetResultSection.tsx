@@ -26,7 +26,7 @@ export default function ResetResultSection({
 }) {
   const copy = COPY[locale];
   return (
-    <section id="reset-result" className="mx-auto w-[calc(100%-2rem)] max-w-5xl scroll-mt-28 border-y border-slate-200 px-4 py-8 text-center md:py-10">
+    <section id="reset-result" className="mx-auto w-[calc(100%-2rem)] max-w-5xl scroll-mt-28 border-t border-slate-200 px-4 py-8 text-center md:py-10">
       <p className="text-sm text-slate-600">
         {copy.lead}
       </p>
