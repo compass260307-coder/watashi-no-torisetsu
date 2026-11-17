@@ -1,3 +1,4 @@
+import type { QuestionSetId } from "@/lib/question-sets";
 import type { AnswerValue, Question } from "@/lib/types";
 
 export type DiagnosisLocale = "ja" | "ko" | "en" | "id";
@@ -103,7 +104,16 @@ export interface AnalyzingSlide {
 
 export interface DiagnosisLocaleSettings {
   locale: DiagnosisLocale;
+  // 既定で出す質問セット。
   questions: Question[];
+  // 質問セットを切り替えられる言語だけが持つ (現状は日本語のみ)。
+  //   id:   questions がどのセットか。回答と一緒に API と計測へ送る。
+  //   sets: URL の ?qset=<id> で上書きできるセット。
+  // 省略した言語では ?qset は無視され、セット id も送らない (API は従来セットで採点)。
+  questionSet?: {
+    id: QuestionSetId;
+    sets: Record<QuestionSetId, Question[]>;
+  };
   persistProgress: boolean;
   progressStorageKey: string;
   nicknameStorageKey: string;

@@ -18,6 +18,7 @@ import {
   readJsonObject,
 } from "@/lib/api-security";
 import { diagnose } from "@/lib/diagnosis";
+import { resolveQuestionSet } from "@/lib/question-sets";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { checkOrigin } from "@/lib/origin-check";
 import { createSession, getSession } from "@/lib/session";
@@ -139,7 +140,10 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  const result = diagnose(answers);
+  // 質問セットごとに「id → ファセット」の対応が違うため、回答と同じセットで採点する。
+  // 未指定 (旧クライアント)・未知の値・日本語以外は従来の v1。
+  const questionSet = resolveQuestionSet(body.questionSet, locale);
+  const result = diagnose(answers, questionSet.questions);
   const {
     typeId,
     scores,
@@ -184,6 +188,8 @@ export async function POST(request: NextRequest) {
     ...(cModifier ? { cModifier } : {}),
     ...(nModifier ? { nModifier } : {}),
     ...(modifierLabel ? { modifierLabel } : {}),
+    // どの質問セットの回答か。セット切り替え前後の比較 (タイプ分布など) に使う。
+    questionSet: questionSet.id,
   };
 
   const inviteCode = generateInviteCode();
