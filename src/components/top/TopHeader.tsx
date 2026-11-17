@@ -478,7 +478,8 @@ export default function TopHeader({
                     <button
                       type="button"
                       tabIndex={open ? 0 : -1}
-                      onClick={() => resetLocalData()}
+                      // リセット後は、いま見ている言語のトップへ戻す (以前はどの言語でも日本語トップへ戻っていた)。
+                      onClick={() => resetLocalData(isKo ? "/ko" : isEn ? "/en" : isId ? "/id" : "/")}
                       className="flex-1 rounded-full bg-[#B4415C] py-2.5 text-[14px] font-bold text-white transition-colors hover:bg-[#8f2f45]"
                     >
                       {content.reset.run}
