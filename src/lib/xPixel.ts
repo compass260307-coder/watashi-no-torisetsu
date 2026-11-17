@@ -27,7 +27,8 @@ const eventConfigs = new Map(ACTIVE_X_PIXELS.flatMap((pixel) => [
   [pixel.purchase.eventId, pixel.purchase],
 ] as const));
 
-// Preserve michi/rgg36: diagnosis in every locale; purchase only in JPY.
+// michi/rgg36: diagnosis in every locale; purchase only in JPY.
+// Korean (rj3sa): purchases whose Stripe-verified checkout locale is "ko", in any currency.
 export function xPurchaseEventIds(currency: string, checkoutLocale?: string): readonly string[] {
   return ACTIVE_X_PIXELS
     .filter((pixel) => (!pixel.locale || pixel.locale === checkoutLocale) &&
