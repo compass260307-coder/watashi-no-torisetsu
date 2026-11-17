@@ -21,7 +21,7 @@ export async function generateMetadata({
   const { perceptionId } = await params;
   const idPath = encodeURIComponent(perceptionId);
   return {
-    title: "친구가 본 결과 | 나의 사용설명서",
+    title: "친구가 본 결과",
     alternates: localizedAlternates(
       "ko",
       `/evaluate/result/${idPath}`,

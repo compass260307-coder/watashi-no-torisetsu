@@ -639,7 +639,7 @@ export async function TakoResultPage({
           (1人目無料モデルでは友達1人ならロック対象が無い)。 */}
       <MeStickyHeader
         showUnlockCta={takoLocked && data.friends.length > 1}
-        unlockCtaLabel={isId ? "Tingkatkan hasil" : isKo ? undefined : "結果をアップグレード"}
+        unlockCtaLabel={isId ? "Tingkatkan hasil" : isKo ? "결과 업그레이드" : "結果をアップグレード"}
         // 回答0人では固定バーを出さず、本文の招待タブと空状態CTAに集約する。
         // 1人以上では従来どおり「さらに友達に診断してもらう」招待バーを表示する。
         shareUrl={
@@ -692,8 +692,8 @@ export async function TakoResultPage({
                     inviteCode={data.inviteCode}
                     compact
                     deferQr
-                    // 日本語は QR を出さない (SNS・リンク共有に絞る)
-                    hideQr={locale === "ja"}
+                    // 日本語・韓国語は QR を出さない (SNS・リンク共有に絞る)
+                    hideQr={locale === "ja" || isKo}
                     locale={locale}
                     qrImageSrc={
                       data.ownerType32
@@ -703,9 +703,9 @@ export async function TakoResultPage({
                   />
                 }
                 demoHref={
-                  locale === "ja"
+                  locale === "ja" || isKo
                     ? // 本人のタイプで見本を作る (不明なら既定タイプ)。friends=1 = 友達1人分。
-                      `/tako/preview?previewType=${encodeURIComponent(
+                      `${isKo ? "/ko" : ""}/tako/preview?previewType=${encodeURIComponent(
                         data.ownerType32 ?? "idea-monkey__R",
                       )}&friends=1&fromPreview=1&demo=1`
                     : undefined
@@ -741,7 +741,7 @@ export async function TakoResultPage({
                       inviteCode={data.inviteCode}
                       compact
                       deferQr
-                      hideQr={locale === "ja"}
+                      hideQr={locale === "ja" || isKo}
                       locale={locale}
                       qrImageSrc={
                         data.ownerType32
@@ -1349,7 +1349,7 @@ export async function TakoResultPage({
       {data.friends.length === 0 ? takoPromo : null}
       {/* サイト共通フッター (トップ / /me / /types / /about と同じ) */}
       {isKo ? <KoTopFooter /> : <TopFooter locale={isId ? "id" : "ja"} />}
-      {demoMode && <TakoDemoBar />}
+      {demoMode && <TakoDemoBar locale={isKo ? "ko" : "ja"} />}
     </>
   );
 }

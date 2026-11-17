@@ -71,7 +71,7 @@ const labels: Record<string, Record<string, string>> = {
     "料金は発生していません。{courseName}を選択した状態に戻しました。": "요금은 청구되지 않았어요. {courseName}을(를) 선택한 상태로 돌아왔어요."
   },
   "diagnosis.DiagnosisShareBand": {
-    "ワタシのトリセツ｜無料性格診断テスト": "나의 사용설명서 무료 성격 진단",
+    "ワタシのトリセツ｜無料性格診断テスト": "앨리스 진단｜무료 성격 진단 테스트",
     "診断テストをシェア": "진단 테스트 공유",
     "LINEでシェア": "LINEでシェア",
     "Xでシェア": "X로 공유",

@@ -89,7 +89,7 @@ export async function generateCharacterShareMetadata({
     `/en/share/${codePath}`,
   );
   const siteName = isKorean
-    ? "나의 사용설명서"
+    ? "앨리스 진단"
     : isIndonesian
       ? "Alice Test"
     : isEnglish
@@ -204,7 +204,7 @@ export default async function CharacterShareLandingPage({
           style={{ color: NAVY, opacity: 0.6 }}
         >
           {isKorean
-            ? "나의 사용설명서"
+            ? "앨리스 진단"
             : isIndonesian
               ? "ALICE TEST"
             : isEnglish

@@ -69,6 +69,8 @@ export function LockedInviteShare({
   const isEnglish = locale === "en";
   const isIndonesian = locale === "id";
   const shareText = SHARE_TEXT[locale];
+  // 日本語と韓国語は同じ並び (メッセージアプリ / X / その他) と間隔にする。
+  const usesCompactShareRow = locale === "ja" || isKorean;
 
   // 解除後の「＋」タブはクリックだけでなく、招待UIが実際に見えたかも計測する。
   useEffect(() => {
@@ -177,7 +179,7 @@ export function LockedInviteShare({
   // 日本語はラベルが短い (LINE / X / その他) ので、ボタン幅をアイコン幅に合わせて間隔を詰める。
   // 他言語は "Facebook" などの長いラベルがあるため、従来の最小幅 64px を保つ。
   const shareButton = `group flex flex-col items-center gap-2 rounded-xl text-[12px] font-black text-[#4B4B66] outline-none focus-visible:ring-2 focus-visible:ring-[#5B5BEF]/45 focus-visible:ring-offset-4 ${
-    locale === "ja" ? "min-w-12 md:min-w-14" : "min-w-[64px]"
+    usesCompactShareRow ? "min-w-12 md:min-w-14" : "min-w-[64px]"
   }`;
   const shareIcon =
     "flex h-12 w-12 items-center justify-center rounded-full shadow-[0_5px_14px_rgba(46,46,92,0.12)] transition-transform group-hover:-translate-y-0.5 group-active:scale-95 md:h-14 md:w-14";
@@ -225,7 +227,7 @@ export function LockedInviteShare({
       <div
         className={`mt-3 flex items-start ${
           // 日本語はアイコン同士を近づける (他言語は長いラベルがあるため従来の間隔)
-          locale === "ja" ? "gap-3.5 md:gap-4" : "gap-4 md:gap-5"
+          usesCompactShareRow ? "gap-3.5 md:gap-4" : "gap-4 md:gap-5"
         }`}
       >
         {isKorean ? (
@@ -272,8 +274,8 @@ export function LockedInviteShare({
           </span>
           X
         </a>
-        {/* 日本語は Facebook を出さない (選択肢を絞る。「その他」の共有メニューからは送れる)。 */}
-        {locale === "ja" ? null : (
+        {/* 日本語・韓国語は Facebook を出さない (選択肢を絞る。「その他」の共有メニューからは送れる)。 */}
+        {usesCompactShareRow ? null : (
           <a
             href={facebookUrl}
             target="_blank"
@@ -311,12 +313,15 @@ export function LockedInviteShare({
       <p
         aria-live={hideQr ? "polite" : undefined}
         className={`mt-5 text-[12px] font-black ${
-          hideQr && copied ? "text-[#5B5BEF]" : "text-[#2E2E5C]/65"
+          hideQr && (copied || kakaoNote) ? "text-[#5B5BEF]" : "text-[#2E2E5C]/65"
         }`}
       >
-        {hideQr && copied
-          ? "リンクをコピーしました"
-          : isEnglish ? "Invitation link" : isKorean ? "초대 링크" : isIndonesian ? "Tautan undangan" : "招待リンクをコピー"}
+        {/* QRなしのカードでは、カカオトーク共有の結果もここに出す (下の知らせ行が無いため)。 */}
+        {hideQr && kakaoNote
+          ? kakaoNote
+          : hideQr && copied
+          ? isEnglish ? "Link copied" : isKorean ? "링크를 복사했어요" : isIndonesian ? "Tautan disalin" : "リンクをコピーしました"
+          : isEnglish ? "Invitation link" : isKorean ? "초대 링크 복사" : isIndonesian ? "Tautan undangan" : "招待リンクをコピー"}
       </p>
       <button
         type="button"

@@ -12,7 +12,7 @@ export async function generateMetadata({
   const tokenPath = encodeURIComponent(token);
   const perceptionPath = encodeURIComponent(perceptionId);
   return {
-    title: "친구별 관점 일치 결과 | 나의 사용설명서",
+    title: "친구별 관점 일치 결과",
     alternates: localizedAlternates(
       "ko",
       `/tako/${tokenPath}/friend/${perceptionPath}`,

@@ -233,7 +233,7 @@ export function HoshiyomiClient({
             locale === "en"
               ? "AI astrologer Alice"
               : locale === "ko"
-                ? "별자리 상담사"
+                ? "AI 점성술사 Alice"
                 : locale === "id"
                   ? "Astrolog AI Alice"
                 : "AI占い師 Alice"

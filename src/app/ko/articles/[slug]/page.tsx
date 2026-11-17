@@ -46,7 +46,7 @@ export async function generateMetadata({
   const image = KO_DEFAULT_OG_IMAGE;
 
   return {
-    title: { absolute: `${article.title} | 나의 사용설명서` },
+    title: { absolute: `${article.title} | 앨리스 진단` },
     description: article.description,
     alternates: localizedAlternates("ko", japanesePath, koreanPath, englishPath, indonesianPath),
     openGraph: {
@@ -54,7 +54,7 @@ export async function generateMetadata({
       locale: "ko_KR",
       alternateLocale: ["ja_JP", "en_US"],
       siteName: KO_SITE_NAME,
-      title: `${article.title} | 나의 사용설명서`,
+      title: `${article.title} | 앨리스 진단`,
       description: article.description,
       url: `${BASE_URL}${koreanPath}`,
       images: [image],
@@ -63,7 +63,7 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: `${article.title} | 나의 사용설명서`,
+      title: `${article.title} | 앨리스 진단`,
       description: article.description,
       images: [KO_DEFAULT_OG_IMAGE.url],
     },
@@ -117,7 +117,7 @@ export default async function KoreanArticlePage({
       {
         "@type": "Organization",
         "@id": `${BASE_URL}/#organization`,
-        name: "나의 사용설명서 운영팀",
+        name: "앨리스 진단 운영팀",
         url: BASE_URL,
       },
     ],
@@ -290,7 +290,7 @@ export default async function KoreanArticlePage({
                   className="text-[14px] font-bold underline underline-offset-4"
                   style={{ color: SORA }}
                 >
-                  나의 사용설명서 이용 방법 알아보기 →
+                  앨리스 진단 이용 방법 알아보기 →
                 </Link>
               </li>
             </ul>

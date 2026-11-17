@@ -149,7 +149,7 @@ export async function GET(req: Request, ctx: RouteContext) {
         "Content-Type": "application/pdf",
         "Content-Disposition":
           `attachment; filename="${isKo ? "friend-personality-report-ko.pdf" : isEn ? "alice-test-friend-analysis.pdf" : isId ? "analisis-kepribadian-teman.pdf" : "watashi-no-torisetsu-friend-report.pdf"}"; ` +
-          `filename*=UTF-8''${encodeURIComponent(isKo ? "나의 사용설명서 친구 진단 완전판 리포트.pdf" : isEn ? "Alice Personalities Friend Analysis.pdf" : isId ? "Analisis Kepribadian Teman.pdf" : "友達診断 完全版レポート.pdf")}`,
+          `filename*=UTF-8''${encodeURIComponent(isKo ? "앨리스 진단 - 친구 진단 완전판 리포트.pdf" : isEn ? "Alice Personalities Friend Analysis.pdf" : isId ? "Analisis Kepribadian Teman.pdf" : "友達診断 完全版レポート.pdf")}`,
         "Cache-Control": "private, no-store",
       },
     });

@@ -41,7 +41,7 @@ export async function generateMetadata({
     title: {
       absolute:
         sp.locale === "ko"
-          ? "친구 진단 완전판 리포트 | 나의 사용설명서"
+          ? "친구 진단 완전판 리포트 | 앨리스 진단"
           : sp.locale === "id"
             ? "Laporan Lengkap Analisis Teman | Alice Personalities"
           : "友達診断 完全版レポート | ワタシのトリセツ",

@@ -71,16 +71,16 @@ export default function UnmeiReading({
       <StarBackdrop />
 
       <div className="relative">
-        {locale === "ja" && (
-          <section aria-label="Aliceからの案内" className="relative mx-auto h-[min(820px,calc(100svh-100px))] min-h-[600px] max-w-[640px] overflow-hidden bg-[#09182A]">
-            <Image src="/mascot/unmei-alice-complete-room-v1.webp" alt="完成した星のノートを見せてくれるAlice" fill priority sizes="(min-width: 640px) 640px, 100vw" className="object-cover object-[center_52%]" />
+        {(locale === "ja" || locale === "ko") && (
+          <section aria-label={locale === "ko" ? "Alice의 안내" : "Aliceからの案内"} className="relative mx-auto h-[min(820px,calc(100svh-100px))] min-h-[600px] max-w-[640px] overflow-hidden bg-[#09182A]">
+            <Image src="/mascot/unmei-alice-complete-room-v1.webp" alt={locale === "ko" ? "완성된 별의 노트를 보여 주는 Alice" : "完成した星のノートを見せてくれるAlice"} fill priority sizes="(min-width: 640px) 640px, 100vw" className="object-cover object-[center_52%]" />
             <div aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(180deg,#07122488,transparent_30%,transparent_70%,#17172E)]" />
             <div className="absolute inset-x-4 top-[5%] text-center text-[#FFF7E6]">
               <p className="mb-3 text-xs font-bold tracking-widest text-[#EACC8D]">Alice</p>
-              <p className="text-[21px] font-bold leading-[1.8] md:text-[27px]">できたよ。<br />あなたの設計図を一緒に見ていこう。</p>
+              <p className="text-[21px] font-bold leading-[1.8] md:text-[27px]">{locale === "ko" ? <>완성됐어요.<br />당신의 설계도를 함께 살펴봐요.</> : <>できたよ。<br />あなたの設計図を一緒に見ていこう。</>}</p>
             </div>
             <a href="#unmei-chart" className="absolute inset-x-0 bottom-[5%] mx-auto flex w-fit flex-col items-center gap-2 rounded-full px-6 py-3 text-sm font-bold text-[#FFF7E6] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F5D66B]">
-              あなたの星を見る
+              {locale === "ko" ? "나의 별 보기" : "あなたの星を見る"}
               <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="m6 9 6 6 6-6" /></svg>
             </a>
           </section>
@@ -248,7 +248,7 @@ export default function UnmeiReading({
         })}
 
         {/* ===== 結び: Aliceから次の案内 ===== */}
-        {locale === "ja" ? <div className="px-4 md:px-6"><UnmeiUpgradeInvite offer={upgradeOffer} /></div> : <section className="mt-28 px-6 text-center md:mt-36">
+        {locale === "ja" || locale === "ko" ? <div className="px-4 md:px-6"><UnmeiUpgradeInvite offer={upgradeOffer} locale={locale} /></div> : <section className="mt-28 px-6 text-center md:mt-36">
           <Reveal>
             <span aria-hidden="true" className="text-[20px] text-[#F5D66B]">
               ✦

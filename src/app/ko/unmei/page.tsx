@@ -9,7 +9,8 @@ import UnmeiGuestPurchaseComplete from "@/components/uranai/UnmeiGuestPurchaseCo
 import UnmeiReading from "@/components/uranai/UnmeiReading";
 import { UnmeiAttentionClear } from "@/components/uranai/UnmeiAttentionClear";
 import { getSession } from "@/lib/session";
-import { hasUnmeiAccess } from "@/lib/entitlements";
+import { hasUnmeiAccess, hasFullAccess, hasPremiumBundleAccess } from "@/lib/entitlements";
+import { loadResultUpgradeForUser } from "@/lib/result-upgrade-server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { isReadingLocaleValid, isReadingReady } from "@/lib/unmei/reading";
 import { localizedAlternates } from "@/lib/locale-seo";
@@ -27,9 +28,9 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: { absolute: "운명의 설계도 | 나의 사용설명서" },
+  title: { absolute: "운명의 설계도｜서양 점성술과 성격 진단 | 앨리스 진단" },
   description:
-    "성격 진단과 태어난 순간의 별을 함께 읽어, 일·관계·앞으로의 전환점을 한국어로 풀어낸 개인 설계도입니다.",
+    "서양 점성술의 출생 차트와 성격 진단을 함께 읽어, 일·관계·앞으로의 전환점을 한국어로 풀어낸 개인 설계도입니다.",
   alternates: localizedAlternates("ko", "/unmei", "/ko/unmei"),
   robots: { index: true, follow: true },
 };
@@ -151,6 +152,17 @@ export default async function KoreanUnmeiPage({ searchParams }: PageProps) {
         const animalSlug = promptInputs.animalSlug;
         const identity: UnmeiIdentity | null = promptInputs.identity;
 
+        // 日本語版と同じく、完全版購入者 (結果アップグレード未購入) には末尾で結果アップグレードを案内する。
+        const [fullAccess, premiumPaid] = await Promise.all([
+          hasFullAccess(userId!),
+          hasPremiumBundleAccess(userId!),
+        ]);
+        const canUpgrade =
+          fullAccess && !premiumPaid && Boolean(session?.owner_token);
+        const upgrade = canUpgrade
+          ? await loadResultUpgradeForUser(userId!)
+          : null;
+
         content = (
           <UnmeiReading
             reading={readingRow!.reading}
@@ -161,6 +173,15 @@ export default async function KoreanUnmeiPage({ searchParams }: PageProps) {
             characterSlug={animalSlug}
             identity={identity}
             locale="ko"
+            upgradeOffer={
+              canUpgrade
+                ? {
+                    ownerToken: session!.owner_token!,
+                    existingAnswers: upgrade?.answers ?? [],
+                    initialState: upgrade?.state,
+                  }
+                : undefined
+            }
           />
         );
       }

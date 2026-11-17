@@ -18,7 +18,7 @@ const KO_PEEK_EBOOK: UnlockPeek = {
     },
     {
       img: "/paywall-peek/ko-self-cover-jellyfish_N-2026.webp",
-      alt: "나의 사용설명서 동행자의 이야기 표지",
+      alt: "앨리스 진단 동행자의 이야기 표지",
       width: 560,
       height: 793,
     },

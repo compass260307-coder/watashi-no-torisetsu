@@ -28,7 +28,7 @@ import { FULL_ACCESS_PRICING, formatFullAccessAmount, type FullAccessMarket } fr
 import { resolveSiteUrl } from "./site-url";
 
 const SITE_NAME = "ワタシのトリセツ";
-const KO_SITE_NAME = "나의 사용설명서";
+const KO_SITE_NAME = "앨리스 진단";
 const EN_SITE_NAME = "Alice Personalities";
 const ID_SITE_NAME = "Alice Personalities";
 const SITE_URL = resolveSiteUrl();
@@ -1050,10 +1050,10 @@ export function renderDetailedReportHtmlKo(
       ? "프리미엄 리포트"
       : "점을 보는 Alice";
   const reportName = isSelfReport
-    ? "나의 사용설명서 학생 플랜"
+    ? "앨리스 진단 학생 플랜"
     : isPremiumBundle
-      ? "나의 사용설명서 프리미엄 코스"
-      : "나의 사용설명서 완전판 코스";
+      ? "앨리스 진단 프리미엄 코스"
+      : "앨리스 진단 완전판 코스";
   const price =
     args.purchaseAmountMinor ??
     (isSelfReport
@@ -1093,12 +1093,12 @@ export function renderDetailedReportHtmlKo(
         </div>
         <div style="margin:0 0 30px;padding:24px 26px;background:#FFF9EC;border:1px solid #F0DFC0;border-radius:14px;">
           <h2 style="margin:0 0 12px;font-size:19px;font-weight:800;line-height:1.5;color:#2E2E5C;">계약·환불 정보</h2>
-          <p style="margin:0;font-size:14px;line-height:1.9;color:#5A5A6E;"><strong>판매자:</strong> 후타미 류노스케(나의 사용설명서 운영팀) · 일본<br /><strong>제공 시기:</strong> 결제 확인 후 즉시 잠금 해제 및 디지털 콘텐츠 제공<br /><strong>환불:</strong> 결제일로부터 30일 이내 전액 환불 요청 가능<br /><strong>신청 방법:</strong> 결제 이메일, 결제일과 상품명을 적어 support@watashi-torisetsu.com으로 요청<br /><strong>처리 일정:</strong> 유효한 요청 확인 후 3영업일 이내 환불 절차 시작. 결제 수단 반영은 카드사·결제 회사 일정에 따라 더 걸릴 수 있음<br /><strong>미성년자:</strong> 법정대리인 동의 없이 체결한 계약은 관련 법령에 따라 본인 또는 법정대리인이 취소할 수 있음</p>
+          <p style="margin:0;font-size:14px;line-height:1.9;color:#5A5A6E;"><strong>판매자:</strong> 후타미 류노스케(앨리스 진단 운영팀) · 일본<br /><strong>제공 시기:</strong> 결제 확인 후 즉시 잠금 해제 및 디지털 콘텐츠 제공<br /><strong>환불:</strong> 결제일로부터 30일 이내 전액 환불 요청 가능<br /><strong>신청 방법:</strong> 결제 이메일, 결제일과 상품명을 적어 support@watashi-torisetsu.com으로 요청<br /><strong>처리 일정:</strong> 유효한 요청 확인 후 3영업일 이내 환불 절차 시작. 결제 수단 반영은 카드사·결제 회사 일정에 따라 더 걸릴 수 있음<br /><strong>미성년자:</strong> 법정대리인 동의 없이 체결한 계약은 관련 법령에 따라 본인 또는 법정대리인이 취소할 수 있음</p>
         </div>
         <p style="margin:0 0 18px;font-size:15px;line-height:1.85;color:#7A7A92;">결제할 때 아직 진단을 완료하지 않았다면 진단을 마친 뒤 이 메일의 링크를 다시 열어 주세요. 내 유형에 맞는 내용으로 표시됩니다.</p>
         <p style="margin:0 0 18px;font-size:13px;line-height:1.85;color:#7A7A92;"><a href="${SITE_URL}/ko/terms" style="color:#5B5BEF;text-decoration:underline;">이용약관</a>&nbsp; · &nbsp;<a href="${SITE_URL}/ko/privacy" style="color:#5B5BEF;text-decoration:underline;">개인정보처리방침</a>&nbsp; · &nbsp;<a href="${SITE_URL}/ko/legal/commerce" style="color:#5B5BEF;text-decoration:underline;">판매 및 환불 안내</a></p>
         <p style="margin:0 0 28px;font-size:15px;line-height:1.85;color:#5A5A6E;">결과 링크, PDF 또는 환불과 관련해 도움이 필요하면 <a href="mailto:support@watashi-torisetsu.com" style="color:#5B5BEF;text-decoration:underline;">support@watashi-torisetsu.com</a>으로 연락해 주세요.</p>
-        <p style="margin:0;font-size:15px;line-height:1.85;color:#5A5A6E;">나만의 사용설명서를 천천히 확인해 보세요.<br /><strong style="color:#2E2E5C;">나의 사용설명서 운영팀</strong></p>
+        <p style="margin:0;font-size:15px;line-height:1.85;color:#5A5A6E;">나만의 사용설명서를 천천히 확인해 보세요.<br /><strong style="color:#2E2E5C;">앨리스 진단 운영팀</strong></p>
       </td></tr></table>
       <p style="margin:22px 0 0;font-size:13px;line-height:1.7;color:#8A8AA3;">&copy; ${KO_SITE_NAME}</p>
     </td></tr></table>
@@ -1119,10 +1119,10 @@ function renderDetailedReportTextKo(args: DetailedReportTemplateArgs): string {
   const hasTarot = args.tarotFeaturesIncluded ?? isPremiumBundle;
   const hasFriendFeatures = args.friendFeaturesIncluded ?? false;
   const reportName = isSelfReport
-    ? "나의 사용설명서 학생 플랜"
+    ? "앨리스 진단 학생 플랜"
     : isPremiumBundle
-      ? "나의 사용설명서 프리미엄 코스"
-      : "나의 사용설명서 완전판 코스";
+      ? "앨리스 진단 프리미엄 코스"
+      : "앨리스 진단 완전판 코스";
   const price =
     args.purchaseAmountMinor ??
     (isSelfReport
@@ -1180,7 +1180,7 @@ function renderDetailedReportTextKo(args: DetailedReportTemplateArgs): string {
     ...items,
     "",
     "【계약·환불 정보】",
-    "판매자: 후타미 류노스케(나의 사용설명서 운영팀) · 일본",
+    "판매자: 후타미 류노스케(앨리스 진단 운영팀) · 일본",
     "제공 시기: 결제 확인 후 즉시 잠금 해제 및 디지털 콘텐츠 제공",
     "환불: 결제일로부터 30일 이내 전액 환불 요청 가능",
     "신청 방법: 결제 이메일, 결제일과 상품명을 적어 support@watashi-torisetsu.com으로 요청",
@@ -1196,7 +1196,7 @@ function renderDetailedReportTextKo(args: DetailedReportTemplateArgs): string {
     "도움이 필요하면 support@watashi-torisetsu.com으로 연락해 주세요.",
     "",
     "--",
-    "나의 사용설명서 운영팀",
+    "앨리스 진단 운영팀",
   ].join("\n");
 }
 

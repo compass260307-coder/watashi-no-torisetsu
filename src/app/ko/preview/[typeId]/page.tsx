@@ -55,20 +55,20 @@ export async function generateMetadata({
       alternateLocale: ["ja_JP"],
       url: koreanUrl,
       siteName: KO_SITE_NAME,
-      title: `${type.essence} | 나의 사용설명서`,
+      title: `${type.essence} | 앨리스 진단`,
       description: KO_TYPE_ZUKAN_DESCRIPTIONS[id],
       images: [
         {
           url: imageUrl,
           width: KO_DEFAULT_OG_IMAGE.width,
           height: KO_DEFAULT_OG_IMAGE.height,
-          alt: `${type.essence} | 나의 사용설명서`,
+          alt: `${type.essence} | 앨리스 진단`,
         },
       ],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${type.essence} | 나의 사용설명서`,
+      title: `${type.essence} | 앨리스 진단`,
       description: KO_TYPE_ZUKAN_DESCRIPTIONS[id],
       images: [imageUrl],
     },

@@ -297,7 +297,7 @@ export async function FriendIndividualResultPage({
               >
                 <Image
                   src="/logo.png"
-                  alt={isEn ? "Alice Personalities" : isId ? "Panduan Kepribadian Saya" : isKo ? "나의 사용설명서" : "ワタシのトリセツ"}
+                  alt={isEn ? "Alice Personalities" : isId ? "Panduan Kepribadian Saya" : isKo ? "앨리스 진단" : "ワタシのトリセツ"}
                   width={280}
                   height={80}
                   priority

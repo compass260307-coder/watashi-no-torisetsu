@@ -39,7 +39,7 @@ export function ReportCover({
   const displayedCoverTitle =
     coverTitle ??
     (isKo
-      ? "나의 사용설명서"
+      ? "앨리스 진단"
       : isEn
         ? "My Personality Manual"
         : isId

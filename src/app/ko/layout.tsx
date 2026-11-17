@@ -17,14 +17,15 @@ const KOREAN_FONTS_CSS_URL =
 export const metadata: Metadata = {
   title: {
     default: KO_DEFAULT_TITLE,
-    template: "%s｜나의 사용설명서",
+    // 区切りは各ページの絶対指定・OGタイトルと同じ「 | 」に統一する。
+    template: "%s | 앨리스 진단",
   },
   description: KO_DEFAULT_DESCRIPTION,
   applicationName: KO_SITE_NAME,
   keywords: KO_SEO_KEYWORDS,
-  authors: [{ name: "나의 사용설명서 운영팀" }],
-  creator: "나의 사용설명서 운영팀",
-  publisher: "나의 사용설명서 운영팀",
+  authors: [{ name: "앨리스 진단 운영팀" }],
+  creator: "앨리스 진단 운영팀",
+  publisher: "앨리스 진단 운영팀",
   openGraph: {
     type: "website",
     locale: "ko_KR",

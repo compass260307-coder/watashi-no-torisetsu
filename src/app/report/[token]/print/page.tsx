@@ -46,7 +46,7 @@ export async function generateMetadata({
     title: {
       absolute:
         sp.locale === "ko"
-          ? "완전판 리포트 | 나의 사용설명서"
+          ? "완전판 리포트 | 앨리스 진단"
           : sp.locale === "id"
             ? "Laporan Lengkap | Panduan Kepribadian Saya"
           : "詳細レポート | ワタシのトリセツ",
@@ -621,7 +621,7 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
                 : "性格は、決めつけるための答えではなく、自分を理解するための地図です。状況や経験によって感じ方が変わったときは、またこのレポートを開いてください。"}
           </p>
           <div className={styles.endMark}>
-            {isKo ? "나의 사용설명서" : isId ? "PANDUAN KEPRIBADIAN SAYA" : "ワタシのトリセツ"}
+            {isKo ? "앨리스 진단" : isId ? "PANDUAN KEPRIBADIAN SAYA" : "ワタシのトリセツ"}
           </div>
           <Link
             href={`${isKo ? "/ko" : isId ? "/id" : ""}/me/${encodeURIComponent(previewType ? "preview" : token)}`}
@@ -739,7 +739,7 @@ function LocalizedStoryPages({
             <footer className={styles.koStoryFooter}>
               <span>
                 {locale === "ko"
-                  ? `나의 사용설명서 · ${essence}의 스토리`
+                  ? `앨리스 진단 · ${essence}의 스토리`
                   : `Panduan Kepribadian Saya · Kisah ${essence}`}
               </span>
               <span>

@@ -52,11 +52,11 @@ const checks = {
   ],
   "/ko": [
     [
-      /<title>앨리스 진단 \| 나의 사용설명서<\/title>/,
+      /<title>앨리스 진단 \| 무료 성격 진단 테스트<\/title>/,
       "brand-first title",
     ],
     [
-      /<meta name="description" content="앨리스 진단은 Alice가 안내하는 성격 진단이에요\. 내 성격과 친구가 바라본 내 모습을 알아보고, 나만을 위한 ‘나의 사용설명서’를 만들어 보세요\."\/?>/,
+      /<meta name="description" content="앨리스 진단은 Alice가 안내하는 성격 진단이에요\. 내 성격과 친구가 바라본 내 모습을 알아보고, 나만을 위한 ‘나만의 사용설명서’를 만들어 보세요\."\/?>/,
       "Alice diagnosis description metadata",
     ],
     [
@@ -78,7 +78,7 @@ const checks = {
     [/친구에게 보이는 ‘진짜 나’를,/, "friend-view hero description"],
     [/놀랄 만큼 솔직하게 알 수 있어요\./, "honest-result hero description"],
     [
-      /<meta(?=[^>]*property="og:title")(?=[^>]*content="앨리스 진단 \| 나의 사용설명서")[^>]*>/,
+      /<meta(?=[^>]*property="og:title")(?=[^>]*content="앨리스 진단 \| 무료 성격 진단 테스트")[^>]*>/,
       "Alice diagnosis Open Graph title",
     ],
     [

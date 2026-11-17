@@ -176,7 +176,7 @@ const KO_SELF_UNLOCKS: UnlockItem[] = [
   },
   {
     title: "Alice의 모든 운세 기능 이용",
-    desc: "나만의 ‘운명의 설계도’를 읽고, Alice의 타로로 연애·일·인간관계에서 고민되는 일을 살펴볼 수 있어요.",
+    desc: "서양 점성술로 나를 알아볼 수 있어요. 또 Alice의 타로로 연애·일·인간관계를 점쳐 볼 수 있어요.",
     peek: KO_PEEK_ALICE_FORTUNE,
   },
   {
@@ -265,7 +265,7 @@ const copy: UiCopy = {
   koreanLegal: {
     "before": "구매 버튼을 누르면", "terms": "이용약관", "privacy": "개인정보처리방침", "commerce": "판매·환불 조건", "after": "을 확인하고 동의한다는 의사를 표시하게 됩니다. 상품은 결제 확인 후 즉시 제공되는 디지털 콘텐츠이며, 결제일로부터 30일 이내에 전액 환불을 요청할 수 있습니다. 미성년자는 법정대리인의 동의를 받아야 하며, 동의 없이 체결한 계약은 본인 또는 법정대리인이 취소할 수 있습니다."
   }, nav: {
-    "me": "자기 진단", "friend": "친구 진단", "astrologer": "Alice", "unmei": "운명", "tarot": "타로"
+    "me": "자기 진단", "friend": "친구 진단", "astrologer": "Alice", "unmei": "점성술", "tarot": "타로"
   }, loading: ["불러오는 중…", "닫기", "불러오지 못했습니다. 새로고침하면 입력 중인 내용이 사라질 수 있습니다.", "새로고침"], lock: {
     friend: {
       ariaLabel: "친구 진단 잠금 안내",
