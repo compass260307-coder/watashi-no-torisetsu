@@ -269,6 +269,16 @@ export function ResultUpgradeChat({
               <AliceBubble>{LINE_UPGRADE_PRICE_MESSAGE}</AliceBubble>
             </>
           )}
+          {/* 韓国語も日本語版と同じく、購入カードの前に Alice が案内する。
+              韓国の結果アップグレードには通常価格・クーポンが無いため、割引の案内は入れない。 */}
+          {screen === "purchase" && locale === "ko" && !lineFlow && (
+            <>
+              <AliceBubble>다섯 가지 이야기를 들려줘서 고마워요🌷 이제 나만의 캐릭터와 보고서를 만들 수 있어요.</AliceBubble>
+              <AliceBubble>
+                {`결과 업그레이드는 ₩${KO_RESULT_UPGRADE_PRICE_KRW.toLocaleString("ko-KR")}, 한 번만 결제하면 돼요. 30일 환불 보장이 있으니, 만족스럽지 않으면 알려 주세요!`}
+              </AliceBubble>
+            </>
+          )}
           {screen === "purchase" && (
             <div className="rounded-[24px] border border-[#EFD79B] bg-white p-5 shadow-[0_8px_25px_rgba(154,106,36,0.10)] md:p-7">
               <p className="text-[12px] font-black tracking-[0.12em] text-[#9A6A24]">{copy.saved}</p>
@@ -283,7 +293,10 @@ export function ResultUpgradeChat({
                 <p>クーポン適用 −¥{LINE_RESULT_UPGRADE_COUPON_JPY}</p>
                 <p className="text-xl font-black text-[#2E2E5C]">お支払い ¥{RESULT_UPGRADE_PRICE_JPY}（税込・買い切り）</p>
               </div>}
-              {locale === "ko" && <p className="mt-4 text-[20px] font-black text-[#2E2E5C]">₩{KO_RESULT_UPGRADE_PRICE_KRW.toLocaleString("ko-KR")} · 1회 결제</p>}
+              {locale === "ko" && <div className="mt-4 space-y-1 text-sm text-[#66657B]">
+                <p className="text-xl font-black text-[#2E2E5C]">결제 금액 ₩{KO_RESULT_UPGRADE_PRICE_KRW.toLocaleString("ko-KR")} (세금 포함 · 1회 결제)</p>
+                <p>30일 환불 보장</p>
+              </div>}
               <div className="mt-6">
                 {preview && locale === "ko" ? (
                   <button
