@@ -19,6 +19,11 @@ import { preloadLocalizedPurchaseCopy } from "@/i18n/ui/purchase-copy-loader";
 import type { PrefetchOptions } from "next/dist/shared/lib/app-router-context.shared-runtime";
 import { diagnose } from "@/lib/diagnosis";
 import {
+  LEGACY_QUESTION_SET_ID,
+  QUESTION_SET_QUERY_KEY,
+  type QuestionSetId,
+} from "@/lib/question-sets";
+import {
   clearPendingSourceCode,
   readPendingSourceCode,
   savePendingSourceCode,
@@ -27,7 +32,13 @@ import { isPreviewMode, track } from "@/lib/track";
 import type { AnswerValue } from "@/lib/types";
 import { markXDiagnosisSaved } from "@/lib/xPixel";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type ReactNode,
+} from "react";
 
 // feat/top-page: 診断ページをトップページのデザイン言語 (白 / ネイビー / Sora ブルー /
 // Noto Sans) に統一。CTA も共通の sunYellow ではなくトップの sora-cta ピルを使う。
@@ -142,6 +153,16 @@ function prefersReducedMotion(): boolean {
   );
 }
 
+// 確認用の質問セット上書き (?qset=v1 / ?qset=v2)。
+// useSearchParams は静的ページ全体をクライアント描画に落とすため使わない。
+// サーバーと初回ハイドレーションは null (= 既定セット) で描画し、その直後に URL の値で
+// 描き直す (上書き時だけ、既定セットが一瞬見えてから切り替わる)。
+// URL はページ表示中に変わらない前提なので購読は不要。
+const subscribeNothing = () => () => {};
+const readQuestionSetParam = () =>
+  new URLSearchParams(window.location.search).get(QUESTION_SET_QUERY_KEY);
+const readQuestionSetParamOnServer = () => null;
+
 export default function DiagnosisPageContent({
   settings, header, footer, consentNotice,
 }: {
@@ -152,13 +173,31 @@ export default function DiagnosisPageContent({
 }) {
   const router = useRouter();
   const locale = settings.locale;
-  const activeQuestions = settings.questions;
+  // ?qset で指定され、かつこの言語に用意されているセットだけを採用する。それ以外は既定。
+  const requestedQuestionSet = useSyncExternalStore(
+    subscribeNothing,
+    readQuestionSetParam,
+    readQuestionSetParamOnServer,
+  );
+  const overrideQuestions = requestedQuestionSet
+    ? settings.questionSet?.sets[requestedQuestionSet as QuestionSetId]
+    : undefined;
+  const questionSetId: QuestionSetId = overrideQuestions
+    ? (requestedQuestionSet as QuestionSetId)
+    : (settings.questionSet?.id ?? LEGACY_QUESTION_SET_ID);
+  const activeQuestions = overrideQuestions ?? settings.questions;
+  // API と計測イベントへ送るセット id。セットを切り替えられない言語では undefined にして、
+  // 従来の送信内容を変えない (undefined のキーは JSON 化で落ちる)。
+  const trackedQuestionSet = settings.questionSet ? questionSetId : undefined;
   const copy = settings.copy;
   const isKorean = locale === "ko";
   const isEnglish = locale === "en";
   const isIndonesian = locale === "id";
   // 質問セットのバージョン。言語別保存キーと組み合わせ、日本語回答と混ざらないようにする。
-  const questionSetVersion = `q${activeQuestions.length}-1`;
+  // 従来セットは従来の値のまま (保存済みの途中回答を無効にしない)。
+  const questionSetVersion = questionSetId === LEGACY_QUESTION_SET_ID
+    ? `q${activeQuestions.length}-1`
+    : `q${activeQuestions.length}-${questionSetId}`;
   const [campaign, setCampaign] = useState<string | null>(null);
   const [source, setSource] = useState<string | null>(null);
 
@@ -349,8 +388,17 @@ export default function DiagnosisPageContent({
     } catch {
       // sessionStorage 不可でも計測は続行 (dedup なし)
     }
-    track("diagnosis_started", { metadata: { locale } });
-  }, [locale, settings.startedStorageKey]);
+    // 開始時点の URL から直接読む (初回描画では ?qset の上書きがまだ反映されていないため)。
+    const startedParam = readQuestionSetParam();
+    const startedQuestionSet = settings.questionSet
+      ? startedParam && startedParam in settings.questionSet.sets
+        ? startedParam
+        : settings.questionSet.id
+      : undefined;
+    track("diagnosis_started", {
+      metadata: { locale, questionSet: startedQuestionSet },
+    });
+  }, [locale, settings.questionSet, settings.startedStorageKey]);
 
   const pageQuestions = activeQuestions.slice(
     currentPage * QUESTIONS_PER_PAGE,
@@ -435,7 +483,7 @@ export default function DiagnosisPageContent({
     });
     if (isFirstAnswer) {
       track("diagnosis_question_answered", {
-        metadata: { questionId, locale },
+        metadata: { questionId, locale, questionSet: trackedQuestionSet },
       });
     }
 
@@ -486,7 +534,7 @@ export default function DiagnosisPageContent({
     setSubmitError(false);
     setSubmitting(true);
 
-    const result = diagnose(answers);
+    const result = diagnose(answers, activeQuestions);
     // Speculation runs alongside the existing 20-second minimum. Never await it
     // or let a download failure affect saving, tracking, or result navigation.
     // Full route prefetch below warms the eager purchase UI too. Importing it
@@ -545,6 +593,8 @@ export default function DiagnosisPageContent({
         body: JSON.stringify({
           // API側で診断結果を再計算し、typeId / scores の改ざんを防ぐための原回答。
           answers,
+          // 回答がどの質問セットのものか。API はこの id のセットで採点する。
+          questionSet: trackedQuestionSet,
           typeId: result.typeId,
           scores: result.scores,
           facetScores: result.facetScores,
@@ -584,6 +634,7 @@ export default function DiagnosisPageContent({
             typeId: result.typeId,
             locale,
             sourceInviteCode: sourceInviteCode || null,
+            questionSet: trackedQuestionSet,
           },
         });
         await pushDiagnosisCompleteDataLayer({

@@ -5,6 +5,7 @@ import type {
   DiagnosisResult,
   FacetId,
   NModifier,
+  Question,
   TorisetsuTypeId,
 } from "./types";
 import { FACET_TO_DIMENSION } from "./types";
@@ -59,13 +60,16 @@ const ALL_DIMENSIONS: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
  * - 逆転項目は 8 - rawAnswer で反転 (1↔7, 2↔6, 3↔5, 4↔4)
  * - 平均値 (1〜7) を (avg - 1) / 6 * 10 で 0-10 にスケール
  * - 回答欠損時は 5.0 (中央) を fallback
+ * - questionSet: 回答に対応する質問セット。省略時は現行セット (questions.ts)。
+ *   id → ファセット / 逆転の対応はセットごとに違うため、回答と同じセットを渡すこと。
  */
 export function calculateFacetScores(
   answers: Record<number, AnswerValue>,
+  questionSet: readonly Question[] = questions,
 ): Record<FacetId, number> {
   const buckets: Partial<Record<FacetId, number[]>> = {};
 
-  for (const question of questions) {
+  for (const question of questionSet) {
     const rawAnswer = answers[question.id];
     if (rawAnswer === undefined) continue;
     const normalized = question.reversed ? 8 - rawAnswer : rawAnswer;
@@ -93,8 +97,9 @@ export function calculateFacetScores(
  */
 export function calculateScores(
   answers: Record<number, AnswerValue>,
+  questionSet: readonly Question[] = questions,
 ): Record<BigFiveDimension, number> {
-  const facetScores = calculateFacetScores(answers);
+  const facetScores = calculateFacetScores(answers, questionSet);
   const buckets: Record<BigFiveDimension, number[]> = {
     E: [],
     A: [],
@@ -214,9 +219,10 @@ function generateSupplement(): string {
  */
 export function diagnose(
   answers: Record<number, AnswerValue>,
+  questionSet: readonly Question[] = questions,
 ): DiagnosisResult {
-  const facetScores = calculateFacetScores(answers);
-  const scores = calculateScores(answers);
+  const facetScores = calculateFacetScores(answers, questionSet);
+  const scores = calculateScores(answers, questionSet);
   const typeId = classifyType(scores);
   const { cModifier, nModifier } = classifyModifier(scores);
   const fullCode = buildFullCode(typeId, cModifier, nModifier);
