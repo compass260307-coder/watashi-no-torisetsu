@@ -239,7 +239,7 @@ export default function UnmeiClient({
 
   if ((locale === "ja" || locale === "ko") && (state === "pending" || state === "ready")) {
     return <UnmeiGenerating locale={locale} ready={state === "ready"} onViewResult={() => {
-      if (previewMode) router.push(locale === "ko" ? "/ko/unmei?preview=ready" : "/unmei?preview=ready");
+      if (previewMode) router.push(locale === "ko" ? "/ko/unmei/reading-preview" : "/unmei?preview=ready");
       else if (onReady) onReady();
       else router.refresh();
     }} />;

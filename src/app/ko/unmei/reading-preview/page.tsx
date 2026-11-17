@@ -62,6 +62,8 @@ export default function KoreanUnmeiReadingPreviewPage() {
       }}
       locale="ko"
       trackView={false}
+      // 末尾の「結果アップグレード」の案内も確認できるようにする (保存・決済はしない)。
+      upgradeOffer={{ ownerToken: "preview", preview: true }}
     />
   );
 }
