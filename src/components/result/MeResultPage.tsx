@@ -1866,11 +1866,14 @@ async function MeResultPageContent({
             );
           })()}
 
-        {/* ===== 友達診断への導線。⑥注意点の直後・課金カードの手前に置く。 ===== */}
-        {partTwoUnlocked &&
-          (isOwnedResult ||
+        {/* ===== 友達診断への導線。⑥注意点の直後・課金カードの手前に置く。
+            無料ユーザーにも出す (2026-11-17。旧: 完全版の購入者だけ)。友達診断は1人目の結果が
+            無料で見られるため、無料部分を読み終えた人の次の行き先として案内する。 ===== */}
+        {(isOwnedResult ||
             (process.env.NODE_ENV === "development" && previewType !== null)) && (
-            <section className="mt-16 mb-14">
+            // 余白: 直前の⑥は mb-14 (56px) を持ち、直後の課金カードは -mt-12 で48px食い込む。
+            // 上は負のマージンで約36pxに、下はボタンと波線の間が約20pxになるように詰めている。
+            <section className="-mt-5 mb-11">
               <h2 className="mb-3 text-[22px] font-black leading-tight text-[#2E2E5C] md:text-[26px]">
                 {isEnglish ? "Friend perspective" : isKorean ? "친구 진단" : isIndonesian ? "Penilaian teman" : "友達診断"}
               </h2>
@@ -1944,7 +1947,9 @@ async function MeResultPageContent({
           className={
             publicPreview
               ? "pt-8 [&>section]:pb-4 md:pt-10"
-              : "-mt-12 pt-8 [&>section]:pb-4 md:-mt-16 md:pt-10"
+              : // スマホは上の余白を詰める (2026-11-17: 直前に友達診断の導線が入り、
+                // 波線から課金カードまでが間延びして見えたため pt-8 → pt-3)。
+                "-mt-12 pt-3 [&>section]:pb-4 md:-mt-16 md:pt-10"
           }
           style={{ background: "#FFFFFF", clipPath: JAGGED_CLIP_TOP }}
         >
