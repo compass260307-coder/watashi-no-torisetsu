@@ -27,9 +27,9 @@ export function trackTopCta(locale: TopLocale) {
 }
 
 // Shares the existing TOP tracking entry, so the CTA adds no standalone chunk.
-export function TopDiagnosisCta({ locale, children }: { locale: "ja" | "en" | "id"; children: ReactNode }) {
+export function TopDiagnosisCta({ locale, children }: { locale: TopLocale; children: ReactNode }) {
   return <Link
-    href={locale === "en" ? "/en/diagnosis" : locale === "id" ? "/id/diagnosis" : "/diagnosis"}
+    href={locale === "ja" ? "/diagnosis" : `/${locale}/diagnosis`}
     prefetch={false}
     onClick={() => trackTopCta(locale)}
     className="sora-cta top-hero-cta block w-full rounded-full px-16 py-5 text-center font-bold transition-all duration-150 hover:translate-y-px active:translate-y-0.5 lg:inline-block lg:w-auto lg:min-w-[380px]"

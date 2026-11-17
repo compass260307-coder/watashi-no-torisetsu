@@ -6,7 +6,7 @@ import { TopViewTracker } from "@/components/top/TopAnalytics";
 
 const DIAGNOSED_COUNT = 1_000_000;
 
-export default function TopPage({ locale }: { locale: "ja" | "en" }) {
+export default function TopPage({ locale }: { locale: "ja" | "en" | "ko" }) {
   return (
     <main className="flex flex-1 flex-col">
       <TopViewTracker locale={locale} />

@@ -11,6 +11,7 @@
 // Static copy/decorations stay on the server; CTA and the shared image helper are client islands.
 
 import { TopDiagnosisCta, TopHeroImage } from "@/components/top/TopAnalytics";
+import { KO_TOP_CONTENT } from "@/i18n/ko/top";
 import { TOP_HERO_BACKGROUNDS } from "@/lib/top-hero-background";
 
 // H1・本文ともゴシック (Noto Sans JP)。H1 は 800(極太) で塊感を出す。
@@ -20,10 +21,12 @@ const FONT_STACK =
 export default function TopHero({
   locale = "ja",
 }: {
-  locale?: "ja" | "en" | "id";
+  locale?: "ja" | "en" | "id" | "ko";
 }) {
   const isEnglish = locale === "en";
   const isIndonesian = locale === "id";
+  // 韓国語は日本語版と同じ構成。文は src/i18n/ko/top.ts、書体は /ko のレイアウト (Noto Sans KR) を使う。
+  const isKorean = locale === "ko";
   return (
     <>
       {/* SEO/CWV: ヒーロー背景 (= LCP 要素) を先読みして描画を早める。
@@ -48,7 +51,7 @@ export default function TopHero({
       // 画像を丸ごと見せる (78vh 固定だと上だけクロップされ、キャラ帯が
       // コピー・CTA の真裏まで上がってきて文字が読めなくなるため)。
       className="top-hero-bg relative h-[178vw] w-full overflow-hidden sm:h-[61vw] sm:min-h-[78vh]"
-      style={{ backgroundImage: "none", fontFamily: FONT_STACK }}
+      style={{ backgroundImage: "none", fontFamily: isKorean ? undefined : FONT_STACK }}
     >
       {/* Keep native picture selection and the same hashed asset URLs. Image's
           small shared runtime is reused by diagnosis instead of downloading
@@ -80,8 +83,10 @@ export default function TopHero({
         {/* H1: 鉤括弧つきのキャッチ。極太ゴシック(Noto Sans JP 800)・白。
             サイズ/余白は .top-hero-h1 (SP は vw 比例 = ヒーロー高さ 178vw と相似で
             どの幅でも構図が崩れない / 640px〜 は従来の clamp)。 */}
-        <h1 className="top-hero-h1">
-          {isEnglish
+        <h1 className={isKorean ? "top-hero-h1 break-keep" : "top-hero-h1"}>
+          {isKorean
+            ? KO_TOP_CONTENT.hero.title
+            : isEnglish
             ? "Alice Personalities: See yourself through your friends’ eyes."
             : isIndonesian
               ? "“Jadi, begini teman-teman melihat diriku.”"
@@ -92,8 +97,14 @@ export default function TopHero({
             「〜を、不気味なくらい正確に知ることができます」構文を踏襲した一文型
             (「不気味」はブランドトーンに合わせ「怖いくらい正直」に変換)。
             PC は読点で改行、SP は自然折返し。 */}
-        <p className="top-hero-sub mx-auto max-w-[720px]">
-          {isEnglish ? (
+        <p className={`top-hero-sub mx-auto max-w-[720px]${isKorean ? " break-keep" : ""}`}>
+          {isKorean ? (
+            <>
+              {KO_TOP_CONTENT.hero.descriptionLine1}
+              <br className="hidden sm:inline" />
+              {KO_TOP_CONTENT.hero.descriptionLine2}
+            </>
+          ) : isEnglish ? (
             <>
               Discover the “real you” your friends see,
               <br className="hidden sm:inline" />
@@ -117,7 +128,7 @@ export default function TopHero({
         {/* CTA: どっしり横長 / 全幅(SP)。「無料」でハードル除去 */}
         <div className="top-hero-cta-wrap">
           <TopDiagnosisCta locale={locale}>
-            {isEnglish ? "Start the free test →" : isIndonesian ? "Mulai tes gratis →" : "無料で診断をはじめる →"}
+            {isKorean ? KO_TOP_CONTENT.hero.cta : isEnglish ? "Start the free test →" : isIndonesian ? "Mulai tes gratis →" : "無料で診断をはじめる →"}
           </TopDiagnosisCta>
         </div>
       </div>

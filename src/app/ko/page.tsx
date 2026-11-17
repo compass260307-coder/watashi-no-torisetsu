@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
 import HomeSessionRedirect from "@/components/top/HomeSessionRedirect";
-import KoTopFooter from "@/components/ko/top/KoTopFooter";
-import KoTopHeader from "@/components/top/TopPurchaseHeader";
-import KoTopHero from "@/components/ko/top/KoTopHero";
-import KoTopStats from "@/components/ko/top/KoTopStats";
-import { KoTopViewTracker } from "@/components/ko/top/KoTopAnalytics";
+import TopPage from "@/components/top/TopPage";
 import {
   KO_BRAND_NAME,
   KO_CHARACTER_NAME,
@@ -141,29 +137,16 @@ const jsonLd = {
   ],
 };
 
+// 画面の構成は日本語版 (src/app/page.tsx) と同じ TopPage を使う。
 export default function KoreanHomePage() {
   return (
-    <main className="flex flex-1 flex-col">
+    <>
       <HomeSessionRedirect localePrefix="/ko" />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <KoTopViewTracker />
-      <KoTopHeader locale="ko" />
-      <KoTopHero />
-      <section aria-labelledby="ko-service-intro" className="bg-white px-6 py-10 text-center sm:py-14">
-        <div className="mx-auto max-w-[720px]">
-          <h2 id="ko-service-intro" className="break-keep text-xl font-bold text-[#2E2E5C] sm:text-2xl">
-            앨리스 진단으로 알아보는 나의 성격
-          </h2>
-          <p className="mt-4 break-keep text-base leading-relaxed text-[#5D6078] sm:text-lg">
-            {DESCRIPTION}
-          </p>
-        </div>
-      </section>
-      <KoTopStats />
-      <KoTopFooter />
-    </main>
+      <TopPage locale="ko" />
+    </>
   );
 }

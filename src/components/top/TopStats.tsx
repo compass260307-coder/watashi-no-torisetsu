@@ -3,6 +3,8 @@
 // ⚠️ 数字はすべて仮値。後で Supabase の実数に差し替える
 //   (本日の診断回数 / 累計診断した人 / 友達評価人数 / 正確性の評価)。
 
+import { KO_TOP_CONTENT } from "@/i18n/ko/top";
+
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
 
@@ -11,12 +13,18 @@ export default function TopStats({
   locale = "ja",
 }: {
   diagnosedCount: number;
-  locale?: "ja" | "en" | "id";
+  locale?: "ja" | "en" | "id" | "ko";
 }) {
   const isEnglish = locale === "en";
   const isIndonesian = locale === "id";
+  const isKorean = locale === "ko";
   // 数字ごとに異なるアクセント色 (16P 風。felt 世界観に合わせたパステル寄り)。
-  const stats = [
+  // 韓国語は数字・色とも日本語版と同じで、表記だけ src/i18n/ko/top.ts を使う。
+  const stats = isKorean ? KO_TOP_CONTENT.stats.map((stat) => ({
+    num: stat.value,
+    label: stat.label,
+    color: stat.color,
+  })) : [
     {
       num: isEnglish || isIndonesian ? "50K+" : "5万+",
       label: isEnglish ? "tests taken today" : isIndonesian ? "tes hari ini" : "本日の診断回数",
@@ -44,11 +52,11 @@ export default function TopStats({
   return (
     <section
       className="w-full bg-white px-8 py-16 md:py-20"
-      style={{ fontFamily: FONT_STACK }}
+      style={{ fontFamily: isKorean ? undefined : FONT_STACK }}
     >
       {/* SEO/a11y: セクション見出し (視覚上は非表示、アウトライン構造のみ提供) */}
       <h2 className="sr-only">
-        {isEnglish ? "Test statistics" : isIndonesian ? "Statistik tes" : "診断実績"}
+        {isKorean ? "진단 실적" : isEnglish ? "Test statistics" : isIndonesian ? "Statistik tes" : "診断実績"}
       </h2>
       {/* 端から端まで均等な 4 分割 (SP は 2×2)。max-width は付けず全幅で振り分ける。 */}
       <div className="mx-auto grid max-w-[1680px] grid-cols-2 gap-x-6 gap-y-12 md:grid-cols-4">
