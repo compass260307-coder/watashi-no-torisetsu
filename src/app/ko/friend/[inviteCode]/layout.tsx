@@ -13,7 +13,7 @@ import {
 } from "@/lib/locale-seo";
 
 const SITE_URL = resolveSiteUrl();
-const FALLBACK_TITLE = "친구 진단 | 나의 사용설명서";
+const FALLBACK_TITLE = "친구 진단 | 앨리스 진단";
 const FALLBACK_DESCRIPTION =
   "친구의 눈에 비친 모습을 30개 질문으로 알려 주세요.";
 

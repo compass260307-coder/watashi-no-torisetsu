@@ -9,7 +9,7 @@ type PageProps = {
 };
 
 export const metadata: Metadata = {
-  title: "로그인 확인 | 나의 사용설명서",
+  title: "로그인 확인 | 앨리스 진단",
   robots: { index: false, follow: false },
 };
 

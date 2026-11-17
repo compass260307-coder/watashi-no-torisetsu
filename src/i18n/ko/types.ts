@@ -3,7 +3,7 @@ import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 export const KO_TYPES_COPY = {
   title: "성격 유형",
   description:
-    "나의 사용설명서의 32가지 성격 유형을 바다, 육지, 하늘, 미지의 네 그룹으로 소개해요. Big Five 이론을 바탕으로 나와 친구의 성격 유형을 확인해 보세요.",
+    "앨리스 진단의 32가지 성격 유형을 바다, 육지, 하늘, 미지의 네 그룹으로 소개해요. Big Five 이론을 바탕으로 나와 친구의 성격 유형을 확인해 보세요.",
   cta: "테스트 해보기 →",
   resultAriaLabel: (essence: string) => `${essence} 결과 페이지 보기`,
   groups: {

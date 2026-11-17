@@ -33,7 +33,7 @@ export const KO_TOP_CONTENT = {
     terms: "이용약관",
     privacy: "개인정보처리방침",
     commerce: "판매 및 환불 안내",
-    copyright: "나의 사용설명서 운영팀",
+    copyright: "앨리스 진단 운영팀",
     disclaimer:
       "진단 결과는 Big Five 이론을 바탕으로 나를 이해하는 데 도움을 주는 참고 정보예요. 의학적·심리학적 진단을 제공하지 않아요.",
   },

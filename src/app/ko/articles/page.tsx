@@ -19,10 +19,10 @@ const FONT_STACK =
 
 const NAVY = "#2E2E5C";
 const DESCRIPTION =
-  "OCEAN 진단(빅파이브)과 성격심리학을 쉽게 설명하는 나의 사용설명서 글·칼럼 목록입니다. 성격 진단을 받기 전에도, 결과를 더 깊이 이해하고 싶을 때도 읽어 보세요.";
+  "OCEAN 진단(빅파이브)과 성격심리학을 쉽게 설명하는 앨리스 진단 글·칼럼 목록입니다. 성격 진단을 받기 전에도, 결과를 더 깊이 이해하고 싶을 때도 읽어 보세요.";
 
 export const metadata: Metadata = {
-  title: { absolute: "글·칼럼 | 나의 사용설명서" },
+  title: { absolute: "글·칼럼 | 앨리스 진단" },
   description: DESCRIPTION,
   keywords: [
     ...KO_SEO_KEYWORDS,
@@ -38,14 +38,14 @@ export const metadata: Metadata = {
     alternateLocale: ["ja_JP", "en_US"],
     url: `${SITE_URL}/ko/articles`,
     siteName: KO_SITE_NAME,
-    title: "글·칼럼 | 나의 사용설명서",
+    title: "글·칼럼 | 앨리스 진단",
     description:
       "OCEAN 진단(빅파이브)과 성격심리학을 쉽게 설명하는 글을 모았어요.",
     images: [KO_DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "글·칼럼 | 나의 사용설명서",
+    title: "글·칼럼 | 앨리스 진단",
     description: DESCRIPTION,
     images: [KO_DEFAULT_OG_IMAGE.url],
   },

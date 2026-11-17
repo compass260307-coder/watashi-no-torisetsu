@@ -15,7 +15,7 @@ const COPY = {
     safety: "If you did not request this email, you can safely ignore it. No action is needed.",
   },
   ko: {
-    brand: "나의 사용설명서", title: "로그인 링크", heading: "로그인 링크를 보내 드려요",
+    brand: "앨리스 진단", title: "로그인 링크", heading: "로그인 링크를 보내 드려요",
     body: "아래 버튼으로 로그인하고 나의 진단 결과를 확인해 보세요.",
     button: "로그인하기", expiry: "유효 시간 1시간 · 한 번만 사용할 수 있어요",
     safety: "요청한 적이 없다면 이 메일을 삭제해 주세요. 따로 조치하지 않아도 돼요.",

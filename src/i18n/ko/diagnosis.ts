@@ -238,7 +238,7 @@ const KO_QUESTION_SETS: Record<QuestionSetId, Question[]> = {
 const KO_COPY: DiagnosisCopy = {
   heroTitle: "무료 성격 진단 테스트",
   heroSubtitle: "OCEAN으로 알아보는 32가지 유형",
-  heroImageAlt: "나의 사용설명서 마스코트",
+  heroImageAlt: "앨리스 진단 마스코트",
   nicknameLabel: "닉네임",
   nicknameHelper: "결과 페이지에 표시되는 이름이에요.",
   genderLabel: "성별 (선택)",

@@ -62,10 +62,9 @@ export const EN_HOME_FAQS = [
   },
 ] as const;
 export const KO_BRAND_NAME = "앨리스 진단";
-export const KO_SERVICE_NAME = "나의 사용설명서";
 export const KO_CHARACTER_NAME = "Alice";
 export const KO_SITE_NAME = GLOBAL_SITE_NAME;
-export const KO_DEFAULT_TITLE = `${KO_BRAND_NAME} | ${KO_SERVICE_NAME}`;
+export const KO_DEFAULT_TITLE = `${KO_BRAND_NAME} | 무료 성격 진단 테스트`;
 export const KO_DEFAULT_DESCRIPTION =
   "앨리스 진단(Alice Personalities)은 빅파이브 기반의 50문항 무료 성격 테스트예요. 32가지 캐릭터 유형으로 내 성격을 알아보고, 친구가 바라본 내 모습과 비교해 보세요.";
 export const KO_SEO_KEYWORDS: string[] = [
@@ -74,7 +73,6 @@ export const KO_SEO_KEYWORDS: string[] = [
   "Alice 진단",
   "Alice 테스트",
   "Alice",
-  "나의 사용설명서",
   "무료 성격 진단",
   "무료 성격 테스트",
   "성격 진단 테스트",
@@ -94,7 +92,7 @@ export const KO_DEFAULT_OG_IMAGE = {
   url: KO_DEFAULT_OG_IMAGE_PATH,
   width: 1200,
   height: 630,
-  alt: "앨리스 진단 - Alice가 안내하는 나의 사용설명서 성격 테스트",
+  alt: "앨리스 진단 - Alice가 안내하는 성격 테스트",
 };
 
 export type LocalizedSeoLocale = "ja" | "ko" | "en" | "id";

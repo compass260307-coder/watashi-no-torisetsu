@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 const NAVY = "#2E2E5C";
 
 export const metadata: Metadata = {
-  title: { absolute: "결제가 완료되었습니다 | 나의 사용설명서" },
+  title: { absolute: "결제가 완료되었습니다 | 앨리스 진단" },
   alternates: localizedAlternates(
     "ko",
     "/purchase-complete",

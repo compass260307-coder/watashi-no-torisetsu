@@ -11,8 +11,8 @@ import { FULL_ACCESS_PRICE_KRW, KO_RESULT_UPGRADE_PRICE_KRW } from "@/lib/access
 const krw = (amount: number) => `₩${amount.toLocaleString("ko-KR")}`;
 
 export const metadata: Metadata = {
-  title: { absolute: "이용약관 | 나의 사용설명서" },
-  description: "나의 사용설명서 한국어 서비스 이용약관입니다.",
+  title: { absolute: "이용약관 | 앨리스 진단" },
+  description: "앨리스 진단 한국어 서비스 이용약관입니다.",
   alternates: localizedAlternates("ko", "/terms", "/ko/terms"),
   openGraph: {
     type: "website",
@@ -20,14 +20,14 @@ export const metadata: Metadata = {
     alternateLocale: ["ja_JP"],
     url: `${SITE_URL}/ko/terms`,
     siteName: KO_SITE_NAME,
-    title: "이용약관 | 나의 사용설명서",
-    description: "나의 사용설명서 한국어 서비스 이용약관입니다.",
+    title: "이용약관 | 앨리스 진단",
+    description: "앨리스 진단 한국어 서비스 이용약관입니다.",
     images: [KO_DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "이용약관 | 나의 사용설명서",
-    description: "나의 사용설명서 한국어 서비스 이용약관입니다.",
+    title: "이용약관 | 앨리스 진단",
+    description: "앨리스 진단 한국어 서비스 이용약관입니다.",
     images: [KO_DEFAULT_OG_IMAGE.url],
   },
   robots: { index: true, follow: true },
@@ -37,8 +37,8 @@ export default function KoreanTermsPage() {
   return (
     <KoreanLegalDocument title="이용약관" lastUpdated="2026년 10월 9일">
       <p>
-        이 이용약관(이하 “약관”)은 나의 사용설명서 운영팀(이하 “운영자”)이
-        제공하는 “나의 사용설명서” 한국어 서비스(이하 “서비스”)의 이용 조건을
+        이 이용약관(이하 “약관”)은 앨리스 진단 운영팀(이하 “운영자”)이
+        제공하는 “앨리스 진단” 한국어 서비스(이하 “서비스”)의 이용 조건을
         정합니다. 이 약관은 서비스 화면에 게시되며, 유료 서비스 구매 등 동의가
         필요한 절차에서는 이용자가 내용을 확인하고 동의 의사를 표시할 수 있도록
         안내합니다.
@@ -243,7 +243,7 @@ export default function KoreanTermsPage() {
 
       <h2>제14조 문의</h2>
       <ul>
-        <li>운영자: 후타미 류노스케(나의 사용설명서 운영팀)</li>
+        <li>운영자: 후타미 류노스케(앨리스 진단 운영팀)</li>
         <li>소재 국가: 일본</li>
         <li>
           이메일: <a href="mailto:support@watashi-torisetsu.com">support@watashi-torisetsu.com</a>

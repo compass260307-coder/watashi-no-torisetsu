@@ -22,7 +22,7 @@ import {
 const NAVY = "#2E2E5C";
 const SORA = "#5B5BEF";
 const DESCRIPTION =
-  "나의 사용설명서는 자기 진단과 친구의 평가를 함께 살펴보는 Big Five 기반 자기 이해 서비스예요. 서비스의 원리, 이용 방법, 개인정보 보호와 운영 정보를 확인하세요.";
+  "앨리스 진단은 자기 진단과 친구의 평가를 함께 살펴보는 Big Five 기반 자기 이해 서비스예요. 서비스의 원리, 이용 방법, 개인정보 보호와 운영 정보를 확인하세요.";
 const TITLE = `서비스 소개 | ${KO_BRAND_NAME}`;
 
 export const metadata: Metadata = {
@@ -119,7 +119,7 @@ export default function KoreanAboutPage() {
             >
               앨리스 진단
             </Link>
-            {"의 서비스 ‘나의 사용설명서’는 자기 진단과 친구의 평가를 함께 살펴보며 만드는 나만의 사용설명서예요. "}
+            {"은 자기 진단과 친구의 평가를 함께 살펴보며 만드는 나만의 사용설명서예요. "}
             친구의 답변이 모일수록 미처 몰랐던 내 모습이 조금씩 선명해져요.
           </p>
         </section>
@@ -142,7 +142,7 @@ export default function KoreanAboutPage() {
               창’이라고 설명해요.
             </p>
             <p>
-              그래서 나의 사용설명서는 자기 답변만으로 끝나지 않아요. 친구의
+              그래서 앨리스 진단은 자기 답변만으로 끝나지 않아요. 친구의
               시선이 더해질수록 사용설명서가 완성되도록 만들었어요. 무거운
               자기분석보다, 친구와 함께 웃으며 보여 줄 수 있는 경험을 지향해요.
             </p>
@@ -288,7 +288,7 @@ export default function KoreanAboutPage() {
               서비스를 만들고 있어요.
             </p>
             <p className="mt-3 text-[12px]" style={{ color: `${NAVY}80` }}>
-              운영: 나의 사용설명서 운영팀
+              운영: 앨리스 진단 운영팀
             </p>
             <a
               href="https://sora-team.com"

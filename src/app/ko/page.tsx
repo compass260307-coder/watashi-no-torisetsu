@@ -8,7 +8,6 @@ import {
   KO_DEFAULT_OG_IMAGE,
   KO_DEFAULT_TITLE,
   KO_SEO_KEYWORDS,
-  KO_SERVICE_NAME,
   KO_SITE_NAME,
   GLOBAL_SITE_NAME,
 } from "@/lib/locale-seo";
@@ -67,9 +66,8 @@ const jsonLd = {
     {
       "@type": "WebApplication",
       "@id": `${KO_URL}#app`,
-      name: KO_SERVICE_NAME,
+      name: KO_BRAND_NAME,
       alternateName: [
-        `${KO_BRAND_NAME}의 ${KO_SERVICE_NAME}`,
         "앨리스 테스트",
         "Alice 진단",
         "Alice 테스트",
@@ -125,8 +123,7 @@ const jsonLd = {
     {
       "@type": "Organization",
       "@id": `${KO_URL}#organization`,
-      name: "나의 사용설명서 운영팀",
-      alternateName: "앨리스 진단 운영팀",
+      name: "앨리스 진단 운영팀",
       url: KO_URL,
       brand: { "@id": `${KO_URL}#brand` },
       logo: {

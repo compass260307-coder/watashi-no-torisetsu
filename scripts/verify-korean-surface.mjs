@@ -1102,7 +1102,7 @@ const selfReportPdf = fs.readFileSync(
   "utf8",
 );
 for (const required of [
-  "나의 사용설명서 성격 스토리.pdf",
+  "앨리스 진단 - 성격 스토리.pdf",
 ]) {
   if (!selfReportPdf.includes(required)) {
     problems.push(

@@ -11,8 +11,8 @@ import { FULL_ACCESS_PRICE_KRW, KO_RESULT_UPGRADE_PRICE_KRW } from "@/lib/access
 const krw = (amount: number) => `₩${amount.toLocaleString("ko-KR")}`;
 
 export const metadata: Metadata = {
-  title: { absolute: "사업자 정보 및 판매·환불 조건 | 나의 사용설명서" },
-  description: "나의 사용설명서 한국어 유료 서비스의 거래 조건과 환불 안내입니다.",
+  title: { absolute: "사업자 정보 및 판매·환불 조건 | 앨리스 진단" },
+  description: "앨리스 진단 한국어 유료 서비스의 거래 조건과 환불 안내입니다.",
   alternates: localizedAlternates(
     "ko",
     "/legal/commerce",
@@ -24,14 +24,14 @@ export const metadata: Metadata = {
     alternateLocale: ["ja_JP"],
     url: `${SITE_URL}/ko/legal/commerce`,
     siteName: KO_SITE_NAME,
-    title: "사업자 정보 및 판매·환불 조건 | 나의 사용설명서",
-    description: "나의 사용설명서 한국어 유료 서비스의 거래 조건과 환불 안내입니다.",
+    title: "사업자 정보 및 판매·환불 조건 | 앨리스 진단",
+    description: "앨리스 진단 한국어 유료 서비스의 거래 조건과 환불 안내입니다.",
     images: [KO_DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "사업자 정보 및 판매·환불 조건 | 나의 사용설명서",
-    description: "나의 사용설명서 한국어 유료 서비스의 거래 조건과 환불 안내입니다.",
+    title: "사업자 정보 및 판매·환불 조건 | 앨리스 진단",
+    description: "앨리스 진단 한국어 유료 서비스의 거래 조건과 환불 안내입니다.",
     images: [KO_DEFAULT_OG_IMAGE.url],
   },
   robots: { index: true, follow: true },
@@ -44,12 +44,12 @@ export default function KoreanCommercePage() {
       lastUpdated="2026년 10월 9일"
     >
       <p>
-        나의 사용설명서 한국어 유료 서비스의 판매자 정보와 거래 조건을 다음과
+        앨리스 진단 한국어 유료 서비스의 판매자 정보와 거래 조건을 다음과
         같이 안내합니다.
       </p>
 
       <h2>판매자</h2>
-      <p>후타미 류노스케(나의 사용설명서 운영팀)</p>
+      <p>후타미 류노스케(앨리스 진단 운영팀)</p>
 
       <h2>운영 책임자</h2>
       <p>후타미 류노스케</p>

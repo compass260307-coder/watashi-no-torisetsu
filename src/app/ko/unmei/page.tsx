@@ -27,7 +27,7 @@ import {
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: { absolute: "운명의 설계도 | 나의 사용설명서" },
+  title: { absolute: "운명의 설계도 | 앨리스 진단" },
   description:
     "성격 진단과 태어난 순간의 별을 함께 읽어, 일·관계·앞으로의 전환점을 한국어로 풀어낸 개인 설계도입니다.",
   alternates: localizedAlternates("ko", "/unmei", "/ko/unmei"),

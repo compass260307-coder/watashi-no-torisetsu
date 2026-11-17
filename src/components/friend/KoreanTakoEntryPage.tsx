@@ -87,7 +87,7 @@ export function KoreanTakoEntryPage() {
       </p>
       <p className="mb-6 text-[12.5px] leading-[1.9] text-[#6B6858]">
         <Link href="/ko" className="font-bold underline underline-offset-4">
-          나의 사용설명서
+          앨리스 진단
         </Link>
         {"가 완성되면"}
         <br />

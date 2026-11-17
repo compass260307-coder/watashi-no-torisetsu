@@ -218,7 +218,7 @@ const CHECKOUT_COPY: Record<
   ko: {
     couponId: `full-access-anchor-off${FULL_ACCESS_LIST_PRICE_KRW - FULL_ACCESS_PRICE_KRW}-krw`,
     couponName: "출시 기념",
-    productName: "나의 사용설명서 완전판 패키지",
+    productName: "앨리스 진단 완전판 패키지",
     productDescription:
       "자기 진단·친구 진단·전용 PDF·궁합 진단과 함께 운명의 설계도, 전담 점성술사 Alice와의 채팅 30회, 타로 세 종류를 모두 해제하는 완전판 패키지예요.",
     submitMessage:
@@ -286,7 +286,7 @@ const SELF_REPORT_COPY = {
       "一度きりの買い切りで、自己診断・友達診断・相性診断と専用PDFをずっと見返せます。30日間の返金保証つき。",
   },
   ko: {
-    productName: "나의 사용설명서 학생 플랜",
+    productName: "앨리스 진단 학생 플랜",
     productDescription:
       "학생을 위한 플랜으로, 자기 진단의 잠긴 9개 섹션과 16페이지 이상의 전용 전자책, 친구 진단·타인 분석 PDF를 이용할 수 있어요. 궁합 진단·운명의 설계도·Alice·타로는 포함되지 않아요.",
     submitMessage:
@@ -313,7 +313,7 @@ const PREMIUM_BUNDLE_COPY = {
       "一度きりの買い切りで、相性診断を含むすべての診断結果・運命の設計図・専属占い師とのチャットを利用できます。30日間の返金保証つき。",
   },
   ko: {
-    productName: "나의 사용설명서 프리미엄 코스",
+    productName: "앨리스 진단 프리미엄 코스",
     productDescription:
       "완전판의 모든 기능과 궁합 진단, 한국어 운명의 설계도에 더해, 나만의 전담 점성술사와 채팅 30회를 이용할 수 있어요. 1회 결제.",
     submitMessage:

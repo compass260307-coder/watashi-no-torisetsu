@@ -21,7 +21,7 @@ export interface KoResultAxisCopy {
 }
 
 export const KO_RESULT_COPY = {
-  metadataTitle: "나의 진단 결과 | 나의 사용설명서",
+  metadataTitle: "나의 진단 결과 | 앨리스 진단",
   metadataDescription:
     "Big Five 성격 특성과 32가지 캐릭터 유형으로 알아보는 나의 무료 진단 결과예요.",
   loading: "진단 결과를 불러오고 있어요",

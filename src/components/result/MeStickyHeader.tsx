@@ -529,7 +529,7 @@ export function MeStickyHeader({
       : isId
       ? "Ceritakan bagaimana kamu melihatku! Kamu bisa menjawab tes pandangan teman di Alice Test."
       : locale === "ko"
-      ? "친구 눈에 비친 나를 알려 줘! ‘나의 사용설명서’에서 친구 진단에 답할 수 있어요."
+      ? "친구 눈에 비친 나를 알려 줘! ‘앨리스 진단’에서 친구 진단에 답할 수 있어요."
       : "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ";
   const characterShareText =
     isEn
@@ -537,7 +537,7 @@ export function MeStickyHeader({
       : isId
       ? `Hasil Alice Test-ku adalah “${title}”!\nLihat karakterku 👇`
       : locale === "ko"
-      ? `‘나의 사용설명서’에서 저는 ‘${title}’ 유형으로 나왔어요!\n내 캐릭터를 확인해 보세요👇`
+      ? `‘앨리스 진단’에서 저는 ‘${title}’ 유형으로 나왔어요!\n내 캐릭터를 확인해 보세요👇`
       : `ワタシのトリセツは「${title}」でした！\n私のキャラクターを見てみて👇`;
   const shareText = isInvite ? inviteShareText : characterShareText;
   const xUrl = activeShareUrl

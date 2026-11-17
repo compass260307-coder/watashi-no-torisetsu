@@ -203,7 +203,7 @@ try {
             !bodyText.includes("친구들이 본 나로 돌아가기"),
           hasKoreanPrivacyDetails:
             bodyText.includes(
-              "개인정보처리자: 후타미 류노스케(나의 사용설명서 운영팀)",
+              "개인정보처리자: 후타미 류노스케(앨리스 진단 운영팀)",
             ) &&
             bodyText.includes("국외 이전") &&
             bodyText.includes("Meta Platforms, Inc.") &&
@@ -213,7 +213,7 @@ try {
             bodyText.includes("시행 30일 전") &&
             bodyText.includes("운영자의 고의 또는 과실"),
           hasKoreanCommerceDetails:
-            bodyText.includes("후타미 류노스케(나의 사용설명서 운영팀)") &&
+            bodyText.includes("후타미 류노스케(앨리스 진단 운영팀)") &&
             bodyText.includes("3영업일 이내에 Stripe를 통한 환불 절차") &&
             bodyText.includes("미성년자의 계약 취소"),
           hasKoreanPurchaseLegalNotice:

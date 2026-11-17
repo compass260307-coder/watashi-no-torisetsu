@@ -140,7 +140,7 @@ export default function KoUnmeiLanding({
           <ProofFacesBand
             lead="지금까지"
             countSuffix="명 이상"
-            tail="이 나의 사용설명서 진단을 완료했어요"
+            tail="이 앨리스 진단을 완료했어요"
           />
         </div>
       </div>

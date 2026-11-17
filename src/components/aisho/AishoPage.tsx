@@ -1495,7 +1495,7 @@ export default function AishoPage({
               {aishoText(
                 locale,
                 "ワタシのトリセツ",
-                "나의 사용설명서",
+                "앨리스 진단",
                 "Alice Personalities",
                 "Alice Personalities",
               )}

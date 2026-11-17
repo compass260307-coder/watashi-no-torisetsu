@@ -8,8 +8,8 @@ import {
 } from "@/lib/locale-seo";
 
 export const metadata: Metadata = {
-  title: { absolute: "개인정보처리방침 | 나의 사용설명서" },
-  description: "나의 사용설명서 한국어 서비스 개인정보처리방침입니다.",
+  title: { absolute: "개인정보처리방침 | 앨리스 진단" },
+  description: "앨리스 진단 한국어 서비스 개인정보처리방침입니다.",
   alternates: localizedAlternates("ko", "/privacy", "/ko/privacy"),
   openGraph: {
     type: "website",
@@ -17,14 +17,14 @@ export const metadata: Metadata = {
     alternateLocale: ["ja_JP"],
     url: `${SITE_URL}/ko/privacy`,
     siteName: KO_SITE_NAME,
-    title: "개인정보처리방침 | 나의 사용설명서",
-    description: "나의 사용설명서 한국어 서비스 개인정보처리방침입니다.",
+    title: "개인정보처리방침 | 앨리스 진단",
+    description: "앨리스 진단 한국어 서비스 개인정보처리방침입니다.",
     images: [KO_DEFAULT_OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "개인정보처리방침 | 나의 사용설명서",
-    description: "나의 사용설명서 한국어 서비스 개인정보처리방침입니다.",
+    title: "개인정보처리방침 | 앨리스 진단",
+    description: "앨리스 진단 한국어 서비스 개인정보처리방침입니다.",
     images: [KO_DEFAULT_OG_IMAGE.url],
   },
   robots: { index: true, follow: true },
@@ -37,16 +37,16 @@ export default function KoreanPrivacyPage() {
       lastUpdated="2026년 8월 16일"
     >
       <p>
-        나의 사용설명서 운영팀(이하 “운영자”)은 “나의 사용설명서” 한국어
+        앨리스 진단 운영팀(이하 “운영자”)은 “앨리스 진단” 한국어
         서비스(이하 “서비스”)를 제공하면서 이용자의 개인정보를 다음과 같이
         처리합니다.
       </p>
 
       <h2>1. 개인정보처리자</h2>
       <ul>
-        <li>개인정보처리자: 후타미 류노스케(나의 사용설명서 운영팀)</li>
+        <li>개인정보처리자: 후타미 류노스케(앨리스 진단 운영팀)</li>
         <li>소재 국가: 일본</li>
-        <li>개인정보 보호 업무 담당: 나의 사용설명서 운영팀</li>
+        <li>개인정보 보호 업무 담당: 앨리스 진단 운영팀</li>
         <li>
           개인정보 문의: <a href="mailto:support@watashi-torisetsu.com">support@watashi-torisetsu.com</a>
         </li>
@@ -327,7 +327,7 @@ export default function KoreanPrivacyPage() {
 
       <h2>14. 문의 및 권익 침해 구제</h2>
       <ul>
-        <li>개인정보 보호 담당: 나의 사용설명서 운영팀</li>
+        <li>개인정보 보호 담당: 앨리스 진단 운영팀</li>
         <li>
           이메일: <a href="mailto:support@watashi-torisetsu.com">support@watashi-torisetsu.com</a>
         </li>
