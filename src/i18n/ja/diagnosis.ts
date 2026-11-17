@@ -85,37 +85,42 @@ const JA_COPY: DiagnosisCopy = {
     // 合計18.2秒で最後に到達する。
     // ※ 紹介スライドを出している間はメッセージ自体を表示しない (スライドの文が主役のため)。
     messageDurationsMs: [1400, 3000, 1400, 3000, 1400, 3000, 3000, 2000],
-    // 最低表示は22.5秒 (2026-11-16: 友達診断の紹介スライド4枚を入れるため20秒から延長)。
-    minLoadingMs: 22500,
+    // 最低表示は32.5秒 (2026-11-16: 紹介スライド4枚のため20秒→22.5秒。
+    // 2026-11-17: 5枚目「友達診断はここから」を足し、その1枚を長く見せるため32.5秒へ延長)。
+    minLoadingMs: 32500,
     // 友達診断の存在を知らないまま結果を読み終える人が多いため、待ち時間に紹介する。
-    // マスコット動画の代わりに4枚を等分 (約5.6秒ずつ) で流す。文は1枚につき1行だけ。
+    // マスコット動画の代わりに5枚を流す。①〜④は5.5秒ずつ、行動につなげる⑤だけ10.5秒。
+    // 文は1枚につき1行だけ。
+    slideDurationsMs: [5500, 5500, 5500, 5500, 10500],
     slidesLabel: "友達診断とは？",
     slides: [
       {
-        // ① 何か: 友達があなたの性格を診断してくれる。
+        // ① 何か: 自己診断のあなたのカードがめくれて、友達診断のあなた (別のキャラ) が出る。
+        // 実際の結果の「◯◯から見たあなた」をそのまま見せる (2026-11-17。旧: 友達3人の一言が届く図)。
         visual: {
-          kind: "voices",
-          selfLabel: "あなた",
+          kind: "flip",
+          selfTitle: "自分から見たあなた",
           selfFace: "/characters/face/penguin_N.webp",
-          voices: [
-            { face: "/characters/face/seal_R.webp", color: "#5BC6DB", text: "しっかり者！" },
-            { face: "/characters/face/fox_N.webp", color: "#E8B84A", text: "甘えんぼう？" },
-            { face: "/characters/face/rabbit_N.webp", color: "#8FCE70", text: "盛り上げ役！" },
-          ],
+          selfWord: "マイペース",
+          friendTitle: "友達から見たあなた",
+          perceivedFace: "/characters/face/fox_N.webp",
+          perceivedColor: "#E8B84A",
+          perceivedWord: "実はリーダー気質！",
         },
         tint: "#EAF6F9",
         text: "友達があなたを診断してくれるよ！",
         highlight: "友達",
       },
       {
-        // ② やり方その1: リンクを送る。
+        // ② やり方その1: リンクを送る。トーク画面風にして、頼む手軽さと
+        // 「気軽に答えてもらえる」ことを見せる (2026-11-17)。
         visual: {
-          kind: "send",
-          selfLabel: "あなた",
-          selfFace: "/characters/face/penguin_N.webp",
-          friendLabel: "友達",
+          kind: "chat",
+          message: "友達診断おねがい！",
+          linkLabel: "友達診断リンク",
+          readLabel: "既読",
           friendFace: "/characters/face/seal_R.webp",
-          linkLabel: "リンク",
+          reply: "いいよ〜！やってみる！",
         },
         tint: "#EEF7E9",
         text: "LINEでリンクを送るだけでOK！",
@@ -123,11 +128,15 @@ const JA_COPY: DiagnosisCopy = {
       },
       {
         // ③ やり方その2: 友達が30問に答える。
+        // 友達が実際に答える形 (あなたについての質問を5段階で選ぶ) を見せる (2026-11-17)。
         visual: {
-          kind: "answer",
+          kind: "quiz",
           friendLabel: "友達",
           friendFace: "/characters/face/seal_R.webp",
-          countLabel: "30問",
+          // 友達の画面なので主語は招待した人。実際は本人の名前が入る所を、例の名前で見せる。
+          question: "ゆうきさんは、思いついたら\nすぐに行動するタイプだ",
+          total: 30,
+          unit: "問",
           badge: "回答完了！",
         },
         tint: "#FFF5DC",
@@ -140,6 +149,20 @@ const JA_COPY: DiagnosisCopy = {
         tint: "#F1ECFA",
         text: "友達診断で意外な一面を発見！",
         highlight: "友達診断",
+      },
+      {
+        // ⑤ どこから: このあと開く結果ページの下部ナビ「友達診断」を指す。
+        // 紹介で上げた関心を、結果ページで迷わず行動につなげるための1枚 (2026-11-17)。
+        visual: {
+          kind: "entry",
+          selfFace: "/characters/face/penguin_N.webp",
+          pageLabel: "あなたの診断結果",
+          tabs: ["自己診断", "友達診断", "Alice", "占星術", "タロット"],
+          bubble: "結果ページのここ！",
+        },
+        tint: "#EDEDFD",
+        text: "友達診断はここからできるよ！",
+        highlight: "ここから",
       },
     ],
     steps: [
