@@ -135,18 +135,84 @@ function LockBadge() {
 
 // 自己診断完了後、まだ友達診断ページを見ていないことを知らせるバッジ。
 // 小さい下部ナビでも見落としにくい赤で表示する。
-function AttentionBadge() {
+function AttentionBadge({ pulse = false }: { pulse?: boolean }) {
   return (
     <span
       data-notification-badge="true"
       aria-hidden="true"
-      className="absolute -right-2 -top-2 flex h-[18px] w-[18px] items-center justify-center rounded-full text-[12px] font-black leading-none text-white"
+      className={`absolute -right-2 -top-2 flex h-[18px] w-[18px] items-center justify-center rounded-full text-[12px] font-black leading-none text-white ${pulse ? "animate-slide-pop" : ""}`}
       style={{
         background: "#EF4444",
         boxShadow: "0 0 0 2px #fff, 0 2px 6px rgba(239,68,68,0.35)",
       }}
     >
       !
+    </span>
+  );
+}
+
+// 友達診断タブの真上に出す吹き出し (日本語のみ)。解析待ちスライドの5枚目
+// 「友達診断はここからできるよ！」と同じ色・同じ言葉で、結果ページに着いた人を受け止める。
+// タブ (Link) の中に置くので、吹き出しを押しても友達診断へ進む。出てから数回だけ弾んで止まる。
+// 余白: 末尾の全角「！」は字の右に空きがあるので右を詰め、下はしっぽが付く分だけ
+// 狭く見えるので少し広げて、見た目の余白を上下左右で揃えている。
+// 出るのは着いてから最初の約2.5秒だけ。そのあとは少し伸びてから「!」へ吸い込まれるように
+// 縮んで消え、受け取った「!」が小さく弾む (目印が「!」へ引き継がれたことを動きで見せる)。
+const ATTENTION_BUBBLE_ENTER_DELAY_MS = 500;
+const ATTENTION_BUBBLE_VISIBLE_MS = 2500;
+const ATTENTION_BUBBLE_EXIT_MS = 560;
+
+function AttentionBubble({
+  text,
+  onAbsorbed,
+}: {
+  text: string;
+  // 吹き出しが「!」に吸い込まれた瞬間に呼ぶ。
+  onAbsorbed: () => void;
+}) {
+  const [phase, setPhase] = useState<"shown" | "leaving" | "gone">("shown");
+  useEffect(() => {
+    const leaveAt = ATTENTION_BUBBLE_ENTER_DELAY_MS + ATTENTION_BUBBLE_VISIBLE_MS;
+    const leave = setTimeout(() => setPhase("leaving"), leaveAt);
+    const absorb = setTimeout(onAbsorbed, leaveAt + ATTENTION_BUBBLE_EXIT_MS - 120);
+    const remove = setTimeout(() => setPhase("gone"), leaveAt + ATTENTION_BUBBLE_EXIT_MS);
+    return () => {
+      clearTimeout(leave);
+      clearTimeout(absorb);
+      clearTimeout(remove);
+    };
+  }, [onAbsorbed]);
+  if (phase === "gone") return null;
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-auto absolute bottom-full left-1/2 mb-1.5 -translate-x-1/2"
+    >
+      <span
+        className={`block origin-bottom ${phase === "leaving" ? "nav-bubble-out" : "animate-slide-pop"}`}
+        style={
+          phase === "leaving"
+            ? { animationDuration: `${ATTENTION_BUBBLE_EXIT_MS}ms` }
+            : { animationDelay: `${ATTENTION_BUBBLE_ENTER_DELAY_MS}ms` }
+        }
+      >
+        <span
+          className="animate-slide-bob relative block whitespace-nowrap rounded-full pb-[10px] pl-[15px] pr-[10px] pt-[9px] text-[13px] font-black leading-none text-white"
+          style={{
+            background: "#5B5BEF",
+            boxShadow: "0 4px 12px rgba(91,91,239,0.38)",
+            animationDelay: "1200ms",
+            animationDuration: "900ms",
+            animationIterationCount: 2,
+          }}
+        >
+          {text}
+          <span
+            className="absolute left-1/2 top-full -ml-[5px] -mt-[6px] h-2.5 w-2.5 rotate-45"
+            style={{ background: "#5B5BEF" }}
+          />
+        </span>
+      </span>
     </span>
   );
 }
@@ -258,6 +324,9 @@ export function BottomNav() {
   );
   const [ownerToken, setOwnerToken] = useState<string | null>(null);
   const [showTakoAttention, setShowTakoAttention] = useState(false);
+  // 吹き出しが消えた瞬間に、友達診断タブの「!」を1回弾ませる。
+  const [takoBubbleAbsorbed, setTakoBubbleAbsorbed] = useState(false);
+  const markTakoBubbleAbsorbed = useCallback(() => setTakoBubbleAbsorbed(true), []);
   const [showUnmeiAttention, setShowUnmeiAttention] = useState(false);
   // 未診断者への「自己診断」誘いバッジ (評価送信後ページで付与 / 2026-08-04)。
   const [showMeAttention, setShowMeAttention] = useState(false);
@@ -303,7 +372,11 @@ export function BottomNav() {
             const impressionKey = takoAttentionImpressionKey(token);
             if (localStorage.getItem(impressionKey) !== "1") {
               localStorage.setItem(impressionKey, "1");
-              track("tako_nav_badge_shown", { ownerToken: token });
+              // ui: 日本語は吹き出し付き (2026-11-17〜)。バッジだけの時期・言語と分けて見る。
+              track("tako_nav_badge_shown", {
+                ownerToken: token,
+                metadata: { ui: locale === "ja" ? "bubble" : "badge" },
+              });
             }
           }
         }
@@ -373,7 +446,7 @@ export function BottomNav() {
       window.removeEventListener(TAKO_ATTENTION_GRANTED_EVENT, evaluate);
       window.removeEventListener(ME_ATTENTION_GRANTED_EVENT, evaluate);
     };
-  }, [localePrefix, navHidden, pathname]);
+  }, [locale, localePrefix, navHidden, pathname]);
 
   // 有料コースのサーバーガードから戻ったときも、ナビの鍵をタップした
   // ときと同じ課金カードを開く。再読み込みで開き続けないよう hash は即座に除去。
@@ -832,7 +905,10 @@ export function BottomNav() {
                         : "tako_nav_badge_clicked",
                       {
                         ownerToken,
-                        metadata: { destination: it.href },
+                        metadata:
+                          it.key === "friend"
+                            ? { destination: it.href, ui: locale === "ja" ? "bubble" : "badge" }
+                            : { destination: it.href },
                       },
                     )
                 : undefined;
@@ -870,8 +946,16 @@ export function BottomNav() {
               )}
               <span className="relative">
                 <Icon />
-                {hasAttention ? <AttentionBadge /> : null}
+                {hasAttention ? (
+                  <AttentionBadge pulse={it.key === "friend" && takoBubbleAbsorbed} />
+                ) : null}
               </span>
+              {hasAttention && it.key === "friend" && locale === "ja" ? (
+                <AttentionBubble
+                  text="友達診断はここから！"
+                  onAbsorbed={markTakoBubbleAbsorbed}
+                />
+              ) : null}
               <span className="text-[11px] font-bold leading-none">
                 {it.label}
               </span>
