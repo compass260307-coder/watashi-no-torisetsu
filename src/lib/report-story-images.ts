@@ -35,6 +35,12 @@ const REPORT_CHARACTER_SLUGS = [
 
 const REPORT_CHARACTER_SLUG_SET = new Set<string>(REPORT_CHARACTER_SLUGS);
 
+// 課金カードの「チラ見」画像の言語。日本語は配布している小説PDFの表紙・本文、
+// 韓国語は韓国語PDF (/report/[token]/print?locale=ko と /tako-report/…) の表紙・本文1ページ目を
+// キャラ別に書き出したもの (public/paywall-peek/ko-*-{slug}-2026.webp、560×793)。
+type PeekLocale = "ja" | "ko";
+const peekPrefix = (locale?: PeekLocale) => (locale === "ko" ? "ko-" : "");
+
 function characterSlugFromImageSrc(imageSrc?: string | null): string | null {
   if (!imageSrc) return null;
 
@@ -60,18 +66,20 @@ export function selfReportStoryImagePath(
 /** 課金カードの「チラ見」で使う、タイトル合成済みの自己診断表紙。 */
 export function selfReportPeekImagePath(
   characterImageSrc?: string | null,
+  locale?: PeekLocale,
 ): string | null {
   const slug = characterSlugFromImageSrc(characterImageSrc);
-  return slug ? `/paywall-peek/self-cover-${slug}-2026.webp` : null;
+  return slug ? `/paywall-peek/${peekPrefix(locale)}self-cover-${slug}-2026.webp` : null;
 }
 
 /** 課金カードの「チラ見」で使う、実配布小説PDFのタイプ別本文ページ。 */
 export function selfReportStoryPreviewPagePath(
   characterImageSrc?: string | null,
+  locale?: PeekLocale,
 ): string | null {
   const slug = characterSlugFromImageSrc(characterImageSrc);
   return slug
-    ? `/paywall-peek/self-story-page-${slug}-2026.webp`
+    ? `/paywall-peek/${peekPrefix(locale)}self-story-page-${slug}-2026.webp`
     : null;
 }
 
@@ -90,7 +98,8 @@ export function friendReportStoryImagePath(
 /** 課金カードの「チラ見」で使う、タイトル合成済みのキャラ別表紙。 */
 export function friendReportPeekImagePath(
   characterImageSrc?: string | null,
+  locale?: PeekLocale,
 ): string | null {
   const slug = characterSlugFromImageSrc(characterImageSrc);
-  return slug ? `/paywall-peek/friends-cover-${slug}-2026.webp` : null;
+  return slug ? `/paywall-peek/${peekPrefix(locale)}friends-cover-${slug}-2026.webp` : null;
 }
