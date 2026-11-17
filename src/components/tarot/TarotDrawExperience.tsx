@@ -3,7 +3,8 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ARCANA, TAROT_THEMES, type TarotTheme } from "./tarot-themes";
+import { ARCANA, arcanaName, tarotThemes, type TarotRoomLocale, type TarotTheme } from "./tarot-themes";
+import { KO_READING_EXAMPLES, KO_READING_OPENERS } from "./tarot-reading-ko";
 import styles from "./TarotDrawExperience.module.css";
 import {
   tarotModes,
@@ -15,10 +16,44 @@ type Phase = "ready" | "shuffling" | "cutting" | "selecting" | "revealed";
 type CardName = "moon" | "star" | "sun";
 
 const ROOM_SCENES = [
-  { id: "shuffle", src: "/mascot/tarot-alice-shuffle-room-v2.webp", alt: "Aliceが両手でカードを混ぜるタロットの部屋" },
-  { id: "cut", src: "/mascot/tarot-alice-cut-room-v1.webp", alt: "Aliceがカードの山を選ぶように案内するタロットの部屋" },
-  { id: "select", src: "/mascot/tarot-alice-select-room-v1.webp", alt: "Aliceがテーブルのカードへ優しく手を添えるタロットの部屋" },
+  { id: "shuffle", src: "/mascot/tarot-alice-shuffle-room-v2.webp" },
+  { id: "cut", src: "/mascot/tarot-alice-cut-room-v1.webp" },
+  { id: "select", src: "/mascot/tarot-alice-select-room-v1.webp" },
 ] as const;
+
+// Aliceの占い部屋 (没入型) の文言。日本語と韓国語は同じ演出で、文だけ切り替える。
+const ROOM_COPY = {
+  ja: {
+    sceneAlt: {
+      shuffle: "Aliceが両手でカードを混ぜるタロットの部屋",
+      cut: "Aliceがカードの山を選ぶように案内するタロットの部屋",
+      select: "Aliceがテーブルのカードへ優しく手を添えるタロットの部屋",
+    },
+    pathPrefix: "",
+    themeTitle: (title: string) => `${title}について`,
+    readyLines: ["気になることを思い浮かべてね。", "あなたのカードを読んでみるね。"],
+    readingLines: ["Aliceが", "読み解き中..."],
+    viewResult: "結果をみる",
+    choosePile: "気になる山をひとつ選んでね。",
+    chooseCards: (count: number) => `気になるカードを${count}枚選んでね。`,
+  },
+  ko: {
+    sceneAlt: {
+      shuffle: "Alice가 두 손으로 카드를 섞는 타로의 방",
+      cut: "Alice가 카드 더미를 고르도록 안내하는 타로의 방",
+      select: "Alice가 테이블의 카드에 살며시 손을 얹는 타로의 방",
+    },
+    pathPrefix: "/ko",
+    themeTitle: (title: string) => `${title}에 대해`,
+    readyLines: ["마음에 걸리는 일을 떠올려 보세요.", "당신의 카드를 읽어 볼게요."],
+    readingLines: ["Alice가", "읽고 있어요..."],
+    viewResult: "결과 보기",
+    choosePile: "마음이 가는 더미를 하나 골라 주세요.",
+    chooseCards: (count: number) => `마음이 가는 카드를 ${count}장 골라 주세요.`,
+  },
+} as const;
+const roomLocaleOf = (locale: TarotLocale): TarotRoomLocale | null =>
+  locale === "ja" || locale === "ko" ? locale : null;
 
 const CARD_BACK = "/tarot/card-back.webp";
 const CARD_ART: Record<CardName, string> = {
@@ -298,6 +333,9 @@ export default function TarotDrawExperience({
   const [isReading, setIsReading] = useState(false);
   const [readingReady, setReadingReady] = useState(false);
   const phaseTimer = useRef<number | null>(null);
+  // 日本語と韓国語は Alice の占い部屋 (没入型) で進める。
+  const roomLocale = roomLocaleOf(locale);
+  const room = roomLocale ? ROOM_COPY[roomLocale] : null;
   const needsQuestion = mode === "yes-no";
   const canStart = !needsQuestion || question.trim().length > 0;
   const selectionComplete = selectedCards.length === config.selectionCount;
@@ -347,7 +385,7 @@ export default function TarotDrawExperience({
       ? selectedCards.filter(value => value !== index)
       : [...selectedCards, index];
     setSelectedCards(nextCards);
-    if (locale === "ja" && nextCards.length === config.selectionCount) {
+    if (roomLocale && nextCards.length === config.selectionCount) {
       setIsReading(true);
       phaseTimer.current = window.setTimeout(() => {
         setIsReading(false);
@@ -365,27 +403,27 @@ export default function TarotDrawExperience({
     if (needsQuestion) setQuestion("");
   }
 
-  if (locale === "ja") {
+  if (roomLocale && room) {
     return (
       <main className={`${styles.room} ${phase === "revealed" ? styles.roomRevealed : ""}`}>
         <div className={styles.roomBackdrop}>
           {ROOM_SCENES.map(scene => (
             <div key={scene.id} aria-hidden={visibleRoomScene !== scene.id} className={`${styles.roomScene} ${visibleRoomScene === scene.id ? styles.roomSceneActive : ""}`}>
-              <Image src={scene.src} alt={visibleRoomScene === scene.id ? scene.alt : ""} fill priority={scene.id === "shuffle"} loading={scene.id === "shuffle" ? undefined : "eager"} onLoad={() => setLoadedRoomScenes(current => current[scene.id] ? current : { ...current, [scene.id]: true })} sizes="(min-width: 768px) 760px, 100vw" className={styles.roomImage} />
+              <Image src={scene.src} alt={visibleRoomScene === scene.id ? room.sceneAlt[scene.id] : ""} fill priority={scene.id === "shuffle"} loading={scene.id === "shuffle" ? undefined : "eager"} onLoad={() => setLoadedRoomScenes(current => current[scene.id] ? current : { ...current, [scene.id]: true })} sizes="(min-width: 768px) 760px, 100vw" className={styles.roomImage} />
             </div>
           ))}
         </div>
         <div className={styles.roomContent}>
           <header className={styles.roomHeader}>
-            <Link href={previewMode ? "/tarot/dev-preview" : "/tarot"} aria-label={copy.back} className={styles.roomBack}>
+            <Link href={`${room.pathPrefix}/tarot${previewMode ? "/dev-preview" : ""}`} aria-label={copy.back} className={styles.roomBack}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m15 18-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
             </Link>
-            <div className="text-center"><h1 className="text-[24px] font-bold tracking-wide md:text-[30px]">{theme ? `${TAROT_THEMES[theme].title}について` : config.title}</h1></div>
+            <div className="text-center"><h1 className="text-[24px] font-bold tracking-wide md:text-[30px]">{theme ? room.themeTitle(tarotThemes(roomLocale)[theme].title) : config.title}</h1></div>
             <span aria-hidden="true" className="w-10" />
           </header>
           {phase !== "cutting" && phase !== "selecting" && !(theme && phase === "revealed") && <div aria-live="polite" className={styles.roomGuide}>
             <p className={styles.roomSpeaker}>Alice</p>
-            <p className={styles.roomDialogue}>{phase === "ready" ? <>気になることを思い浮かべてね。<br />あなたのカードを読んでみるね。</> : guideMessage(phase, locale)}</p>
+            <p className={styles.roomDialogue}>{phase === "ready" ? <>{room.readyLines[0]}<br />{room.readyLines[1]}</> : guideMessage(phase, locale)}</p>
           </div>}
           <div className={styles.roomTable}>
             {needsQuestion && phase === "ready" ? (
@@ -396,7 +434,7 @@ export default function TarotDrawExperience({
               </div>
             ) : phase === "revealed" ? (
               <div className={theme ? "w-full" : styles.roomReading}>{theme ? (
-                <ThemeReading theme={theme} cards={selectedCards.map(index => deck[index])} />
+                <ThemeReading theme={theme} cards={selectedCards.map(index => deck[index])} locale={roomLocale} />
               ) : (
                 <ResultStage mode={mode} card={singleCard} question={question.trim()} locale={locale} />
               )}</div>
@@ -414,14 +452,14 @@ export default function TarotDrawExperience({
                 isReading ? (
                   <div role="status" className={styles.roomAction}>
                     <span aria-hidden="true" className="mb-1 text-base motion-safe:animate-pulse">✧</span>
-                    Aliceが<br />読み解き中...
+                    {room.readingLines[0]}<br />{room.readingLines[1]}
                   </div>
                 ) : (
-                  <button type="button" disabled={!readingReady} onClick={revealReading} className={`${styles.roomAction} ${readingReady ? styles.roomActionReady : ""}`}><span aria-hidden="true" className="mb-1 text-base">✧</span>{readingReady ? "結果をみる" : `${selectedCards.length} / ${config.selectionCount}`}</button>
+                  <button type="button" disabled={!readingReady} onClick={revealReading} className={`${styles.roomAction} ${readingReady ? styles.roomActionReady : ""}`}><span aria-hidden="true" className="mb-1 text-base">✧</span>{readingReady ? room.viewResult : `${selectedCards.length} / ${config.selectionCount}`}</button>
                 )
               ) : (
                 <div className="grid grid-cols-2 gap-3">
-                  <Link href="/hoshiyomi" className={styles.roomAction}><span aria-hidden="true" className="mb-1 text-base">✧</span>{copy.talk}</Link>
+                  <Link href={`${room.pathPrefix}/hoshiyomi`} className={styles.roomAction}><span aria-hidden="true" className="mb-1 text-base">✧</span>{copy.talk}</Link>
                   <button type="button" onClick={reset} className={styles.roomAction}><span aria-hidden="true" className="mb-1 text-base">✧</span>{copy.retry}</button>
                 </div>
               )}
@@ -581,7 +619,7 @@ function RitualStage({
 
       {phase === "cutting" ? (
         <div className="relative z-10 w-full text-center">
-          <p aria-live="polite" className="text-[17px] font-black text-white">{immersive ? "気になる山をひとつ選んでね。" : copy.cutTitle}</p>
+          <p aria-live="polite" className="text-[17px] font-black text-white">{immersive ? ROOM_COPY[locale === "ko" ? "ko" : "ja"].choosePile : copy.cutTitle}</p>
           {!immersive && <p className="mt-2 text-[12px] font-bold text-[#BFD0FF]">{copy.cutBody}</p>}
           <div className={immersive ? "mt-6 grid grid-cols-3 gap-4 px-2 md:gap-8" : "mt-9 flex items-center justify-center gap-6 md:gap-10"}>
             {[0, 1, 2].map((index) => (
@@ -602,7 +640,7 @@ function RitualStage({
       ) : phase === "selecting" ? (
         <div className="relative z-10 w-full text-center">
           <p className="text-[15px] font-black text-white">
-            {immersive ? `気になるカードを${selectionCount}枚選んでね。` : selectionCount === 1 ? copy.selectOne : copy.selectThree}
+            {immersive ? ROOM_COPY[locale === "ko" ? "ko" : "ja"].chooseCards(selectionCount) : selectionCount === 1 ? copy.selectOne : copy.selectThree}
           </p>
           <div className={immersive ? styles.roomCardSpread : "mt-10 flex min-h-[145px] items-center justify-center gap-0 sm:gap-2"}>
             {SELECTABLE_CARDS.map((card, index) => {
@@ -711,21 +749,52 @@ const READING_EXAMPLES = [
   "ここまでにできたことを、三つだけ書いてみよう。やり残したことも整理しておくと、どこで一区切りにするか決めやすくなるよ。",
 ] as const;
 
-function ThemeReading({ theme, cards }: { theme: TarotTheme; cards: number[] }) {
-  const [, challenge, advice] = cards.map(index => ARCANA[index]);
-  const reassurance = {
-    love: "相手を大切に思うほど、何気ないやりとりも気になることがあるよね。あとから言いたいことが浮かぶ日もあると思う。",
-    work: "その場ではなんとか進められても、あとで「あれでよかったかな」と考えることってあるよね。忙しいと、自分の気持ちを確かめる時間も取りにくいと思う。",
-    friendship: "仲のいい相手でも、言葉を選んだり、遠慮したりすることはあるよね。家に帰ってから、あの会話がふと気になる日もあると思う。",
-  }[theme];
-  const topic = { love: "恋愛で", work: "仕事で", friendship: "友達との間で" }[theme];
+// テーマ別読み解きの文言。日本語と韓国語は同じ構成 (3枚 → 3段落) で、文だけ切り替える。
+const THEME_READING_COPY = {
+  ja: {
+    openers: READING_OPENERS as readonly string[],
+    examples: READING_EXAMPLES as readonly string[],
+    reassurance: {
+      love: "相手を大切に思うほど、何気ないやりとりも気になることがあるよね。あとから言いたいことが浮かぶ日もあると思う。",
+      work: "その場ではなんとか進められても、あとで「あれでよかったかな」と考えることってあるよね。忙しいと、自分の気持ちを確かめる時間も取りにくいと思う。",
+      friendship: "仲のいい相手でも、言葉を選んだり、遠慮したりすることはあるよね。家に帰ってから、あの会話がふと気になる日もあると思う。",
+    },
+    topic: { love: "恋愛で、", work: "仕事で、", friendship: "友達との間で、" },
+    resultTitle: (title: string) => `${title}の占い結果`,
+    drawnAria: "引いた3枚",
+    cardNumber: (n: number) => `${n}枚目`,
+    positions: ["最近のこと", "見直すヒント", "次の一歩"],
+    second: (name: string) => `2枚目は「${name}」。`,
+    third: (name: string) => `3枚目は「${name}」。こちらも試してみてほしいな。`,
+  },
+  ko: {
+    openers: KO_READING_OPENERS as readonly string[],
+    examples: KO_READING_EXAMPLES as readonly string[],
+    reassurance: {
+      love: " 상대를 소중히 생각할수록 사소한 대화도 마음에 걸릴 때가 있죠. 나중에야 하고 싶은 말이 떠오르는 날도 있을 거예요.",
+      work: " 그 자리에서는 어떻게든 해냈어도, 나중에 ‘그게 맞았을까’ 하고 생각할 때가 있죠. 바쁘면 내 마음을 확인할 시간도 내기 어려워요.",
+      friendship: " 친한 사이여도 말을 고르거나 조심스러울 때가 있죠. 집에 돌아와서 그 대화가 문득 마음에 걸리는 날도 있을 거예요.",
+    },
+    topic: { love: "연애에서, ", work: "일에서, ", friendship: "친구 사이에서, " },
+    resultTitle: (title: string) => `${title} 타로 결과`,
+    drawnAria: "뽑은 세 장",
+    cardNumber: (n: number) => `${n}번째 카드`,
+    positions: ["최근의 일", "다시 살펴볼 힌트", "다음 한 걸음"],
+    second: (name: string) => `두 번째 카드는 ‘${name}’. `,
+    third: (name: string) => `세 번째 카드는 ‘${name}’. 이것도 한번 해 보면 좋겠어요. `,
+  },
+} as const;
+
+function ThemeReading({ theme, cards, locale }: { theme: TarotTheme; cards: number[]; locale: TarotRoomLocale }) {
+  const copy = THEME_READING_COPY[locale];
+  const themeTitle = tarotThemes(locale)[theme].title;
 
   return (
-    <section aria-label={`${TAROT_THEMES[theme].title}の占い結果`} className="overflow-hidden rounded-[24px] bg-[#faf2df] text-[#342d3d]">
-      <ol aria-label="引いた3枚" className="grid grid-cols-3 gap-2 px-3 py-4 text-center sm:gap-4 sm:px-6">
+    <section aria-label={copy.resultTitle(themeTitle)} className="overflow-hidden rounded-[24px] bg-[#faf2df] text-[#342d3d]">
+      <ol aria-label={copy.drawnAria} className="grid grid-cols-3 gap-2 px-3 py-4 text-center sm:gap-4 sm:px-6">
         {cards.map((card, index) => (
           <li key={card} className="min-w-0">
-            <span className="text-xs font-bold text-[#765527]">{index + 1}枚目</span>
+            <span className="text-xs font-bold text-[#765527]">{copy.cardNumber(index + 1)}</span>
             <div className="relative mx-auto my-2 aspect-[2/3] w-full max-w-28 overflow-hidden rounded-[10px] border border-[#2E2E5C]/10 shadow-[0_10px_24px_rgba(46,46,92,0.12)]">
               <Image
                 src={ARCANA_ART[card] ?? `/tarot/arcana/${card}.webp`}
@@ -735,22 +804,22 @@ function ThemeReading({ theme, cards }: { theme: TarotTheme; cards: number[] }) 
                 className="object-contain"
               />
             </div>
-            <span className="block text-sm font-bold">{ARCANA[card][0]}</span>
-            <span className="block text-xs text-[#765527]">{["最近のこと", "見直すヒント", "次の一歩"][index]}</span>
+            <span className="block text-sm font-bold">{arcanaName(locale, card)}</span>
+            <span className="block text-xs text-[#765527]">{copy.positions[index]}</span>
           </li>
         ))}
       </ol>
       <div className="mx-5 border-t border-[#765527]/20 pb-7 pt-5 sm:mx-8">
-        <h2 className="text-lg font-bold">{TAROT_THEMES[theme].title}の占い結果</h2>
+        <h2 className="text-lg font-bold">{copy.resultTitle(themeTitle)}</h2>
         <p className="mt-3 text-[15px] leading-7 text-[#51483e]">
-          {topic}、{READING_OPENERS[cards[0]]}
-          {reassurance}
+          {copy.topic[theme]}{copy.openers[cards[0]]}
+          {copy.reassurance[theme]}
         </p>
         <p className="mt-4 text-[15px] leading-7 text-[#51483e]">
-          2枚目は「{challenge[0]}」。{READING_EXAMPLES[cards[1]]}
+          {copy.second(arcanaName(locale, cards[1]))}{copy.examples[cards[1]]}
         </p>
         <p className="mt-4 text-[15px] leading-7 text-[#51483e]">
-          3枚目は「{advice[0]}」。こちらも試してみてほしいな。{READING_EXAMPLES[cards[2]]}
+          {copy.third(arcanaName(locale, cards[2]))}{copy.examples[cards[2]]}
         </p>
       </div>
     </section>

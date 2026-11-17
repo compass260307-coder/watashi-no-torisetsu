@@ -1,4 +1,4 @@
-import { TAROT_THEMES, type TarotTheme } from "./tarot-themes";
+import { TAROT_THEMES, tarotThemes, type TarotTheme } from "./tarot-themes";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -136,13 +136,33 @@ export default function TarotLanding({
   previewMode?: boolean;
 }) {
   const copy = LANDING_COPY[locale];
+  // 日本語と韓国語は Alice の占い部屋 (全画面の絵 + 3テーマ) をトップにする。
+  const roomLocale = locale === "ja" || locale === "ko" ? locale : null;
+  const room = roomLocale === "ko"
+    ? {
+        aria: "Alice의 타로 방",
+        imageAlt: "정면을 바라보는 Alice와 눈앞에 펼쳐진 타로 테이블",
+        ask: "오늘은 카드로 무엇을 점쳐 볼까요?",
+        themeAria: (title: string) => `${title} 점치기`,
+        sublabels: ["마음과 거리", "일하는 방식과 한 걸음", "관계와 연결"],
+        pathPrefix: "/ko",
+      }
+    : {
+        aria: "Aliceのタロットの部屋",
+        imageAlt: "正面を向くAliceと、目の前に広がるタロットテーブル",
+        ask: "今日は、何をカードで占う？",
+        themeAria: (title: string) => `${title}を占う`,
+        sublabels: ["気持ちと距離", "働き方と一歩", "関係とつながり"],
+        pathPrefix: "",
+      };
+  const themes = tarotThemes(roomLocale ?? "ja");
   return (
     <main className="overflow-hidden bg-white text-[#2E2E5C]">
-      {locale === "ja" ? (
-        <section aria-label="Aliceのタロットの部屋" className="relative isolate h-[calc(100svh-56px)] min-h-[560px] overflow-hidden bg-[#102C30] text-[#FFF7E5] md:h-[850px] md:max-h-[calc(100svh-64px)]">
+      {roomLocale ? (
+        <section aria-label={room.aria} className="relative isolate h-[calc(100svh-56px)] min-h-[560px] overflow-hidden bg-[#102C30] text-[#FFF7E5] md:h-[850px] md:max-h-[calc(100svh-64px)]">
           <Image
             src="/mascot/tarot-alice-front-room-v1.webp"
-            alt="正面を向くAliceと、目の前に広がるタロットテーブル"
+            alt={room.imageAlt}
             fill
             priority
             sizes="(min-width: 768px) 760px, 100vw"
@@ -152,15 +172,15 @@ export default function TarotLanding({
           <div className="relative mx-auto flex h-full max-w-[640px] flex-col px-3 pb-[calc(84px+env(safe-area-inset-bottom))] pt-7 md:px-6 md:pb-5 md:pt-10">
             <div className="text-center">
               <h1 className="mt-2 text-[clamp(30px,8.5vw,48px)] font-black leading-[1.25] tracking-[0.02em] drop-shadow-md md:text-[52px]">{copy.title}</h1>
-              <p className="mt-2 text-[13px] font-medium tracking-[0.06em] text-[#FFF7E5]/85">今日は、何をカードで占う？</p>
+              <p className="mt-2 text-[13px] font-medium tracking-[0.06em] text-[#FFF7E5]/85">{room.ask}</p>
             </div>
             <div className="mt-auto pt-6">
               <div className="mx-auto grid w-full max-w-[600px] grid-cols-3 items-center justify-items-center gap-2 md:gap-4">
                 {(Object.keys(TAROT_THEMES) as TarotTheme[]).map((theme, index) => (
                   <Link
                     key={theme}
-                    href={previewMode ? `/tarot/dev-preview?mode=three&theme=${theme}` : `/tarot/three?theme=${theme}`}
-                    aria-label={`${TAROT_THEMES[theme].title}を占う`}
+                    href={previewMode ? `${room.pathPrefix}/tarot/dev-preview?mode=three&theme=${theme}` : `${room.pathPrefix}/tarot/three?theme=${theme}`}
+                    aria-label={room.themeAria(themes[theme].title)}
                     className={`group relative flex aspect-square w-full flex-col items-center justify-center rounded-full border-[3px] border-[#FFF8E8]/90 px-1 text-center shadow-[inset_0_3px_14px_#ffffffb3,0_5px_0_#182b3255,0_10px_24px_#0004] transition hover:-translate-y-1 active:translate-y-0.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#F6D99C] ${[
                       "bg-[radial-gradient(circle_at_35%_20%,#fff7ff,#e4d5f5_65%,#cbb5e5)] text-[#665084]",
                       "bg-[radial-gradient(circle_at_35%_20%,#f4fff7,#cfeee3_65%,#a4d2c6)] text-[#386e66]",
@@ -192,8 +212,8 @@ export default function TarotLanding({
                         )}
                       </svg>
                     </span>
-                    <span className="text-[clamp(12px,3.5vw,18px)] font-black md:text-[19px]">{TAROT_THEMES[theme].title}</span>
-                    <span className="mt-1 text-[9px] font-bold text-current opacity-75 md:text-[11px]">{["気持ちと距離", "働き方と一歩", "関係とつながり"][index]}</span>
+                    <span className="text-[clamp(12px,3.5vw,18px)] font-black md:text-[19px]">{themes[theme].title}</span>
+                    <span className="mt-1 text-[9px] font-bold text-current opacity-75 md:text-[11px]">{room.sublabels[index]}</span>
                   </Link>
                 ))}
               </div>
@@ -228,7 +248,7 @@ export default function TarotLanding({
 
       )}
 
-      {locale !== "ja" && (
+      {!roomLocale && (
       <section className="mx-auto max-w-[1040px] px-5 py-12 md:px-8 md:py-20">
         <div className="mb-8 text-center md:mb-10">
           <p className="text-[11px] font-black tracking-[0.16em] text-[#8A78CF]">CHOOSE A READING</p>
