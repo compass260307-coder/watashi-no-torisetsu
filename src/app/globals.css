@@ -360,6 +360,17 @@ input[type="reset"]:active {
   animation: slide-flip-lift 1.25s cubic-bezier(0.4, 0, 0.3, 1) both;
 }
 
+/* 下部ナビの吹き出しが消えるとき: ひと呼吸ふくらんでから、タブの「!」へ吸い込まれる。 */
+@keyframes nav-bubble-out {
+  0% { opacity: 1; transform: translateY(0) scale(1); }
+  24% { opacity: 1; transform: translateY(-4px) scale(1.06); }
+  100% { opacity: 0; transform: translateY(16px) scale(0.12); }
+}
+
+.nav-bubble-out {
+  animation: nav-bubble-out 0.56s cubic-bezier(0.5, 0, 0.75, 0.35) both;
+}
+
 @keyframes slide-bob {
   0%, 100% { transform: translateY(0); }
   50% { transform: translateY(-4px); }
@@ -380,6 +391,9 @@ input[type="reset"]:active {
     animation: none;
   }
   .slide-flip-lift {
+    animation: none;
+  }
+  .nav-bubble-out {
     animation: none;
   }
   .animate-slide-bob {
