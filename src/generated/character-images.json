@@ -101,7 +101,7 @@
   ],
   "cutTopMargin": {
     "angel_N.webp": 0.104,
-    "bear_R.webp": 0.127,
+    "bear_R.webp": 0.082,
     "cheetah_N.webp": 0.117,
     "clownfish_N.webp": 0.118,
     "crow_N.webp": 0.063,
@@ -135,7 +135,7 @@
   },
   "cutBottomMargin": {
     "angel_N.webp": 0.075,
-    "bear_R.webp": 0.111,
+    "bear_R.webp": 0.095,
     "cheetah_N.webp": 0.108,
     "clownfish_N.webp": 0.092,
     "crow_N.webp": 0.045,
