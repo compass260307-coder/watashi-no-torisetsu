@@ -193,6 +193,46 @@ function koScoreNote(scores: Scores, dimension: BigFiveDimension): string {
   return `당신의 ${AXIS_NAME[dimension]}은 ${percent(scores, dimension)}%예요.`;
 }
 
+// 직장에서의 인간관계 (🔒)。日本語版 src/lib/deep-dive-resolve.ts の CAREER_RELATIONS_PROSE と同じ構成:
+// ①E (距離のとり方) ②A (頼まれごと・衝突のクセ) ③N+C (消耗ポイント) ④締め (固定)。
+export const KO_CAREER_RELATIONS_HEADING = "직장에서의 인간관계";
+
+const KO_CAREER_RELATIONS_PROSE: Record<
+  "E" | "A" | "N" | "C",
+  Record<HighLow, string>
+> = {
+  E: {
+    H: "직장에서의 당신은 자연스럽게 무리의 한가운데 가까이에 있는 사람이에요. 누구와도 금방 친해지고, 분위기가 무거운 회의에서도 먼저 말을 꺼낼 수 있어요. 다만 두루 잘 지내는 만큼 ‘누구에게나 좋은 얼굴만 한다’는 말을 듣거나, 얕은 관계만 늘어서 정말 힘들 때 기댈 사람이 없다고 느낀 순간이 있지 않았나요?",
+    L: "직장에서의 당신은 잡담 자리에 적극적으로 끼어드는 타입은 아니에요. 하지만 벽이 있는 게 아니라, 적은 사람과 천천히 신뢰를 쌓는 스타일일 뿐이에요. 다만 조용히 있는 것만으로 ‘무슨 생각을 하는지 모르겠다’는 오해를 받거나, 어느새 무리 밖에 놓여 있는 식으로 손해를 볼 때가 있어요.",
+  },
+  A: {
+    H: "인간관계에서 가장 닳는 지점은 부탁이에요. 미움받기 싫어서 거절하지 못하다 보면, 어느새 당신 책상에만 일이 쌓여 가요. 충돌을 피하려고 삼킨 ‘그거 좀 이상하지 않아?’는 사라지지 않고 쌓였다가, 어느 날 한꺼번에 피로로 바뀌어요. 다정함이 가장 큰 소모 포인트가 되기 쉬워요.",
+    L: "당신은 생각한 것을 솔직하게 말할 수 있는 타입이에요. 그 자체는 팀의 자산이지만, 옳은 지적일수록 ‘날카로운 한마디’로 전해질 때가 있어요. 상대가 원했던 건 정답이 아니라 먼저 ‘그럴 수 있지’라는 한마디였을지도 몰라요. 평가에 영향을 주기 전에 알아 두고 싶은 습관이에요.",
+  },
+  N: {
+    H: "그리고 주변의 평가나 분위기 변화에 누구보다 민감한 만큼, 상사의 기분이나 동료의 한마디를 오래 끌고 가며 지치기 쉬워요.",
+    L: "그리고 분위기가 조금 날카로워져도 흔들리지 않는 안정감은, 주변이 생각하는 것보다 훨씬 더 팀을 차분하게 만들어요.",
+  },
+  C: {
+    H: "책임감이 강한 만큼 혼자 떠안기 쉽고, ‘상의하면 폐가 된다’고 생각해 한계까지 말하지 못하는 면도 있어요.",
+    L: "자기 속도로 움직일 수 있는 만큼, 보고나 공유가 뒤로 밀려 ‘혼자 마음대로 진행한다’는 인상을 줄 때도 있어요.",
+  },
+};
+
+const KO_CAREER_RELATIONS_CLOSING =
+  "인간관계의 습관은 고치는 것이 아니라 ‘어디에 두느냐’의 문제예요. 당신의 거리 두는 방식이 그대로 살아나는 팀이라면, 억지로 캐릭터를 바꾸지 않아도 충분히 신뢰받을 수 있어요. 나에게 맞는 거리감의 직장을 고르는 것이 가장 좋은 처세술이에요.";
+
+function buildKoCareerRelations(scores: Scores): string {
+  const paragraph = (dimension: "E" | "A" | "N" | "C") =>
+    KO_CAREER_RELATIONS_PROSE[dimension][highLow(scores, dimension)];
+  return [
+    paragraph("E"),
+    paragraph("A"),
+    `${paragraph("N")} ${paragraph("C")}`,
+    KO_CAREER_RELATIONS_CLOSING,
+  ].join("\n\n");
+}
+
 function buildKoLoveEndure(scores: Scores): string {
   const paragraph = (dimension: "N" | "A" | "E" | "C") =>
     KO_LOVE_FAIL_PROSE[dimension][highLow(scores, dimension)];
@@ -297,13 +337,15 @@ export function buildKoDeepDiveSections(
               body: "",
               locked: true,
             },
+        // 3ブロック目は日本語版と同じ「職場の人間関係」(スコア由来)。
+        // 原稿4段落目 (才能の再定義) は日本語版と同じく表示しない (原稿は温存)。
         unlocked
           ? {
-              heading: "일에서 인정받는 뜻밖의 재능",
-              body: translatedCareerParagraphs.slice(3).join("\n\n"),
+              heading: KO_CAREER_RELATIONS_HEADING,
+              body: buildKoCareerRelations(scores),
             }
           : {
-              heading: "일에서 인정받는 뜻밖의 재능",
+              heading: KO_CAREER_RELATIONS_HEADING,
               body: "",
               locked: true,
             },
@@ -325,14 +367,11 @@ export function buildKoDeepDiveSections(
         },
     unlocked
       ? {
-          heading: "일에서 인정받는 뜻밖의 재능",
-          body: `본인은 당연하다고 생각하는 ${strongestDimensions(scores)
-            .slice(0, 2)
-            .map((dimension) => AXIS_STRENGTH[dimension][direction(scores, dimension)].title)
-            .join("과 ")}이 주변에는 희소한 능력으로 보여요. 위기일수록 평소 습관처럼 꺼내는 이 힘이 팀의 기준이 돼요.`,
+          heading: KO_CAREER_RELATIONS_HEADING,
+          body: buildKoCareerRelations(scores),
         }
       : {
-          heading: "일에서 인정받는 뜻밖의 재능",
+          heading: KO_CAREER_RELATIONS_HEADING,
           body: "",
           locked: true,
         },
@@ -534,7 +573,7 @@ export const KO_ME_COPY = {
   unlockNow: "지금 잠금 해제",
   accessNow: "지금 확인하기",
   friendLockDescription:
-    "완전판 리포트에서 친구가 나를 오해하기 쉬운 부분을 확인해 보세요.",
+    "여기서부터는 친구가 나를 오해하기 쉬운 포인트가 담겨 있어요.",
   teaseAnimal: (animal: string) =>
     `친구가 보는 당신의 모습은 ‘${animal}’에 가까워요…`,
 } as const;

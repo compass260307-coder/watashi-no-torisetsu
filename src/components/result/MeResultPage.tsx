@@ -1847,9 +1847,9 @@ async function MeResultPageContent({
                           {isEnglish ? "Unlock now" : isKorean ? "지금 잠금 해제" : isIndonesian ? "Buka sekarang" : "今すぐロックを解除"}
                         </p>
                         <p className="mb-4 text-[11px] font-bold leading-[1.55] text-[#2E2E5C]/65 md:mb-6 md:text-[13px] md:leading-relaxed">
-                          {isEnglish ? "Unlock the remaining guidance " : isKorean ? "남은 주의점과 대처법을 열어" : isIndonesian ? "Buka panduan lainnya " : "ここから先には、"}
+                          {isEnglish ? "Unlock the remaining guidance " : isKorean ? "여기서부터는" : isIndonesian ? "Buka panduan lainnya " : "ここから先には、"}
                           <br className="md:hidden" />
-                          {isEnglish ? "and complete your personal manual." : isKorean ? "나의 사용설명서를 완성해 보세요." : isIndonesian ? "dan lengkapi panduan pribadi Anda." : "残りの注意点と対処法が書かれています。"}
+                          {isEnglish ? "and complete your personal manual." : isKorean ? " 남은 주의점과 대처법이 담겨 있어요." : isIndonesian ? "dan lengkapi panduan pribadi Anda." : "残りの注意点と対処法が書かれています。"}
                         </p>
                         <PaywallScrollButton
                           source="caution_lock_card"
