@@ -33,8 +33,10 @@ type KakaoGlobal = {
 // `kakao` means the SDK was invoked, not that a message was delivered.
 export type KakaoShareResult = "kakao" | "native" | "copy" | "cancelled" | "unavailable";
 
+// 日本語版の招待文「友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ」と同じ内容。
+// 招待カード・カカオトーク・固定バーの共有で同じ文を使う。
 export const KO_FRIEND_INVITE_TEXT =
-  "네가 보는 나는 어떤 사람인지 궁금해! 30개의 질문에 답하고, 내가 보는 나와 비교해 줘.";
+  "친구 눈에 비친 나를 알려 줘! ‘앨리스 진단’에서 친구 진단 테스트를 할 수 있어.";
 
 export function kakaoShareFeedback(result: KakaoShareResult): string {
   switch (result) {
@@ -42,7 +44,7 @@ export function kakaoShareFeedback(result: KakaoShareResult): string {
     case "native": return "공유 메뉴로 전달했어요. 선택한 앱에서 전송을 확인해 주세요.";
     case "copy": return "링크를 복사했어요. 카카오톡에서 친구에게 붙여 넣어 주세요.";
     case "cancelled": return "";
-    case "unavailable": return "공유를 열지 못했어요. 링크 복사나 QR 코드를 이용해 주세요.";
+    case "unavailable": return "공유를 열지 못했어요. 아래 초대 링크를 복사해 보내 주세요.";
   }
 }
 

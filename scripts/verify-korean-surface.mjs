@@ -87,7 +87,7 @@ const aishoPage = fs.readFileSync(
 );
 if (
   !aishoPage.includes(
-    "완전판에서 두 사람의 궁합 결과 전체를 확인할 수 있어요.",
+    "완전판 · 한 번만 결제하면 두 사람의 궁합 진단 결과를 모두 읽을 수 있어요.",
   )
 ) {
   problems.push(

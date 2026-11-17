@@ -2,11 +2,6 @@ import type { Metadata } from "next";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import {
-  classifyThirtyTwoType,
-} from "@/lib/thirty-two-types";
-import { KO_RESULT_TYPES } from "@/i18n/ko/result";
-import type { BigFiveDimension } from "@/lib/types";
-import {
   KO_DEFAULT_OG_IMAGE,
   KO_SITE_NAME,
   localizedAlternates,
@@ -74,23 +69,19 @@ export async function generateMetadata({
 
   const { data } = await supabaseAdmin
     .from("users")
-    .select("display_name, scores")
+    .select("display_name")
     .eq("invite_code", inviteCode)
     .maybeSingle();
   if (!data) return fallback;
 
-  const scores = (data.scores ?? {}) as Partial<
-    Record<BigFiveDimension, number>
-  >;
-  const type32 = classifyThirtyTwoType(scores);
-  const copy = KO_RESULT_TYPES[type32];
   const name = ((data.display_name as string | null) ?? "").trim();
 
   return metadataForInvite({
     inviteCode,
+    // 日本語版と同じく、回答を誘導しないよう本人のタイプ名は出さない。
     title: name
-      ? `${name}님은 ‘${copy.essence}’ 유형이에요`
-      : `나는 ‘${copy.essence}’ 유형이에요`,
+      ? `네가 보는 ${name}님을 알려 줘!`
+      : "네가 보는 나를 알려 줘!",
     description: name
       ? `친구의 눈에 비친 ${name}님의 모습을 30개 질문으로 알려 주세요.`
       : FALLBACK_DESCRIPTION,

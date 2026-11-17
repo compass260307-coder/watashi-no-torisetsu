@@ -82,8 +82,8 @@ export function TakoFriendTabs({
   const isKo = locale === "ko";
   const isEn = locale === "en";
   const isId = locale === "id";
-  // 日本語・友達0人の招待カードは、見出しを1行で見せる専用の並びにする。
-  const isJaEmptyInvite = !isKo && !isEn && !isId && tabs.length === 0;
+  // 日本語・韓国語の友達0人の招待カードは、見出しを1行で見せる専用の並びにする。
+  const isJaEmptyInvite = !isEn && !isId && tabs.length === 0;
   const [idx, setIdx] = useState(0);
   // 友達0人の空状態では、共有パネルをクリック不要で最初から開く
   // (計測で、ページ到達者の79%が招待UIに触れずに離脱していたため)。
@@ -611,23 +611,23 @@ export function TakoFriendTabs({
                     id="tako-invite-dialog-title"
                     className="whitespace-nowrap pr-10 text-[clamp(18px,calc(7.2vw-4px),26px)] font-black leading-[1.25] text-[#2E2E5C] md:pr-12 md:text-[34px]"
                   >
-                    友達から見たあなたは？
+                    {isKo ? "친구가 보는 나는?" : "友達から見たあなたは？"}
                   </h2>
                   <div className="mt-2 flex items-start gap-3 md:gap-6">
                     <p className="min-w-0 flex-1 text-[12px] font-bold leading-[1.7] text-[#73738A] min-[375px]:text-[13px] md:text-[14px]">
-                      1人が答えるだけで「
+                      {isKo ? "한 명만 답해도 ‘" : "1人が答えるだけで「"}
                       {demoHref ? (
                         <Link
                           href={demoHref}
                           // -my-2 py-2: 行の高さを変えずに、指で押せる範囲だけ上下に広げる
                           className="-my-2 py-2 text-[#5B5BEF] underline decoration-[#5B5BEF]/50 underline-offset-[3px]"
                         >
-                          友達から見たあなた
+                          {isKo ? "친구가 보는 나" : "友達から見たあなた"}
                         </Link>
                       ) : (
-                        "友達から見たあなた"
+                        isKo ? "친구가 보는 나" : "友達から見たあなた"
                       )}
-                      」の結果が見られます。
+                      {isKo ? "’의 결과를 볼 수 있어요." : "」の結果が見られます。"}
                     </p>
                     <Image
                       src={friendsWaiting}
@@ -733,7 +733,7 @@ export function TakoFriendTabs({
             {isEn
               ? "Invite a few friends and compare how they see you."
               : isKo
-              ? "친구 한 명이 답하면 여기에 ‘친구가 보는 나’의 결과가 표시돼요."
+              ? "친구 몇 명을 초대해서 결과를 비교해 보세요!"
               : isId
                 ? "Undang beberapa teman lalu bandingkan sudut pandang mereka."
                 : "何人かを招待して、結果を比較してみましょう！"}

@@ -529,7 +529,7 @@ export function MeStickyHeader({
       : isId
       ? "Ceritakan bagaimana kamu melihatku! Kamu bisa menjawab tes pandangan teman di Alice Test."
       : locale === "ko"
-      ? "친구 눈에 비친 나를 알려 줘! ‘앨리스 진단’에서 친구 진단에 답할 수 있어요."
+      ? KO_FRIEND_INVITE_TEXT
       : "友達から見たわたしを教えて！「ワタシのトリセツ」で友達診断テストができるよ";
   const characterShareText =
     isEn
@@ -863,7 +863,7 @@ export function MeStickyHeader({
                     </svg>
                   )}
                   {reportLabel ??
-                    (isEn ? "Download complete report" : isId ? "Unduh laporan lengkap" : isKo ? "PDF 리포트 다운로드" : "完全版レポートを生成")}
+                    (isEn ? "Download complete report" : isId ? "Unduh laporan lengkap" : isKo ? "완전판 리포트 생성" : "完全版レポートを生成")}
                 </a>
               ))}
 
