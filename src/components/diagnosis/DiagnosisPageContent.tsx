@@ -692,6 +692,7 @@ export default function DiagnosisPageContent({
         messageDurationsMs={copy.analyzing.messageDurationsMs}
         totalMs={copy.analyzing.minLoadingMs}
         slides={copy.analyzing.slides}
+        slideDurationsMs={copy.analyzing.slideDurationsMs}
         slidesLabel={copy.analyzing.slidesLabel}
         fontFamily={isKorean || isEnglish || isIndonesian ? "inherit" : undefined}
       />

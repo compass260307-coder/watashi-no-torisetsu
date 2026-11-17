@@ -81,6 +81,7 @@ export function DiagnosisAnalyzingLoader({
   messageDurationsMs,
   totalMs = DEFAULT_TOTAL_MS,
   slides,
+  slideDurationsMs,
   slidesLabel,
   fontFamily = FONT_STACK,
 }: {
@@ -92,7 +93,9 @@ export function DiagnosisAnalyzingLoader({
   totalMs?: number;
   // 指定時はマスコットの代わりに紹介スライドを流す (totalMs を枚数で等分)。
   slides?: AnalyzingSlide[];
-  // 各スライド左上の見出し (後ろに ①②③ が付く)。
+  // slides[i] の表示時間 (ms)。省略時や不足分は等分した長さ。
+  slideDurationsMs?: number[];
+  // 各スライド左上の見出し。全カード共通で、番号は付けない。
   slidesLabel?: string;
   fontFamily?: string;
 } = {}) {
@@ -131,7 +134,8 @@ export function DiagnosisAnalyzingLoader({
   }, [stepCount, totalMs]);
 
   const slideCount = slides?.length ?? 0;
-  const slideDurationMs = slideCount > 0 ? totalMs / slideCount : 0;
+  const slideDurationMs =
+    slideDurationsMs?.[slideIndex] ?? (slideCount > 0 ? totalMs / slideCount : 0);
   useEffect(() => {
     if (slideCount === 0 || slideIndex >= slideCount - 1) return;
     const timeout = setTimeout(
@@ -426,6 +430,115 @@ function Stamp({ label, delay }: { label: string; delay: number }) {
   );
 }
 
+// ① (日本語) 何か: 中央の結果カード1枚がめくれる。表 = 自分から見たあなた、裏 = 友達から見たあなた (別のキャラと一言)。
+// 実際の結果も「◯◯から見たあなた」として友達視点のキャラが出るので、その体験をそのまま見せる。
+const FLIP_SPARKS = [
+  { dx: -128, dy: -50, size: 22, color: "#F6C544" },
+  { dx: -136, dy: 26, size: 14, color: "#FF8FB1" },
+  { dx: -112, dy: 70, size: 17, color: "#8E8EF5" },
+  { dx: 122, dy: -58, size: 20, color: "#FF8FB1" },
+  { dx: 138, dy: 8, size: 15, color: "#F6C544" },
+  { dx: 116, dy: 66, size: 19, color: "#8E8EF5" },
+];
+const FLIP_AT_MS = 1900;
+
+function FlipSide({
+  title,
+  face,
+  word,
+  back,
+}: {
+  title: string;
+  face: { src: string; ring: string };
+  // キャラの下に出す性格の一言。表と裏で違う言葉にして、見え方の差を言葉でも伝える。
+  word: string;
+  back?: boolean;
+}) {
+  return (
+    <div
+      className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl bg-white"
+      style={{
+        backfaceVisibility: "hidden",
+        WebkitBackfaceVisibility: "hidden",
+        transform: back ? "rotateY(180deg)" : undefined,
+        border: `2.5px solid ${back ? SORA : "transparent"}`,
+        boxShadow: back ? "0 8px 22px rgba(91,91,239,0.30)" : "0 4px 14px rgba(46,46,92,0.10)",
+      }}
+    >
+      <span
+        className="whitespace-nowrap rounded-full px-3 py-1.5 text-[13px] font-black leading-none"
+        style={back ? { backgroundColor: SORA, color: "#FFFFFF" } : { backgroundColor: `${NAVY}1A`, color: NAVY }}
+      >
+        {title}
+      </span>
+      <Face src={face.src} size={68} ring={face.ring} />
+      <span
+        className="whitespace-nowrap text-[17px] font-black leading-none"
+        style={{ color: back ? SORA : NAVY }}
+      >
+        {word}
+      </span>
+    </div>
+  );
+}
+
+function FlipVisual({
+  visual,
+}: {
+  visual: Extract<AnalyzingSlide["visual"], { kind: "flip" }>;
+}) {
+  // マウント直後は表 (自己診断)。次のフレームで裏返す指示を出し、時間差でめくれる (CSS transition)。
+  const [flipped, setFlipped] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setFlipped(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  return (
+    <div className="relative h-[164px] w-[316px] shrink-0">
+      {/* カード1枚だけを中央に大きく置く。めくれる直前に少し沈み、浮き上がりながら裏返る。 */}
+      <div className="absolute left-[63px] top-[8px]">
+        <Pop delay={100}>
+          <div
+            className="slide-flip-lift"
+            style={{ perspective: "640px", animationDelay: `${FLIP_AT_MS - 260}ms` }}
+          >
+            <div
+              className="relative h-[148px] w-[190px]"
+              style={{
+                transformStyle: "preserve-3d",
+                transform: `rotateY(${flipped ? 180 : 0}deg)`,
+                transition: `transform 900ms cubic-bezier(0.3, 1.35, 0.6, 1) ${FLIP_AT_MS}ms`,
+              }}
+            >
+              <FlipSide title={visual.selfTitle} word={visual.selfWord} face={{ src: visual.selfFace, ring: `${NAVY}40` }} />
+              <FlipSide title={visual.friendTitle} word={visual.perceivedWord} face={{ src: visual.perceivedFace, ring: visual.perceivedColor }} back />
+            </div>
+          </div>
+        </Pop>
+        {/* めくれきった瞬間に、きらめきが弾ける。 */}
+        {FLIP_SPARKS.map((spark, i) => (
+          <span
+            key={i}
+            className="slide-sparkle pointer-events-none absolute left-1/2 top-1/2"
+            style={
+              {
+                "--dx": `${spark.dx}px`,
+                "--dy": `${spark.dy}px`,
+                animationDelay: `${FLIP_AT_MS + 560 + i * 40}ms`,
+              } as React.CSSProperties
+            }
+            aria-hidden
+          >
+            <svg width={spark.size} height={spark.size} viewBox="0 0 24 24" fill={spark.color} className="block">
+              <path d="M12 0c1.2 6.6 5.4 10.8 12 12-6.6 1.2-10.8 5.4-12 12-1.2-6.6-5.4-10.8-12-12 6.6-1.2 10.8-5.4 12-12z" />
+            </svg>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ② やり方その1: 自分から友達へ「リンク」が届く。
 const FRIEND_GREEN = "#6FBF73";
 
@@ -509,8 +622,105 @@ function AnswerVisual({
   );
 }
 
+// ③ (日本語) やり方その2: 友達が質問に答えていく。選択肢をタップ → 30問まで数が進む → 完了スタンプ。
+const QUIZ_DOT_SIZES = [22, 18, 14, 18, 22];
+const QUIZ_PICK_INDEX = 1;
+
+function QuizVisual({
+  visual,
+}: {
+  visual: Extract<AnalyzingSlide["visual"], { kind: "quiz" }>;
+}) {
+  // picked: 選択肢に印が付く。count: 回答数 (1 → total)。バーの長さも count に合わせる。
+  const [picked, setPicked] = useState(false);
+  const [count, setCount] = useState(1);
+  const total = visual.total;
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const pick = setTimeout(() => setPicked(true), 1300);
+    const start = setTimeout(() => {
+      interval = setInterval(() => {
+        setCount((prev) => {
+          if (prev >= total) {
+            clearInterval(interval);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 1500 / Math.max(total - 1, 1));
+    }, 1900);
+    return () => {
+      clearTimeout(pick);
+      clearTimeout(start);
+      clearInterval(interval);
+    };
+  }, [total]);
+  return (
+    <div className="relative h-[164px] w-[316px] shrink-0">
+      <At x={56} top={40}>
+        <Pop delay={100} className="flex flex-col items-center">
+          <Face src={visual.friendFace} size={68} ring={FRIEND_GREEN} />
+          <NameChip label={visual.friendLabel} color={FRIEND_GREEN} />
+        </Pop>
+      </At>
+      <div className="absolute left-[106px] top-[30px] w-[196px]">
+        <Pop delay={400} className="origin-left rounded-2xl bg-white px-3.5 pb-3 pt-3 shadow-[0_3px_12px_rgba(46,46,92,0.08)]">
+          <p className="whitespace-pre-line text-left text-[12px] font-black leading-[1.5]" style={{ color: NAVY }}>
+            {visual.question}
+          </p>
+          <div className="mt-2 flex items-center justify-between px-1">
+            {QUIZ_DOT_SIZES.map((size, i) => {
+              const on = picked && i === QUIZ_PICK_INDEX;
+              return (
+                <span
+                  key={i}
+                  className="flex items-center justify-center rounded-full border-2"
+                  style={{
+                    width: size,
+                    height: size,
+                    borderColor: on ? FRIEND_GREEN : `${NAVY}33`,
+                    backgroundColor: on ? FRIEND_GREEN : "#FFFFFF",
+                    transform: `scale(${on ? 1.18 : 1})`,
+                    transition:
+                      "background-color 160ms ease, border-color 160ms ease, transform 380ms cubic-bezier(0.34, 1.7, 0.64, 1)",
+                  }}
+                >
+                  {on ? (
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : null}
+                </span>
+              );
+            })}
+          </div>
+          <div className="mt-2.5 flex items-center gap-2">
+            <div className="h-2.5 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: `${FRIEND_GREEN}33` }}>
+              <div
+                className="h-full rounded-full"
+                style={{
+                  backgroundColor: FRIEND_GREEN,
+                  width: `${(count / total) * 100}%`,
+                  transition: "width 90ms linear",
+                }}
+              />
+            </div>
+            <span className="w-[46px] shrink-0 text-right text-[12px] font-black leading-none tabular-nums" style={{ color: NAVY }}>
+              {count}/{total}
+              {visual.unit}
+            </span>
+          </div>
+        </Pop>
+      </div>
+      <At x={252} top={9}>
+        <Stamp label={visual.badge} delay={3600} />
+      </At>
+    </div>
+  );
+}
+
 // ④ 分かること: 自己診断 vs 友達の目 のギャップ図 (/tako の「自分とのギャップ」の簡略版)。
-// 「友達」の印が「自分」の位置から動いて差が開き、最後にスタンプが出る。
+// 行が順に出たあと、「友達」の印が1行ずつ「自分」の位置に現れて動き、差が開く。最後にスタンプ。
 const GAP_ROWS = [
   { label: "外向性", color: "#3FA7C9", self: 58, friend: 90 },
   { label: "協調性", color: "#3BA776", self: 80, friend: 66 },
@@ -522,61 +732,253 @@ function GapVisual({
 }: {
   visual: Extract<AnalyzingSlide["visual"], { kind: "gap" }>;
 }) {
-  // マウント直後は「友達 = 自分」の位置。次のフレームで本来の位置へ動かす。
+  // マウント直後は「友達」の印を出さない。次のフレームから1行ずつ順に、
+  // 「自分」の位置にポンと現れ、そこから本来の位置へ動いて差が開く。
   const [opened, setOpened] = useState(false);
   useEffect(() => {
     const frame = requestAnimationFrame(() => setOpened(true));
     return () => cancelAnimationFrame(frame);
   }, []);
-  // 白い台紙そのものを帯の上下中央に置く (余白は台紙基準で揃える)。
-  // スタンプは台紙の右上に重ねるが、台紙を小さくしてあるので帯からはみ出さない。
+  // 白い台紙は帯いっぱいに近い大きさ。凡例は左、スタンプは右上に置いて重ねない。
   return (
     <div className="relative">
-      <Pop className="flex w-[236px] max-w-full flex-col gap-2.5 rounded-2xl bg-white px-4 pb-3.5 pt-3 shadow-[0_3px_12px_rgba(46,46,92,0.08)]">
-        <div className="flex items-center justify-end gap-3 text-[11px] font-bold" style={{ color: NAVY }}>
-          <span className="inline-flex items-center gap-1">
-            <span className="h-2 w-2 rotate-45" style={{ backgroundColor: NAVY }} />
+      <Pop className="flex w-[284px] max-w-full flex-col gap-3 rounded-2xl bg-white px-4 pb-4 pt-3.5 shadow-[0_3px_12px_rgba(46,46,92,0.08)]">
+        <div className="flex items-center gap-3.5 text-[12px] font-bold leading-none" style={{ color: NAVY }}>
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rotate-45" style={{ backgroundColor: NAVY }} />
             {visual.selfLabel ?? "自分"}
           </span>
-          <span className="inline-flex items-center gap-1">
-            <span className="h-3 w-3 rounded-full border-2 bg-white" style={{ borderColor: SORA }} />
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-3.5 w-3.5 rounded-full border-[3px] bg-white" style={{ borderColor: SORA }} />
             {visual.friendLabel ?? "友達"}
           </span>
         </div>
         {GAP_ROWS.map((row, i) => {
           const friend = opened ? row.friend : row.self;
-          const transition = `all 900ms cubic-bezier(0.34, 1.4, 0.64, 1) ${700 + i * 200}ms`;
+          // 行ごとに: 印が現れる → 少し溜めてから動く。
+          const appearAt = 1100 + i * 480;
+          const moveAt = appearAt + 260;
+          const move = `900ms cubic-bezier(0.34, 1.4, 0.64, 1) ${moveAt}ms`;
           return (
-            <div key={row.label} className="flex items-center gap-2.5">
-              <span className="w-10 shrink-0 text-left text-[11px] font-bold" style={{ color: NAVY }}>
+            <Pop key={row.label} delay={250 + i * 150} className="flex origin-left items-center gap-3">
+              <span className="w-11 shrink-0 text-left text-[13px] font-black leading-none" style={{ color: NAVY }}>
                 {visual.rowLabels?.[i] ?? row.label}
               </span>
-              <div className="relative h-2.5 flex-1 rounded-full" style={{ backgroundColor: `${row.color}2E` }}>
+              <div className="relative h-3 flex-1 rounded-full" style={{ backgroundColor: `${row.color}2E` }}>
                 <div
                   className="absolute inset-y-0 rounded-full"
                   style={{
                     backgroundColor: row.color,
                     left: `${Math.min(row.self, friend)}%`,
                     width: `${Math.abs(friend - row.self)}%`,
-                    transition,
+                    transition: `left ${move}, width ${move}`,
                   }}
                 />
                 <span
-                  className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] bg-white"
-                  style={{ left: `${friend}%`, borderColor: row.color, transition }}
-                />
-                <span
-                  className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45"
+                  className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rotate-45"
                   style={{ left: `${row.self}%`, backgroundColor: NAVY }}
                 />
+                <span
+                  className="absolute top-1/2 h-5 w-5 rounded-full border-[4px] bg-white shadow-[0_2px_6px_rgba(46,46,92,0.18)]"
+                  style={{
+                    left: `${friend}%`,
+                    borderColor: row.color,
+                    opacity: opened ? 1 : 0,
+                    transform: `translate(-50%, -50%) scale(${opened ? 1 : 0})`,
+                    transition: `left ${move}, opacity 200ms ease ${appearAt}ms, transform 420ms cubic-bezier(0.34, 1.7, 0.64, 1) ${appearAt}ms`,
+                  }}
+                />
               </div>
-            </div>
+            </Pop>
           );
         })}
       </Pop>
-      <div className="absolute -right-3 -top-3.5">
-        <Stamp label={visual.badge} delay={2100} />
+      <div className="absolute -right-2 -top-3.5">
+        <Stamp label={visual.badge} delay={3400} />
       </div>
+    </div>
+  );
+}
+
+// ② (日本語) やり方その1: トーク画面風。お願いとリンクを送ると、友達から返事が届く。
+const CHAT_GREEN = "#A6E58A";
+
+function ChatVisual({
+  visual,
+}: {
+  visual: Extract<AnalyzingSlide["visual"], { kind: "chat" }>;
+}) {
+  return (
+    <div className="relative h-[164px] w-[316px] shrink-0">
+      {/* 自分: お願いの一言 */}
+      <div className="absolute right-[18px] top-[13px]">
+        <Pop delay={150} className="origin-right">
+          <span
+            className="block whitespace-nowrap rounded-[16px] rounded-tr-[5px] px-3.5 py-2.5 text-[13px] font-black leading-none shadow-[0_2px_6px_rgba(46,46,92,0.08)]"
+            style={{ backgroundColor: CHAT_GREEN, color: NAVY }}
+          >
+            {visual.message}
+          </span>
+        </Pop>
+      </div>
+      {/* 自分: 招待リンクのカード */}
+      <div className="absolute right-[18px] top-[55px] flex items-end gap-1.5">
+        <span
+          className="animate-fade-in pb-0.5 text-[10px] font-bold leading-none"
+          style={{ color: `${NAVY}80`, animationDelay: "1900ms" }}
+        >
+          {visual.readLabel}
+        </span>
+        <Pop delay={800} className="origin-right">
+          <span className="flex items-center gap-2 rounded-[14px] bg-white py-2 pl-2 pr-3.5 shadow-[0_3px_10px_rgba(46,46,92,0.12)]">
+            <span
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px]"
+              style={{ backgroundColor: SORA }}
+            >
+              <LinkIcon size={15} color="#FFFFFF" />
+            </span>
+            <span className="whitespace-nowrap text-[12px] font-black leading-none" style={{ color: NAVY }}>
+              {visual.linkLabel}
+            </span>
+          </span>
+        </Pop>
+      </div>
+      {/* 友達: 返事 */}
+      <div className="absolute left-[18px] top-[108px]">
+        <Pop delay={2500} className="flex origin-left items-center gap-2">
+          <Face src={visual.friendFace} size={40} ring={FRIEND_GREEN} />
+          <span
+            className="whitespace-nowrap rounded-[16px] rounded-tl-[5px] bg-white px-3.5 py-2.5 text-[13px] font-black leading-none shadow-[0_2px_6px_rgba(46,46,92,0.10)]"
+            style={{ color: NAVY }}
+          >
+            {visual.reply}
+          </span>
+        </Pop>
+      </div>
+    </div>
+  );
+}
+
+// ⑤ どこから: 結果ページの下部ナビを模し、「友達診断」タブを吹き出しと輪で指す。
+// アイコンは実物 (src/components/BottomNav.tsx) と同じ形・同じ並び。実物を変えたらここも揃える。
+const NAV_ACTIVE = "#2A3A5C";
+const NAV_INACTIVE = "#9BA3B4";
+const NAV_ICON_PATHS: React.ReactNode[] = [
+  <>
+    <rect x="5" y="4" width="14" height="17" rx="2.5" stroke="currentColor" strokeWidth="2" />
+    <path d="M9 3.5h6a1 1 0 0 1 1 1V6a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    <path d="M8.5 11h7M8.5 15h5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </>,
+  <>
+    <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="2" />
+    <path d="M3.5 19.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <path d="M16 5.5a3.2 3.2 0 0 1 0 6.2M17.5 14.6c2 .6 3.5 2.4 3.5 4.9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </>,
+  <>
+    <path d="M5 5.5h10.5A3.5 3.5 0 0 1 19 9v4a3.5 3.5 0 0 1-3.5 3.5H10l-4.5 3v-3.35A3.5 3.5 0 0 1 2.5 13V9A3.5 3.5 0 0 1 5 5.5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+    <path d="m10.75 7.75.55 1.45 1.45.55-1.45.55-.55 1.45-.55-1.45-1.45-.55 1.45-.55.55-1.45Z" fill="currentColor" />
+    <path d="M17.5 2.5v2M16.5 3.5h2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+  </>,
+  <>
+    <circle cx="12" cy="12" r="8.5" stroke="currentColor" strokeWidth="2" />
+    <path d="M12 3.5 19.36 16.25H4.64L12 3.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    <circle cx="12" cy="3.5" r="1.5" fill="currentColor" />
+    <circle cx="19.36" cy="16.25" r="1.5" fill="currentColor" />
+    <circle cx="4.64" cy="16.25" r="1.5" fill="currentColor" />
+  </>,
+  <>
+    <rect x="4.5" y="5" width="11.5" height="15.5" rx="2.2" transform="rotate(-7 4.5 5)" stroke="currentColor" strokeWidth="1.8" />
+    <rect x="8" y="3.5" width="11.5" height="16.5" rx="2.2" fill="white" stroke="currentColor" strokeWidth="2" />
+    <path d="m13.75 8 .7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7.7-1.8Z" fill="currentColor" />
+  </>,
+];
+// 友達診断は左から2番目。ナビは帯の左右12pxを空けた292px幅を5等分している。
+const ENTRY_TAB_INDEX = 1;
+const ENTRY_TAB_CENTER_X = 12 + (292 / 5) * (ENTRY_TAB_INDEX + 0.5);
+
+function EntryVisual({
+  visual,
+}: {
+  visual: Extract<AnalyzingSlide["visual"], { kind: "entry" }>;
+}) {
+  return (
+    <div className="relative h-[164px] w-[316px] shrink-0">
+      {/* 結果ページの見立て。下はナビに隠れる。 */}
+      <div
+        className="animate-fade-in absolute left-[30px] top-[12px] h-[120px] w-[256px] rounded-t-2xl bg-white/85 px-4 pt-3"
+        style={{ animationDelay: "100ms" }}
+      >
+        <div className="flex items-center gap-2.5">
+          <Face src={visual.selfFace} size={30} ring={SORA} />
+          <div className="min-w-0 flex-1">
+            <p className="text-left text-[12px] font-black leading-none" style={{ color: NAVY }}>
+              {visual.pageLabel}
+            </p>
+            <span className="mt-2 block h-1.5 w-28 rounded-full" style={{ backgroundColor: TRACK }} />
+          </div>
+        </div>
+      </div>
+      {/* 下部ナビ */}
+      <div className="absolute inset-x-[12px] bottom-0">
+        <Pop
+          delay={350}
+          className="grid origin-bottom grid-cols-5 rounded-t-[18px] bg-white pb-2 pt-2.5 shadow-[0_-3px_12px_rgba(46,46,92,0.12)]"
+        >
+          {visual.tabs.map((tab, i) => {
+            const target = i === ENTRY_TAB_INDEX;
+            return (
+              <div
+                key={tab}
+                className="relative flex flex-col items-center gap-1"
+                style={{ color: i === 0 || target ? NAV_ACTIVE : NAV_INACTIVE }}
+              >
+                {i === 0 ? (
+                  <span className="absolute -top-2.5 h-[3px] w-6 rounded-full" style={{ backgroundColor: NAV_ACTIVE }} />
+                ) : null}
+                <span className="relative">
+                  {target ? (
+                    <span
+                      className="slide-tap-ring absolute -left-[7px] -top-[7px] h-[38px] w-[38px] rounded-full"
+                      style={{ backgroundColor: `${SORA}66`, animationDelay: "1700ms" }}
+                    />
+                  ) : null}
+                  <svg className="relative" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    {NAV_ICON_PATHS[i]}
+                  </svg>
+                  {target ? (
+                    <span className="absolute -right-2 -top-1.5">
+                      <Pop delay={900}>
+                        <span
+                          className="flex h-[15px] w-[15px] items-center justify-center rounded-full text-[10px] font-black leading-none text-white"
+                          style={{ backgroundColor: "#EF4444", boxShadow: "0 0 0 2px #fff" }}
+                        >
+                          !
+                        </span>
+                      </Pop>
+                    </span>
+                  ) : null}
+                </span>
+                <span className="whitespace-nowrap text-[9px] font-bold leading-none">{tab}</span>
+              </div>
+            );
+          })}
+        </Pop>
+      </div>
+      {/* 吹き出し: 友達診断タブの真上。出たあとは小さく弾み続ける。 */}
+      <At x={ENTRY_TAB_CENTER_X} top={60}>
+        <Pop delay={1200} className="origin-bottom">
+          <div
+            className="animate-slide-bob relative whitespace-nowrap rounded-full px-3.5 py-2 text-[13px] font-black leading-none text-white shadow-[0_3px_10px_rgba(91,91,239,0.35)]"
+            style={{ backgroundColor: SORA, animationDelay: "1900ms" }}
+          >
+            {visual.bubble}
+            <span
+              className="absolute left-1/2 top-full -ml-[5px] -mt-[6px] h-2.5 w-2.5 rotate-45"
+              style={{ backgroundColor: SORA }}
+            />
+          </div>
+        </Pop>
+      </At>
     </div>
   );
 }
@@ -597,17 +999,20 @@ function SlideText({ text, highlight }: { text: string; highlight?: string }) {
 function slideFaces(slide: AnalyzingSlide): string[] {
   const v = slide.visual;
   if (v.kind === "voices") return [v.selfFace, ...v.voices.map((voice) => voice.face)];
+  if (v.kind === "flip") return [v.selfFace, v.perceivedFace];
   if (v.kind === "send") return [v.selfFace, v.friendFace];
   if (v.kind === "answer") return [v.friendFace];
+  if (v.kind === "entry") return [v.selfFace];
+  if (v.kind === "chat") return [v.friendFace];
+  if (v.kind === "quiz") return [v.friendFace];
   return [];
 }
 
-const CIRCLED_NUMBERS = ["①", "②", "③", "④", "⑤"];
 // カード1枚の基準寸法 (px)。中の絵はこの寸法を前提に座標で配置している。
 const DECK_WIDTH = 340;
 const DECK_HEIGHT = 270;
 
-// 紹介スライド。1枚 = 白いカード1枚。3枚が輪になって回る。
+// 紹介スライド。1枚 = 白いカード1枚。正面と左右の3枚が見え、輪になって回る。
 function AnalyzingSlideDeck({
   slides,
   index,
@@ -674,10 +1079,10 @@ function AnalyzingSlideDeck({
             }}
             aria-hidden={front ? undefined : "true"}
           >
+            {/* 見出しは全カード共通・同じ位置 (番号やカードごとの言い換えはしない)。 */}
             {label ? (
               <p className="mb-3.5 px-1.5 pt-0.5 text-[15px] font-black leading-none" style={{ color: NAVY }}>
                 {label}
-                {CIRCLED_NUMBERS[i] ?? ""}
               </p>
             ) : null}
             {/* 正面に来るたびに作り直して、絵の中の動きを最初から再生する。 */}
@@ -686,12 +1091,20 @@ function AnalyzingSlideDeck({
               className={`relative flex h-[164px] items-center justify-center overflow-hidden rounded-[20px] ${front ? "" : "slide-still"}`}
               style={{ backgroundColor: slide.tint }}
             >
-              {slide.visual.kind === "voices" ? (
+              {slide.visual.kind === "flip" ? (
+                <FlipVisual visual={slide.visual} />
+              ) : slide.visual.kind === "voices" ? (
                 <VoicesVisual visual={slide.visual} />
               ) : slide.visual.kind === "send" ? (
                 <SendVisual visual={slide.visual} />
               ) : slide.visual.kind === "answer" ? (
                 <AnswerVisual visual={slide.visual} />
+              ) : slide.visual.kind === "quiz" ? (
+                <QuizVisual visual={slide.visual} />
+              ) : slide.visual.kind === "chat" ? (
+                <ChatVisual visual={slide.visual} />
+              ) : slide.visual.kind === "entry" ? (
+                <EntryVisual visual={slide.visual} />
               ) : (
                 <GapVisual visual={slide.visual} />
               )}

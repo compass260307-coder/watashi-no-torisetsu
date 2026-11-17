@@ -16,6 +16,7 @@ export default function AnalyzingPreviewPage() {
       messageDurationsMs={analyzing.messageDurationsMs}
       totalMs={analyzing.minLoadingMs}
       slides={analyzing.slides}
+      slideDurationsMs={analyzing.slideDurationsMs}
       slidesLabel={analyzing.slidesLabel}
     />
   );
