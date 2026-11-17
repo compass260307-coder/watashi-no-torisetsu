@@ -12,9 +12,9 @@ import { hasFullAccess } from "@/lib/entitlements";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: { absolute: "별자리 상담사와 대화하기 | 앨리스 진단" },
+  title: { absolute: "Alice와 대화하기 | 앨리스 진단" },
   description:
-    "성격 진단과 운명의 설계도를 함께 참고하는 AI 별자리 상담사와 한국어로 대화하며 고민과 감정을 정리해 보세요.",
+    "성격 진단과 운명의 설계도를 함께 참고하는 AI 점성술사 ‘Alice’와 한국어로 대화하며 고민과 감정을 정리해 보세요.",
   alternates: localizedAlternates("ko", "/hoshiyomi", "/ko/hoshiyomi"),
   robots: { index: false, follow: false },
 };

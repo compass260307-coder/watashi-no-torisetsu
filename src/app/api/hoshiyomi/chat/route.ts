@@ -62,7 +62,7 @@ function conversationPrompt(
               ? "User"
             : "利用者"
           : locale === "ko"
-            ? "별자리 상담사"
+            ? "Alice"
             : locale === "id"
               ? "Alice"
             : locale === "en"

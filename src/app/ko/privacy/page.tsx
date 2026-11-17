@@ -61,7 +61,7 @@ export default function KoreanPrivacyPage() {
         <li>
           운명의 설계도 이용 시 입력하는 생년월일, 출생 시간과 출생 지역
         </li>
-        <li>별자리 상담사에게 입력한 상담 내용과 저장된 대화 기록</li>
+        <li>AI 점성술사 Alice에게 입력한 상담 내용과 저장된 대화 기록</li>
         <li>문의할 때 이용자가 제공한 내용</li>
       </ul>
 

@@ -175,7 +175,7 @@ export default function UnmeiCheckoutConfirming({
           />
           <div className="min-w-0">
             <p className="truncate text-[14px] font-black leading-tight text-white">
-              {isKo ? "별자리 안내자" : "Alice"}
+              Alice
             </p>
             <p className="text-[11px] font-bold leading-tight text-white/55">
               {isEn

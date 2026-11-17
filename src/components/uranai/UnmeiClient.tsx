@@ -164,7 +164,8 @@ export default function UnmeiClient({
         if (j?.state === "pending") retryGraceUntil = 0;
         if (j?.state === "ready") {
           setState("ready");
-          if (locale !== "ja") {
+          // 日本語・韓国語は生成待ち画面の「結果を見る」ボタンで進む。それ以外は自動で切り替える。
+          if (locale !== "ja" && locale !== "ko") {
             if (onReady) onReady();
             else router.refresh();
           }
@@ -231,14 +232,14 @@ export default function UnmeiClient({
   const handleRetry = useCallback(() => drive(true), [drive]);
 
   useEffect(() => {
-    if (!previewMode || locale !== "ja" || state !== "pending") return;
+    if (!previewMode || (locale !== "ja" && locale !== "ko") || state !== "pending") return;
     const timer = window.setTimeout(() => setState("ready"), 24_000);
     return () => window.clearTimeout(timer);
   }, [previewMode, locale, state]);
 
-  if (locale === "ja" && (state === "pending" || state === "ready")) {
-    return <UnmeiGenerating ready={state === "ready"} onViewResult={() => {
-      if (previewMode) router.push("/unmei?preview=ready");
+  if ((locale === "ja" || locale === "ko") && (state === "pending" || state === "ready")) {
+    return <UnmeiGenerating locale={locale} ready={state === "ready"} onViewResult={() => {
+      if (previewMode) router.push(locale === "ko" ? "/ko/unmei?preview=ready" : "/unmei?preview=ready");
       else if (onReady) onReady();
       else router.refresh();
     }} />;

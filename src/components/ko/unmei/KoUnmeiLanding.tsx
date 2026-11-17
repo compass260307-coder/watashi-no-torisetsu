@@ -119,7 +119,7 @@ export default function KoUnmeiLanding({
                 </span>
               </h1>
               <p className="mt-3 text-[15px] font-bold leading-relaxed text-[#2E2E5C]/70 md:text-[16px]">
-                별의 배치와 Big Five 성격 진단을 함께 읽어, 나만의 별자리 리포트를 만들어 보세요.
+                서양 점성술의 출생 차트와 Big Five 성격 진단을 함께 읽어, 나만의 별자리 리포트를 만들어 보세요.
               </p>
               <UnmeiPriceCta
                 sessionOwnerToken={ownerToken}

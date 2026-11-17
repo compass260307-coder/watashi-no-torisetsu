@@ -312,12 +312,12 @@ export function PurchaseCompleteView({
                 <>
                   운명의 설계도와 나만의 전담 점성술사 채팅 {includedChatCount}회
                   {hasTarotFeatures ? ", 타로 세 종류" : ""}가 포함되어 있어요. 로그인 후
-                  하단 메뉴의 「점성술사」에서 이용할 수 있습니다.
+                  하단 메뉴의 「Alice」에서 이용할 수 있습니다.
                 </>
               ) : (
                 <>
                   나만의 전담 점성술사 채팅 {includedChatCount}회가 포함되어
-                  있어요. 로그인 후 하단 메뉴의 「점성술사」에서 이용할 수
+                  있어요. 로그인 후 하단 메뉴의 「Alice」에서 이용할 수
                   있습니다.
                 </>
               )
