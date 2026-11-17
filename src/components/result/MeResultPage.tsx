@@ -2027,8 +2027,8 @@ async function MeResultPageContent({
     </div>
     {(isOwnedResult ||
       (process.env.NODE_ENV === "development" && previewType && !publicPreview && !acquisition)) &&
-      locale === "ja" && (
-      <ResetResultSection />
+      (locale === "ja" || isKorean) && (
+      <ResetResultSection locale={isKorean ? "ko" : "ja"} />
     )}
     {/* 診断シェアバンド。獲得モードはCTA一点集中のため出さない。 */}
     {!acquisition && (

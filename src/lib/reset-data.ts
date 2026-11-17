@@ -31,7 +31,8 @@ export const SESSION_RESET_KEYS = [
 ] as const;
 
 // 診断データを消して最初からやり直す。消えたことが伝わるようトップへ遷移して再読込。
-export function resetLocalData() {
+// homePath: 遷移先のトップ。省略時は日本語トップ ("/")。
+export function resetLocalData(homePath: string = "/") {
   try {
     RESET_KEYS.forEach((k) => localStorage.removeItem(k));
   } catch {
@@ -46,5 +47,5 @@ export function resetLocalData() {
   document.cookie = `${SESSION_MARKER_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`;
   document.cookie = `${SESSION_ACCESS_CACHE_COOKIE_NAME}=; Path=/; Max-Age=0; SameSite=Lax`;
   invalidateFullAccessStatus();
-  window.location.href = "/";
+  window.location.href = homePath;
 }
