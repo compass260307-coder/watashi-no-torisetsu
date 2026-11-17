@@ -24,6 +24,8 @@ interface LockedInviteShareProps {
   compact?: boolean;
   /** QRを補助導線として折りたたみ、SNS・リンク共有を先に見せる。 */
   deferQr?: boolean;
+  /** QRコードを出さない (折りたたみボタンごと非表示)。SNS・リンク共有だけにする。 */
+  hideQr?: boolean;
   /**
    * 計測ソース。指定時のみ X/LINE/KakaoTalk/コピー タップで friend_invite_clicked を発火する
    * (metadata: { channel, source })。未指定 (ロック状態など) は無発火で挙動を変えない。
@@ -50,6 +52,7 @@ export function LockedInviteShare({
   inviteUrl,
   compact = false,
   deferQr = false,
+  hideQr = false,
   trackSource,
   ownerToken,
   inviteCode,
@@ -171,8 +174,11 @@ export function LockedInviteShare({
     if (succeeded) fire("share");
   };
 
-  const shareButton =
-    "group flex min-w-[64px] flex-col items-center gap-2 rounded-xl text-[12px] font-black text-[#4B4B66] outline-none focus-visible:ring-2 focus-visible:ring-[#5B5BEF]/45 focus-visible:ring-offset-4";
+  // 日本語はラベルが短い (LINE / X / その他) ので、ボタン幅をアイコン幅に合わせて間隔を詰める。
+  // 他言語は "Facebook" などの長いラベルがあるため、従来の最小幅 64px を保つ。
+  const shareButton = `group flex flex-col items-center gap-2 rounded-xl text-[12px] font-black text-[#4B4B66] outline-none focus-visible:ring-2 focus-visible:ring-[#5B5BEF]/45 focus-visible:ring-offset-4 ${
+    locale === "ja" ? "min-w-12 md:min-w-14" : "min-w-[64px]"
+  }`;
   const shareIcon =
     "flex h-12 w-12 items-center justify-center rounded-full shadow-[0_5px_14px_rgba(46,46,92,0.12)] transition-transform group-hover:-translate-y-0.5 group-active:scale-95 md:h-14 md:w-14";
 
@@ -216,7 +222,12 @@ export function LockedInviteShare({
       </p>
 
       {/* SNSを主導線にする。大きな丸アイコン + ラベルで、共有先を一目で選べる。 */}
-      <div className="mt-3 flex items-start gap-4 md:gap-5">
+      <div
+        className={`mt-3 flex items-start ${
+          // 日本語はアイコン同士を近づける (他言語は長いラベルがあるため従来の間隔)
+          locale === "ja" ? "gap-3.5 md:gap-4" : "gap-4 md:gap-5"
+        }`}
+      >
         {isKorean ? (
           <button
             type="button"
@@ -239,8 +250,9 @@ export function LockedInviteShare({
             className={shareButton}
           >
             <span className={`${shareIcon} bg-[#06C755]`}>
-              <svg viewBox="0 0 24 24" className="h-6 w-6 fill-white" aria-hidden="true">
-                <path d="M12 3C6.477 3 2 6.69 2 11.246c0 4.082 3.547 7.503 8.34 8.146.325.07.767.215.879.494.1.252.066.647.032.901l-.142.852c-.043.252-.2.985.864.537 1.064-.448 5.735-3.376 7.823-5.78C20.98 14.94 22 13.21 22 11.246 22 6.69 17.523 3 12 3Z" />
+              {/* 吹き出しの中に「LINE」の文字が抜かれた、LINE のロゴ形 */}
+              <svg viewBox="0 0 24 24" className="h-7 w-7 fill-white md:h-8 md:w-8" aria-hidden="true">
+                <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" />
               </svg>
             </span>
             LINE
@@ -260,20 +272,23 @@ export function LockedInviteShare({
           </span>
           X
         </a>
-        <a
-          href={facebookUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => fire("facebook")}
-          className={shareButton}
-        >
-          <span className={`${shareIcon} bg-[#1877F2]`}>
-            <svg viewBox="0 0 24 24" className="h-6 w-6 fill-white" aria-hidden="true">
-              <path d="M13.6 22v-9h3l.45-3.5H13.6V7.27c0-1.01.28-1.7 1.74-1.7h1.86V2.44A24.8 24.8 0 0 0 14.5 2C11.83 2 10 3.63 10 6.62V9.5H7V13h3v9h3.6Z" />
-            </svg>
-          </span>
-          Facebook
-        </a>
+        {/* 日本語は Facebook を出さない (選択肢を絞る。「その他」の共有メニューからは送れる)。 */}
+        {locale === "ja" ? null : (
+          <a
+            href={facebookUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={() => fire("facebook")}
+            className={shareButton}
+          >
+            <span className={`${shareIcon} bg-[#1877F2]`}>
+              <svg viewBox="0 0 24 24" className="h-6 w-6 fill-white" aria-hidden="true">
+                <path d="M13.6 22v-9h3l.45-3.5H13.6V7.27c0-1.01.28-1.7 1.74-1.7h1.86V2.44A24.8 24.8 0 0 0 14.5 2C11.83 2 10 3.63 10 6.62V9.5H7V13h3v9h3.6Z" />
+              </svg>
+            </span>
+            Facebook
+          </a>
+        )}
         <button
           type="button"
           onClick={handleShare}
@@ -291,8 +306,17 @@ export function LockedInviteShare({
       </div>
 
       {/* URL全体をコピーできるフィールド。長いURLは一行で省略する。 */}
-      <p className="mt-5 text-[12px] font-black text-[#2E2E5C]/65">
-        {isEnglish ? "Invitation link" : isKorean ? "초대 링크" : isIndonesian ? "Tautan undangan" : "招待リンク"}
+      {/* QRなし (hideQr) のカードは、コピー完了の知らせをこのラベルの位置に出す。
+          下に知らせ用の1行を空けておく必要がなくなり、カード下の余白が詰まる。 */}
+      <p
+        aria-live={hideQr ? "polite" : undefined}
+        className={`mt-5 text-[12px] font-black ${
+          hideQr && copied ? "text-[#5B5BEF]" : "text-[#2E2E5C]/65"
+        }`}
+      >
+        {hideQr && copied
+          ? "リンクをコピーしました"
+          : isEnglish ? "Invitation link" : isKorean ? "초대 링크" : isIndonesian ? "Tautan undangan" : "招待リンクをコピー"}
       </p>
       <button
         type="button"
@@ -316,12 +340,14 @@ export function LockedInviteShare({
           )}
         </span>
       </button>
-      <p aria-live="polite" className="mt-1.5 min-h-5 text-[11px] font-bold text-[#5B5BEF]">
-        {kakaoNote || (copied ? (isEnglish ? "Link copied" : isKorean ? "링크를 복사했어요" : isIndonesian ? "Tautan disalin" : "リンクをコピーしました") : "")}
-      </p>
+      {hideQr ? null : (
+        <p aria-live="polite" className="mt-1.5 min-h-5 text-[11px] font-bold text-[#5B5BEF]">
+          {kakaoNote || (copied ? (isEnglish ? "Link copied" : isKorean ? "링크를 복사했어요" : isIndonesian ? "Tautan disalin" : "リンクをコピーしました") : "")}
+        </p>
+      )}
 
       {/* QRは補助導線。ユーザーが選んだ時だけ展開する。 */}
-      {deferQr ? (
+      {hideQr ? null : deferQr ? (
         <div className="mt-1 border-t border-[#E8E8F1] pt-3">
           <button
             type="button"

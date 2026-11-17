@@ -29,6 +29,7 @@ import { AISHO_RANK_IMAGE_DIMENSIONS } from "@/lib/aisho-rank-image";
 import { UNOPTIMIZED_IN_DEV } from "@/lib/image-delivery";
 import { TakoFriendTabs } from "@/components/result/TakoFriendTabs";
 import { TakoFaq } from "@/components/result/TakoFaq";
+import { TakoDemoBar } from "@/components/result/TakoDemoBar";
 import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
 import { LockedInviteShare } from "@/components/result/LockedInviteShare";
 import { TakoViewTracker } from "@/components/result/TakoViewTracker";
@@ -521,6 +522,9 @@ export async function TakoResultPage({
   });
 
   const previewMode = Boolean(previewType || previewLocked);
+  // &demo=1: 招待カードの「友達から見たあなた」リンクから開く見本表示。
+  // 招待タブ・共有・レポート生成 (見本用のリンクが出てしまう操作) を隠し、戻るバーを出す。
+  const demoMode = Boolean(previewType) && sp.demo === "1";
 
   // ===== 解放判定 =====
   // 友達診断は hasTakoAccess で判定する。
@@ -638,7 +642,9 @@ export async function TakoResultPage({
         unlockCtaLabel={isId ? "Tingkatkan hasil" : isKo ? undefined : "結果をアップグレード"}
         // 回答0人では固定バーを出さず、本文の招待タブと空状態CTAに集約する。
         // 1人以上では従来どおり「さらに友達に診断してもらう」招待バーを表示する。
-        shareUrl={data.friends.length > 0 ? inviteUrl : undefined}
+        shareUrl={
+          data.friends.length > 0 && !demoMode ? inviteUrl : undefined
+        }
         shareKind="invite"
         ownerToken={token}
         inviteCode={data.inviteCode}
@@ -649,7 +655,7 @@ export async function TakoResultPage({
         }
         paywallTargetId="tako-promo"
         reportHref={
-          takoUnlocked && data.friends.length > 0
+          takoUnlocked && data.friends.length > 0 && !demoMode
             ? previewMode && previewType
               ? `${isId ? "/id" : ""}/tako-report/preview/pdf?previewType=${encodeURIComponent(previewType)}${isKo ? "&locale=ko" : isId ? "&locale=id" : ""}`
               : `${isId ? "/id" : ""}/tako-report/${encodeURIComponent(token)}/pdf${isKo ? "?locale=ko" : isId ? "?locale=id" : ""}`
@@ -673,6 +679,9 @@ export async function TakoResultPage({
             /* ===== 回答0人: 招待タブ + 淡いグレーの空状態。結果の予告・ぼかしは出さない。 ===== */
             <div className="mx-auto max-w-[1080px]">
               <TakoFriendTabs
+                // 見本ページ (同じルート) との行き来で状態を持ち越さない。戻ったときに
+                // 招待カードが最初から開いた状態で作り直されるよう、key を分ける。
+                key="empty"
                 tabs={[]}
                 panels={[]}
                 invitePanel={
@@ -683,6 +692,8 @@ export async function TakoResultPage({
                     inviteCode={data.inviteCode}
                     compact
                     deferQr
+                    // 日本語は QR を出さない (SNS・リンク共有に絞る)
+                    hideQr={locale === "ja"}
                     locale={locale}
                     qrImageSrc={
                       data.ownerType32
@@ -690,6 +701,14 @@ export async function TakoResultPage({
                         : null
                     }
                   />
+                }
+                demoHref={
+                  locale === "ja"
+                    ? // 本人のタイプで見本を作る (不明なら既定タイプ)。friends=1 = 友達1人分。
+                      `/tako/preview?previewType=${encodeURIComponent(
+                        data.ownerType32 ?? "idea-monkey__R",
+                      )}&friends=1&fromPreview=1&demo=1`
+                    : undefined
                 }
                 locale={locale}
               />
@@ -700,6 +719,7 @@ export async function TakoResultPage({
               {/* 友達タブ + 友達1人ごとの結果シート (1人完結モデル)。
                   ヒーロー/①理解度/本文/②ギャップ/③恋愛傾向 をその友達のスコアで描画。 */}
               <TakoFriendTabs
+                key="sheets"
                 tabs={friendSheets.map((sh, i) => ({
                   perceptionId: sh.key,
                   name: sh.tabName,
@@ -711,21 +731,27 @@ export async function TakoResultPage({
                   locked: takoLocked && i > 0,
                 }))}
                 invitePanel={
-                  /* ＋タブの招待カード。SNS・リンクを主役にし、QRは任意展開する。 */
-                  <LockedInviteShare
-                    inviteUrl={inviteUrl}
-                    trackSource="tako_unlocked"
-                    ownerToken={token}
-                    inviteCode={data.inviteCode}
-                    compact
-                    deferQr
-                    locale={locale}
-                    qrImageSrc={
-                      data.ownerType32
-                        ? preferFaceImage(thirtyTwoImagePath(data.ownerType32))
-                        : null
-                    }
-                  />
+                  /* ＋タブの招待カード。SNS・リンクを主役にし、QRは任意展開する。
+                     見本表示 (demoMode) では見本用の招待リンクが出てしまうため、タブごと出さない。 */
+                  demoMode ? undefined : (
+                    <LockedInviteShare
+                      inviteUrl={inviteUrl}
+                      trackSource="tako_unlocked"
+                      ownerToken={token}
+                      inviteCode={data.inviteCode}
+                      compact
+                      deferQr
+                      hideQr={locale === "ja"}
+                      locale={locale}
+                      qrImageSrc={
+                        data.ownerType32
+                          ? preferFaceImage(
+                              thirtyTwoImagePath(data.ownerType32),
+                            )
+                          : null
+                      }
+                    />
+                  )
                 }
                 locale={locale}
                 panels={friendSheets.map((sh, shIdx) => {
@@ -1323,6 +1349,7 @@ export async function TakoResultPage({
       {data.friends.length === 0 ? takoPromo : null}
       {/* サイト共通フッター (トップ / /me / /types / /about と同じ) */}
       {isKo ? <KoTopFooter /> : <TopFooter locale={isId ? "id" : "ja"} />}
+      {demoMode && <TakoDemoBar />}
     </>
   );
 }

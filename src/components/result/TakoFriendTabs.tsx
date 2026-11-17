@@ -14,6 +14,7 @@ import friendsWaiting from "../../../public/empty-states/tako-friends-waiting-fe
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { scrollToPaywall } from "@/lib/scroll-to-paywall";
 import type { AppResultLocale } from "@/i18n/result";
 
@@ -63,6 +64,7 @@ export function TakoFriendTabs({
   panels,
   invitePanel,
   unlockCta,
+  demoHref,
   locale = "ja",
 }: {
   /** 友達タブ (panels と同順)。キャラアイコン + 名前で表示する。 */
@@ -73,11 +75,15 @@ export function TakoFriendTabs({
   invitePanel?: ReactNode;
   /** タブ行の右端に置く解除CTA (未購入時のみ渡す)。タブとは独立して右端に固定。 */
   unlockCta?: ReactNode;
+  /** 友達0人の招待カードで「友達から見たあなた」から開く見本ページ。省略時はリンクにしない。 */
+  demoHref?: string;
   locale?: AppResultLocale;
 }) {
   const isKo = locale === "ko";
   const isEn = locale === "en";
   const isId = locale === "id";
+  // 日本語・友達0人の招待カードは、見出しを1行で見せる専用の並びにする。
+  const isJaEmptyInvite = !isKo && !isEn && !isId && tabs.length === 0;
   const [idx, setIdx] = useState(0);
   // 友達0人の空状態では、共有パネルをクリック不要で最初から開く
   // (計測で、ページ到達者の79%が招待UIに触れずに離脱していたため)。
@@ -598,58 +604,102 @@ export function TakoFriendTabs({
             </button>
 
             <div className="px-5 pb-6 pt-6 md:px-8 md:pb-8 md:pt-8">
-              <div className="flex items-center gap-4 pr-10 md:gap-7 md:pr-12">
-                <div className="min-w-0 flex-1">
+              {isJaEmptyInvite ? (
+                // 日本語・友達0人: 見出しは横幅いっぱいの1行、その下に説明文 (左) と絵 (右) を並べる。
+                <>
                   <h2
                     id="tako-invite-dialog-title"
-                    className="text-[26px] font-black leading-[1.25] text-[#2E2E5C] md:text-[34px]"
+                    className="whitespace-nowrap pr-10 text-[clamp(18px,calc(7.2vw-4px),26px)] font-black leading-[1.25] text-[#2E2E5C] md:pr-12 md:text-[34px]"
                   >
-                    {tabs.length === 0
-                      ? isEn
-                        ? "Invite a friend"
-                        : isKo
-                        ? "친구를 초대해요"
-                        : isId
-                          ? "Undang teman pertama Anda"
-                          : "友達を招待しよう"
-                      : isEn
-                        ? "Invite another friend"
-                        : isKo
-                        ? "친구를 더 초대해요"
-                        : isId
-                          ? "Undang lebih banyak teman"
-                          : "もっと友達を招待しよう"}
+                    友達から見たあなたは？
                   </h2>
-                  <p className="mt-2 text-[13px] font-bold leading-[1.7] text-[#73738A] md:text-[14px]">
-                    {tabs.length === 0
-                      ? isEn
-                        ? "One response unlocks the first result showing how a friend sees you."
-                        : isKo
-                        ? "한 명이 답하면 친구가 보는 나의 결과가 열려요."
-                        : isId
-                          ? "Setelah satu teman menjawab, hasil tentang cara mereka melihat Anda akan muncul."
-                          : "1人が回答すると「友達から見たあなた」の結果が表示されます。"
-                      : isEn
-                        ? "Each new response adds another friend result."
-                        : isKo
-                        ? "답변이 도착할 때마다 친구별 분석 결과가 추가돼요."
-                        : isId
-                          ? "Setiap jawaban baru menambahkan satu lembar hasil teman."
-                          : "回答が届くたびに、友達ごとの結果シートが増えていきます。"}
-                  </p>
+                  <div className="mt-2 flex items-start gap-3 md:gap-6">
+                    <p className="min-w-0 flex-1 text-[12px] font-bold leading-[1.7] text-[#73738A] min-[375px]:text-[13px] md:text-[14px]">
+                      1人が答えるだけで「
+                      {demoHref ? (
+                        <Link
+                          href={demoHref}
+                          // -my-2 py-2: 行の高さを変えずに、指で押せる範囲だけ上下に広げる
+                          className="-my-2 py-2 text-[#5B5BEF] underline decoration-[#5B5BEF]/50 underline-offset-[3px]"
+                        >
+                          友達から見たあなた
+                        </Link>
+                      ) : (
+                        "友達から見たあなた"
+                      )}
+                      」の結果が見られます。
+                    </p>
+                    <Image
+                      src={friendsWaiting}
+                      alt=""
+                      aria-hidden="true"
+                      width={1402}
+                      height={1122}
+                      sizes="68px"
+                      // 説明文2行とほぼ同じ高さに収め、下の区切り線との間に空きを作らない
+                      className="-mt-2 h-auto w-[68px] shrink-0 select-none"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center gap-4 pr-10 md:gap-7 md:pr-12">
+                  <div className="min-w-0 flex-1">
+                    <h2
+                      id="tako-invite-dialog-title"
+                      className="text-[26px] font-black leading-[1.25] text-[#2E2E5C] md:text-[34px]"
+                    >
+                      {tabs.length === 0
+                        ? isEn
+                          ? "Invite a friend"
+                          : isKo
+                          ? "친구를 초대해요"
+                          : isId
+                            ? "Undang teman pertama Anda"
+                            : "友達を招待しよう"
+                        : isEn
+                          ? "Invite another friend"
+                          : isKo
+                          ? "친구를 더 초대해요"
+                          : isId
+                            ? "Undang lebih banyak teman"
+                            : "もっと友達を招待しよう"}
+                    </h2>
+                    <p className="mt-2 text-[13px] font-bold leading-[1.7] text-[#73738A] md:text-[14px]">
+                      {tabs.length === 0
+                        ? isEn
+                          ? "One response unlocks the first result showing how a friend sees you."
+                          : isKo
+                          ? "한 명이 답하면 친구가 보는 나의 결과가 열려요."
+                          : isId
+                            ? "Setelah satu teman menjawab, hasil tentang cara mereka melihat Anda akan muncul."
+                            : "1人が回答すると「友達から見たあなた」の結果が表示されます。"
+                        : isEn
+                          ? "Each new response adds another friend result."
+                          : isKo
+                          ? "답변이 도착할 때마다 친구별 분석 결과가 추가돼요."
+                          : isId
+                            ? "Setiap jawaban baru menambahkan satu lembar hasil teman."
+                            : "回答が届くたびに、友達ごとの結果シートが増えていきます。"}
+                    </p>
+                  </div>
+                  <Image
+                    src={friendsWaiting}
+                    alt=""
+                    aria-hidden="true"
+                    width={1402}
+                    height={1122}
+                    sizes="(min-width: 768px) 150px, 96px"
+                    className="h-auto w-24 shrink-0 select-none md:w-[150px]"
+                  />
                 </div>
-                <Image
-                  src={friendsWaiting}
-                  alt=""
-                  aria-hidden="true"
-                  width={1402}
-                  height={1122}
-                  sizes="(min-width: 768px) 150px, 96px"
-                  className="h-auto w-24 shrink-0 select-none md:w-[150px]"
-                />
-              </div>
+              )}
 
-              <div className="mt-6 border-t border-[#E8E8F1] pt-5 md:mt-7 md:pt-6">
+              <div
+                className={`border-t border-[#E8E8F1] pt-5 md:pt-6 ${
+                  // 日本語・友達0人は線の上下の余白をそろえる
+                  isJaEmptyInvite ? "mt-4" : "mt-6 md:mt-7"
+                }`}
+              >
                 {invitePanel}
               </div>
             </div>
