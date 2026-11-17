@@ -2,7 +2,7 @@
 //   caretaker-dog__N (せわやきイヌ / アテンダント)
 //   caretaker-dog__R (たよれるウマ / 幹事)
 //   brisk-tiger__N   (がんばりトラ / 師範)
-//   brisk-tiger__R   (どっしりクマ / 支配人)
+//   brisk-tiger__R   (どっしりクマ / 実務家)
 // 文体・世界観は self-result-32 / career-by-type-32 / love-by-type-32 に準拠。
 
 import type { ThirtyTwoTypeId } from "../thirty-two-types";
@@ -507,7 +507,7 @@ export const detailedReportLand1: Partial<Record<ThirtyTwoTypeId, DetailedReport
     ],
   },
 
-  // ===== どっしりクマ (支配人) =====
+  // ===== どっしりクマ (実務家) =====
   "brisk-tiger__R": {
     chapters: [
       {
