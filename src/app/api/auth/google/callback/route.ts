@@ -5,7 +5,7 @@ import { classifyType } from "@/lib/diagnosis";
 import { PLACEHOLDER_SCORES } from "@/lib/placeholder-user";
 import { resolveGoogleLoginAccount } from "@/lib/google-login-account";
 import { randomBytes } from "node:crypto";
-import { GOOGLE_FLOW_COOKIE, googleCredentials, googleRequestOrigin, readGoogleFlow, verifyGoogleIdentity } from "@/lib/google-login";
+import { GOOGLE_FLOW_COOKIE, googleCredentials, googleLoginLocale, googleLoginPathPrefix, googleRequestOrigin, readGoogleFlow, verifyGoogleIdentity } from "@/lib/google-login";
 import { checkOrigin } from "@/lib/origin-check";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
@@ -26,9 +26,16 @@ export async function GET(request: NextRequest) {
     response.headers.set("Referrer-Policy", "no-referrer");
     return response;
   };
-  const fail = (reason: string) => finish(`/login?google_error=${reason}`);
   const credentials = googleCredentials();
-  const flow = readGoogleFlow(request.cookies.get(GOOGLE_FLOW_COOKIE)?.value, request.nextUrl.searchParams.get("state"));
+  const flowCookie = request.cookies.get(GOOGLE_FLOW_COOKIE)?.value;
+  const flow = readGoogleFlow(flowCookie, request.nextUrl.searchParams.get("state"));
+  // 戻り先の言語。state 検証に失敗した場合も、cookie に残る言語のログイン画面へ戻す
+  // (言語は ja / ko に正規化するだけで、認証の判断には使わない)。
+  let locale = flow?.locale ?? googleLoginLocale(null);
+  if (!flow) {
+    try { locale = googleLoginLocale(JSON.parse(flowCookie ?? "").locale); } catch { /* 日本語へ戻す */ }
+  }
+  const fail = (reason: string) => finish(`${googleLoginPathPrefix(locale)}/login?google_error=${reason}`);
   if (!credentials || !flow) return fail("failed");
   if (request.nextUrl.searchParams.has("error")) return fail("cancelled");
   const code = request.nextUrl.searchParams.get("code");
@@ -78,7 +85,7 @@ export async function GET(request: NextRequest) {
           scores: PLACEHOLDER_SCORES,
           owner_token: nanoid(16),
           invite_code: nanoid(8),
-          preferred_locale: "ja",
+          preferred_locale: locale,
         }).select("id").single();
         if (error || !data) throw new Error("Account creation failed");
         return data;
@@ -93,7 +100,7 @@ export async function GET(request: NextRequest) {
       expires_at: new Date(Date.now() + 60 * 1000).toISOString(),
     });
     if (insertError) return fail("failed");
-    return finish(`/api/auth/verify-magic-link?token=${token}`);
+    return finish(`/api/auth/verify-magic-link?token=${token}${locale === "ja" ? "" : `&locale=${locale}`}`);
   } catch {
     // Never log authorization codes, ID tokens, email addresses or secrets.
     return fail("failed");

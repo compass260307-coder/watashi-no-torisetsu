@@ -105,15 +105,17 @@ export function LoginCard({
   const [preview, setPreview] = useState(false);
   const copy = LOGIN_COPY[locale];
   const [googleAvailable, setGoogleAvailable] = useState(false);
+  // Googleログインは日本語と韓国語で出す。
+  const googleLocale = locale === "ja" || locale === "ko" ? locale : null;
   useEffect(() => {
-    if (locale !== "ja") return;
+    if (!googleLocale) return;
     let active = true;
     void fetch("/api/auth/google", { cache: "no-store" })
       .then(res => res.ok ? res.json() : null)
       .then(data => { if (active) setGoogleAvailable(data?.available === true); })
       .catch(() => {});
     return () => { active = false; };
-  }, [locale]);
+  }, [googleLocale]);
 
   const trimmed = email.trim();
   const isValid =
@@ -292,19 +294,20 @@ export function LoginCard({
               </p>
             )}
           </form>
-          {locale === "ja" && googleAvailable && (
+          {googleLocale && googleAvailable && (
             <div className="mt-7">
               <p className="mb-3 text-center text-[13px] leading-relaxed text-[#2E2E5C]/65">
-                以下の方法でもログインできます
+                {googleLocale === "ko" ? "아래 방법으로도 로그인할 수 있어요" : "以下の方法でもログインできます"}
               </p>
               <form action="/api/auth/google" method="post">
+                <input type="hidden" name="locale" value={googleLocale} />
                 <button
                   type="submit"
                   disabled={phase === "submitting"}
                   className="flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-[#DADCE0] bg-white px-5 py-2.5 text-[14px] font-semibold text-[#3C4043] transition-colors hover:bg-[#F8F9FA] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5B5BEF] disabled:opacity-50"
                 >
                   <GoogleIcon />
-                  Googleでログイン
+                  {googleLocale === "ko" ? "Google로 로그인" : "Googleでログイン"}
                 </button>
               </form>
             </div>

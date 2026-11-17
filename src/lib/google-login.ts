@@ -19,8 +19,18 @@ export function googleCredentials() {
   return clientId && clientSecret ? { clientId, clientSecret } : null;
 }
 
-export function newGoogleFlow() {
+// Googleログインを出す言語。戻り先のパスと新規アカウントの言語に使う。
+export type GoogleLoginLocale = "ja" | "ko";
+export function googleLoginLocale(value: unknown): GoogleLoginLocale {
+  return value === "ko" ? "ko" : "ja";
+}
+export function googleLoginPathPrefix(locale: GoogleLoginLocale) {
+  return locale === "ko" ? "/ko" : "";
+}
+
+export function newGoogleFlow(locale: GoogleLoginLocale = "ja") {
   return {
+    locale,
     state: randomBytes(32).toString("base64url"),
     nonce: randomBytes(32).toString("base64url"),
     verifier: randomBytes(32).toString("base64url"),
@@ -37,7 +47,8 @@ export function readGoogleFlow(cookie: string | undefined, state: string | null)
     const expected = Buffer.from(flow.state);
     const actual = Buffer.from(state);
     if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
-    return flow as ReturnType<typeof newGoogleFlow>;
+    // 言語は信頼できる値だけに正規化する (旧形式の cookie は日本語として扱う)。
+    return { ...flow, locale: googleLoginLocale(flow.locale) } as ReturnType<typeof newGoogleFlow>;
   } catch {
     return null;
   }
