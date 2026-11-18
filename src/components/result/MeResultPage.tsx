@@ -609,7 +609,7 @@ async function MeResultPageContent({
               : isIndonesian
                 ? "Jawab pertanyaan Alice untuk melengkapi Peta Takdir Anda"
                 : showResultUpgradePlaceholder
-                  ? "5つの質問に答えて、あなた専用の結果へ"
+                  ? "7つの質問に答えて、あなた専用の結果へ"
                   : "Aliceの質問に答えて、運命の設計図を完成させよう"}
           </h2>
         </div>

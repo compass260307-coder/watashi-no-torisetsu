@@ -3,6 +3,7 @@ import { consumeRateLimit, readJsonObject } from "@/lib/api-security";
 import { hasFullAccess } from "@/lib/entitlements";
 import { checkOrigin } from "@/lib/origin-check";
 import {
+  LEGACY_RESULT_UPGRADE_ANSWER_COUNT,
   LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH,
   normalizeResultUpgradeAnswers,
   type ResultUpgradeRow,
@@ -60,7 +61,10 @@ export async function POST(request: Request) {
   if (lineFlow && locale !== "ja") {
     return NextResponse.json({ error: "line_channel_required" }, { status: 403 });
   }
-  const answers = normalizeResultUpgradeAnswers(body.value.answers);
+  // 7問は日本語Webだけ。LINEと韓国語は従来の5問だけを受け付ける。
+  const answers = lineFlow || locale === "ko"
+    ? normalizeResultUpgradeAnswers(body.value.answers, [LEGACY_RESULT_UPGRADE_ANSWER_COUNT])
+    : normalizeResultUpgradeAnswers(body.value.answers);
   if (!answers || (lineFlow && answers.some(answer => answer.length > LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH))) {
     return NextResponse.json({ error: "invalid answers" }, { status: 400 });
   }

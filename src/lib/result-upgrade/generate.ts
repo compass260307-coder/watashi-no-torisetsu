@@ -28,7 +28,8 @@ import {
   type SixteenTypeId,
 } from "@/lib/sixteen-types";
 import {
-  resultUpgradeQuestions,
+  isWebResultUpgradeV2Answers,
+  resultUpgradeQuestionsForAnswers,
   normalizeResultUpgradeAnswers,
   type ResultUpgradeReading,
   type ResultUpgradeRow,
@@ -82,7 +83,7 @@ const generatedCopySchema = jsonSchema<GeneratedResultCopy>({
 
 
 function answersForPrompt(answers: string[], locale: "ja" | "ko" = "ja"): string {
-  const questions = resultUpgradeQuestions(locale);
+  const questions = resultUpgradeQuestionsForAnswers(locale, answers.length);
   return answers
     .map(
       (answer, index) =>
@@ -151,7 +152,9 @@ ${answersForPrompt(row.answers, row.locale)}
 - 「あなたは〜な人です」の連発、「〜と言えるでしょう」「大丈夫です」「〜なのです」「その証拠です」などの定型句、抽象的な褒め言葉の羅列、過剰なダッシュ、結論の言い直しは避ける。
 - 各章は本人の回答にある具体的な場面から、そのとき大切にしていることを説明し、日常で試せる小さな工夫を一つ添える。工夫には、実際に言える一言や取れる行動を入れる。「希望を残す」「余白を育む」「自分軸を整える」のように行動が分からない表現は使わない。相手の気持ちや未回答の経験を事実として断定しない。
 - 見出しは本文の内容が分かる短い言葉にする。本文は自然なです・ます調で、同じ励ましや結論を繰り返さない。closingMessageは説教調にせず、短い私信として結ぶ。
-- 占星術・未来予言は使わず、今回の診断結果と回答だけを根拠にする。${isKorean ? "\n韓国語版: 上記と同じ内容・深さ・段落数を自然な韓国語で出力する。日本語の例文は翻訳して参考にし、本文には混ぜない。元タイプ名は韓国語表記を一字も変えず保ち、修飾語も韓国語にする。冒頭文は320〜480文字、各章520〜720文字、結びは220〜360文字程度で、各章を3〜4段落に分ける。" : ""}`,
+- 占星術・未来予言は使わず、今回の診断結果と回答だけを根拠にする。${isWebResultUpgradeV2Answers(row.locale, row.answers.length) ? `
+- 今回の7つの質問は「もしも」「たとえるなら」の形です。答えは実際に起きた出来事ではなく、本人の好みや価値観が表れたものとして読み解き、経験した事実のようには書かない。
+- 回答の使い分け: 回答1（自分をたとえた動物）と回答6（理想の恋人をたとえた動物）は②の恋愛の章で並べて読み解く。回答2（最後の晩ごはん）は④の日常の章、回答4（1億円の使い道）は③の仕事の章、回答5（夏休みの宿題）は⑤のつまずきやすい点の章で扱う。回答3（無人島に持っていく物）はキャラクターの持ち物として描かれるので、①の章で一度触れる。回答7（超能力）はclosingMessageで拾う。Aliceは会話の中でこの使い道を本人に伝えているため、必ず守る。` : ""}${isKorean ? "\n韓国語版: 上記と同じ内容・深さ・段落数を自然な韓国語で出力する。日本語の例文は翻訳して参考にし、本文には混ぜない。元タイプ名は韓国語表記を一字も変えず保ち、修飾語も韓国語にする。冒頭文は320〜480文字、各章520〜720文字、結びは220〜360文字程度で、各章を3〜4段落に分ける。" : ""}`,
     });
   } catch (error) {
     await recordAiUsage(supabaseAdmin, {
@@ -229,7 +232,8 @@ async function generatePersonalizedCharacter(
 ${answersForPrompt(row.answers)}
 
 制作条件:
-- 原型のキャラクターだと一目で分かる同一性を最優先する。
+- 原型のキャラクターだと一目で分かる同一性を最優先する。${isWebResultUpgradeV2Answers(row.locale, row.answers.length) ? `
+- 回答1・回答6に出てくる動物は、原型のキャラクターの動物を置き換えず、表情・しぐさ・小物の柄などのモチーフとして控えめに反映する。回答3で挙げた物は、キャラクターの持ち物として必ず描く。回答2の食べ物や回答7の超能力は、背景や小物に取り入れてよい。` : ""}
 - 回答から似合う表情、服装、小物、色、背景を選び、2〜4個の具体的な個性として画面に反映する。
 - 出力は必ず1:1の正方形の一枚絵。キャラクターの全身を中央に配置し、顔・耳・足先と本人らしい小物を含めて、四辺から10%以上の余白を確保する。
 - 背景はキャラクターに合った淡い落ち着いた色調。中央にジオラマを作り、四辺へ向かって小物や模様を減らし、柔らかな光とぼけに溶け込ませる。背景との境界を強調する外枠や硬い影は作らない。

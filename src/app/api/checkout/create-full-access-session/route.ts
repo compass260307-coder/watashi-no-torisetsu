@@ -1012,7 +1012,7 @@ export async function POST(request: NextRequest) {
   const productDescription = lineUpgradeCheckout
     ? `5つの自由回答から専用キャラクター・タイプ名・自己診断結果・5章の鑑定書を作成。税込${RESULT_UPGRADE_PRICE_JPY}円の買い切り。`
     : isResultUpgradeCheckout && checkoutLocale === "ja"
-    ? "5つの回答から作る専用キャラクター・専用タイプ名・自己診断結果・鑑定書。Webで受け取れる買い切り。"
+    ? "あなたの回答から作る専用キャラクター・専用タイプ名・自己診断結果・鑑定書。Webで受け取れる買い切り。"
     : isResultUpgradeCheckout && checkoutLocale === "ko"
     ? "5개 답변으로 만드는 나만의 캐릭터, 유형 이름, 자기 분석 결과와 전용 보고서 · 1회 결제"
     : checkoutCopy.productDescription;
