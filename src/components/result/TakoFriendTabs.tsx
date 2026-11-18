@@ -84,6 +84,20 @@ export function TakoFriendTabs({
   const isId = locale === "id";
   // 日本語・韓国語の友達0人の招待カードは、見出しを1行で見せる専用の並びにする。
   const isJaEmptyInvite = !isEn && !isId && tabs.length === 0;
+  // 日本語だけの友達0人カード (2026-11-19 にレイアウトを作り直したもの)。
+  const isJaOnlyEmptyInvite = isJaEmptyInvite && !isKo;
+  // 日本語・友達0人カードの「結果の見本を見る」リンク。
+  const demoLink = demoHref ? (
+    <Link
+      href={demoHref}
+      className="-ml-2 mt-1 inline-flex items-center gap-0.5 rounded-full px-2 py-1 text-[13px] font-black text-[#5B5BEF] hover:bg-[#F4F4FF]"
+    >
+      結果の見本を見る
+      <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="m8 5 5 5-5 5" />
+      </svg>
+    </Link>
+  ) : null;
   const [idx, setIdx] = useState(0);
   // 友達0人の空状態では、共有パネルをクリック不要で最初から開く
   // (計測で、ページ到達者の79%が招待UIに触れずに離脱していたため)。
@@ -586,26 +600,70 @@ export function TakoFriendTabs({
             role="dialog"
             aria-modal="true"
             aria-labelledby="tako-invite-dialog-title"
-            className="animate-bubble-pop relative max-h-[calc(100dvh-1rem)] w-full max-w-[640px] overflow-y-auto rounded-[24px] border border-[#DEDFEC] bg-white shadow-[0_24px_70px_rgba(34,34,70,0.28)] md:max-h-[calc(100dvh-4rem)] md:rounded-[28px]"
+            // 開いた直後のフォーカスはダイアログ本体へ。閉じるボタンに当てると選択枠が出っぱなしになる。
+            tabIndex={-1}
+            autoFocus
+            className="animate-bubble-pop relative outline-none max-h-[calc(100dvh-1rem)] w-full max-w-[640px] overflow-y-auto rounded-[24px] border border-[#DEDFEC] bg-white shadow-[0_24px_70px_rgba(34,34,70,0.28)] md:max-h-[calc(100dvh-4rem)] md:rounded-[28px]"
             style={{ transformOrigin: "center" }}
             onPointerDown={(event) => event.stopPropagation()}
           >
-            <div aria-hidden="true" className="h-1.5 bg-[#5B5BEF]" />
+            {isJaOnlyEmptyInvite ? null : (
+              <div aria-hidden="true" className="h-1.5 bg-[#5B5BEF]" />
+            )}
             <button
               type="button"
               onClick={() => setInviteOpen(false)}
               aria-label={isEn ? "Close invitation" : isKo ? "초대 카드 닫기" : isId ? "Tutup undangan" : "招待カードを閉じる"}
-              autoFocus
-              className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-[#DADBE5] bg-white text-[#8A8A9E] outline-none transition hover:bg-[#F5F5FA] hover:text-[#2E2E5C] focus-visible:ring-2 focus-visible:ring-[#5B5BEF]/45 md:right-5 md:top-5"
+              className={
+                isJaOnlyEmptyInvite
+                  ? "absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-[#F4F4F9] text-[#9A9AB0] outline-none transition hover:bg-[#EBEBF3] hover:text-[#2E2E5C] focus-visible:ring-2 focus-visible:ring-[#5B5BEF]/45 md:right-4 md:top-4"
+                  : "absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-[#DADBE5] bg-white text-[#8A8A9E] outline-none transition hover:bg-[#F5F5FA] hover:text-[#2E2E5C] focus-visible:ring-2 focus-visible:ring-[#5B5BEF]/45 md:right-5 md:top-5"
+              }
             >
               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
                 <path d="M6 6l12 12M18 6 6 18" />
               </svg>
             </button>
 
-            <div className="px-5 pb-6 pt-6 md:px-8 md:pb-8 md:pt-8">
-              {isJaEmptyInvite ? (
-                // 日本語・友達0人: 見出しは横幅いっぱいの1行、その下に説明文 (左) と絵 (右) を並べる。
+            <div
+              className={
+                isJaOnlyEmptyInvite
+                  ? "px-5 pb-6 pt-8 md:px-8 md:pb-8 md:pt-9"
+                  : "px-5 pb-6 pt-6 md:px-8 md:pb-8 md:pt-8"
+              }
+            >
+              {isJaOnlyEmptyInvite ? (
+                // 日本語・友達0人: 左寄せ。見出し・説明の右の空きいっぱいにイラストを出す。
+                // 文字の行は折り返さず、イラストが残りの幅に合わせて伸縮する (上限 160px / sm 以上 180px)。
+                <div className="text-left">
+                  {/* 見出しと見本リンクを1列にまとめ、イラストと上下中央でそろえる (カード上部を詰めるため) */}
+                  <div className="flex items-center gap-3">
+                    <div className="shrink-0">
+                      <h2
+                        id="tako-invite-dialog-title"
+                        className="whitespace-nowrap text-[clamp(22px,7vw,26px)] font-black leading-[1.3] text-[#2E2E5C] md:text-[28px]"
+                      >
+                        友達から見た
+                        <br className="sm:hidden" />
+                        あなたは？
+                      </h2>
+                      {demoLink}
+                    </div>
+                    <div className="flex min-w-0 flex-1 justify-end">
+                      <Image
+                        src={friendsWaiting}
+                        alt=""
+                        aria-hidden="true"
+                        width={1402}
+                        height={1122}
+                        sizes="(min-width: 640px) 180px, 40vw"
+                        className="h-auto w-full max-w-[160px] select-none sm:max-w-[180px]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ) : isJaEmptyInvite ? (
+                // 韓国語・友達0人: 見出しは横幅いっぱいの1行、その下に説明文 (左) と絵 (右) を並べる。
                 <>
                   <h2
                     id="tako-invite-dialog-title"
@@ -695,10 +753,15 @@ export function TakoFriendTabs({
               )}
 
               <div
-                className={`border-t border-[#E8E8F1] pt-5 md:pt-6 ${
-                  // 日本語・友達0人は線の上下の余白をそろえる
-                  isJaEmptyInvite ? "mt-4" : "mt-6 md:mt-7"
-                }`}
+                className={
+                  isJaOnlyEmptyInvite
+                    ? // 日本語・友達0人: 区切り線を置かず、余白だけで分ける
+                      "mt-5"
+                    : `border-t border-[#E8E8F1] pt-5 md:pt-6 ${
+                        // 韓国語・友達0人は線の上下の余白をそろえる
+                        isJaEmptyInvite ? "mt-4" : "mt-6 md:mt-7"
+                      }`
+                }
               >
                 {invitePanel}
               </div>
