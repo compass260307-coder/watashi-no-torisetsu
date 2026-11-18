@@ -80,6 +80,9 @@ export function ResultUpgradeChatLauncher({
     Object.assign(document.body.style, {
       overflow: "hidden", position: "fixed", top: `-${scrollY}px`, width: "100%",
     });
+    // チャット中はサイト共通の下部ナビを隠す（iOSではツールバー付近のすき間からナビが見えてしまうため）。
+    const root = document.documentElement;
+    root.dataset.upgradeChatOpen = "true";
     const viewport = window.visualViewport;
     // LINEと同じく、キーボードが出たら見えている範囲いっぱいにチャットを縮め、入力欄をキーボードのすぐ上に置く。
     const syncViewport = () => {
@@ -106,6 +109,7 @@ export function ResultUpgradeChatLauncher({
       Object.assign(document.body.style, previousBodyStyle);
       window.scrollTo({ left: scrollX, top: scrollY, behavior: "instant" });
       window.removeEventListener("keydown", handleKeyDown);
+      delete root.dataset.upgradeChatOpen;
       (previousFocus ?? trigger)?.focus({ preventScroll: true });
     };
   }, [open]);
@@ -124,13 +128,16 @@ export function ResultUpgradeChatLauncher({
 
       {open
         ? createPortal(
+            <>
+            {/* 画面全体を覆う背景。チャットの高さを見えている範囲に合わせても、下のページが透けないようにする。 */}
+            <div aria-hidden="true" className="fixed inset-0 z-[119] bg-white md:bg-[#2E2E5C]/55 md:backdrop-blur-sm" />
             <div
               ref={viewportRef}
               role="dialog"
               aria-modal="true"
               aria-label={copy.dialog}
               onClick={(event) => { if (event.target === event.currentTarget) setOpen(false); }}
-              className="fixed inset-x-0 top-0 z-[120] flex h-svh justify-center overscroll-none bg-[#FBF8F3] md:items-center md:bg-[#2E2E5C]/55 md:p-6 md:backdrop-blur-sm"
+              className="fixed inset-x-0 top-0 z-[120] flex h-svh justify-center overscroll-none bg-[#FBF8F3] md:items-center md:bg-transparent md:p-6"
             >
               <div className="relative h-full min-h-0 w-full overflow-hidden animate-chat-sheet-in md:max-h-[860px] md:max-w-[560px] md:rounded-[28px] md:shadow-[0_24px_70px_rgba(21,21,55,0.35)]">
                 <button
@@ -154,7 +161,8 @@ export function ResultUpgradeChatLauncher({
                   modal
                 />
               </div>
-            </div>,
+            </div>
+            </>,
             document.body,
           )
         : null}
