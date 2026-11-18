@@ -1,3 +1,4 @@
+import { RESULT_UPGRADE_PRICE_JPY } from "@/lib/access-products";
 import { WEB_RESULT_UPGRADE_QUESTIONS_V2 } from "@/lib/result-upgrade";
 
 /**
@@ -30,8 +31,13 @@ export const WEB_RESULT_UPGRADE_QUESTION_MESSAGES_V2 = [
 export const WEB_RESULT_UPGRADE_INTRO_V2 =
   "ここからは、診断の選択肢だけでは見えなかったあなたを教えてね。質問は7つ。一言でも、じっくり話しても大丈夫だよ。";
 
-export const WEB_RESULT_UPGRADE_OFFER_MESSAGE_V2 =
-  "7つのお話を聞かせてくれてありがとう🌷 あなた専用のキャラクターと鑑定書を作れるよ。";
+/** 7問を答え終えたあと、宝箱が出るまでの読み込み中にAliceが言う一言（日本語Web）。 */
+export const WEB_RESULT_UPGRADE_GIFT_LOADING_MESSAGE_V2 =
+  "完全版を購入してくれたあなたへ、プレゼントがあるよ！";
+
+/** クーポンを受け取ったあとのAliceの一言。返金保証は購入ボタンの下に表示する。 */
+export const WEB_RESULT_UPGRADE_AFTER_GIFT_MESSAGE_V2 =
+  `このクーポンを使うと、¥${RESULT_UPGRADE_PRICE_JPY}で作れるよ！`;
 
 export const RESULT_UPGRADE_REACTION_MAX_LENGTH = 160;
 

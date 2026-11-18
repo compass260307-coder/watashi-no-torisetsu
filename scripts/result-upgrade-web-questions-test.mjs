@@ -21,7 +21,28 @@ function compile(path, imports = {}) {
 }
 
 const upgrade = compile('src/lib/result-upgrade.ts');
-const reaction = compile('src/lib/result-upgrade-reaction.ts', { '@/lib/result-upgrade': upgrade });
+const prices = {
+  LINE_RESULT_UPGRADE_COUPON_JPY: 499,
+  LINE_RESULT_UPGRADE_LIST_PRICE_JPY: 1398,
+  RESULT_UPGRADE_PRICE_JPY: 899,
+};
+const reaction = compile('src/lib/result-upgrade-reaction.ts', {
+  '@/lib/result-upgrade': upgrade,
+  '@/lib/access-products': prices,
+});
+
+// 宝箱が出るまでのAliceの読み込みの一言と、受け取り後の支払額。価格は共通定義から作る。
+assert.equal(
+  reaction.WEB_RESULT_UPGRADE_GIFT_LOADING_MESSAGE_V2,
+  '完全版を購入してくれたあなたへ、プレゼントがあるよ！',
+);
+assert.equal(reaction.WEB_RESULT_UPGRADE_AFTER_GIFT_MESSAGE_V2, 'このクーポンを使うと、¥899で作れるよ！');
+
+// クーポンの演出は抽選・期限に見せない（全員同額のため）。
+const gift = readFileSync('src/components/result-upgrade/ResultUpgradeTreasure.tsx', 'utf8')
+  .replace(/\/\*[\s\S]*?\*\//g, '')
+  .replace(/^\s*\/\/.*$/gm, '');
+assert.doesNotMatch(gift, /当たり|当選|抽選|ルーレット|残り|期限|今だけ/, 'クーポン演出に抽選・期限の表現を入れない');
 
 const five = ['a', 'b', 'c', 'd', 'e'];
 const seven = [...five, 'f', 'g'];
@@ -92,5 +113,12 @@ for (const guard of ['checkOrigin(request)', 'getResultUpgradeSession(request)',
 }
 const devRoute = readFileSync('src/app/api/dev/result-upgrade-reaction/route.ts', 'utf8');
 assert.match(devRoute, /process\.env\.NODE_ENV !== "development"[\s\S]{0,80}status: 404/);
+
+// クーポン券の絵には「¥499 OFF」が刺しゅうで描かれている。額を変えたら絵も作り直す。
+assert.match(
+  readFileSync('src/lib/access-products.ts', 'utf8'),
+  /LINE_RESULT_UPGRADE_COUPON_JPY\s*=\s*499\b/,
+  'クーポン額が変わったら public/result-upgrade/coupon-ticket-embroidered.webp を作り直す',
+);
 
 console.log('PASS: Japanese Web result upgrade uses seven questions with Alice reactions; LINE, Korean and saved five-answer rows keep the legacy flow. No external calls.');

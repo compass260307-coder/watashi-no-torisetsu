@@ -17,7 +17,8 @@ import {
 } from "@/lib/result-upgrade";
 import {
   WEB_RESULT_UPGRADE_INTRO_V2,
-  WEB_RESULT_UPGRADE_OFFER_MESSAGE_V2,
+  WEB_RESULT_UPGRADE_AFTER_GIFT_MESSAGE_V2,
+  WEB_RESULT_UPGRADE_GIFT_LOADING_MESSAGE_V2,
   WEB_RESULT_UPGRADE_QUESTION_MESSAGES_V2,
   fallbackResultUpgradeReaction,
   sanitizeResultUpgradeReaction,
@@ -25,6 +26,7 @@ import {
 import { RESULT_UPGRADE_COPY, type ResultUpgradeLocale } from "@/i18n/result-upgrade";
 import { RESULT_UPGRADE_SESSION_COPY } from "@/i18n/result-upgrade-session";
 import { ResultUpgradeSessionCheck } from "./ResultUpgradeSessionCheck";
+import { CouponTicket, ResultUpgradeOfferCard, ResultUpgradeTreasure } from "./ResultUpgradeTreasure";
 import { clearResultUpgradeDraft, loadResultUpgradeDraft, saveResultUpgradeDraft } from "@/lib/result-upgrade-draft";
 
 type Props = {
@@ -42,9 +44,26 @@ type Screen = "questions" | "saving" | "purchase" | "generating" | "failed" | "b
 
 const ALICE_REPLY_DELAY_MS = 900;
 const UPGRADE_PREPARATION_DELAY_MS = 15_000;
+// 7問の会話では、照らし合わせの待ちのあとに「プレゼントがあるよ」の読み込みを見せてから宝箱を開く。
+const GIFT_LOADING_DELAY_MS = 3_200;
 // Aliceの反応を待つ上限。超えたら定型文に切り替えて会話を止めない。
 const ALICE_REACTION_TIMEOUT_MS = 7_000;
 const ALICE_AVATAR_SRC = "/mascot/hoshiyomi-alice-avatar-transparent.png";
+const GIFT_OPENED_KEY = "result-upgrade-gift-opened-v1:";
+
+// クーポンを受け取ったかどうかは、同じ結果を開き直しても受け取り済みに戻すため端末に残す。
+// 保存できない環境では毎回プレゼントから表示する（購入には影響しない）。
+function readGiftOpened(ownerToken: string): boolean {
+  try {
+    return typeof window !== "undefined" && localStorage.getItem(GIFT_OPENED_KEY + ownerToken) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function saveGiftOpened(ownerToken: string): void {
+  try { localStorage.setItem(GIFT_OPENED_KEY + ownerToken, "1"); } catch { /* optional storage */ }
+}
 
 
 export function ResultUpgradeChat({
@@ -86,6 +105,12 @@ export function ResultUpgradeChat({
     return initialState === "failed" ? "failed" : "generating";
   });
   const [aliceTyping, setAliceTyping] = useState(false);
+  // 購入画面は本人確認のあと（プレビューは保存しない）にだけ出るため、サーバー描画とは食い違わない。
+  const [giftOpened, setGiftOpened] = useState(() => !preview && readGiftOpened(ownerToken));
+  const [treasureOpen, setTreasureOpen] = useState(false);
+  // 宝箱を開けずに「あとで開ける」で閉じたら、チャットに開き直すボタンを出す。
+  const [treasureDismissed, setTreasureDismissed] = useState(false);
+  const treasureAutoShownRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [retryKey, setRetryKey] = useState(0);
   const [spendPause, setSpendPause] = useState<ResultUpgradeSpendPauseStatus | null>(null);
@@ -112,7 +137,19 @@ export function ResultUpgradeChat({
   useEffect(() => {
     const conversation = conversationRef.current;
     conversation?.scrollTo({ top: conversation.scrollHeight, behavior: "smooth" });
-  }, [aliceTyping, answers, index, screen]);
+  }, [aliceTyping, answers, giftOpened, index, screen]);
+
+  // 7問を答え終えて購入画面に来たら、宝箱の演出を一度だけ自動で開く。閉じたあとはチャットから開ける。
+  const awaitingTreasure = screen === "purchase" && webV2 && !giftOpened;
+  useEffect(() => {
+    if (!awaitingTreasure) return;
+    const timer = window.setTimeout(() => {
+      if (treasureAutoShownRef.current) return;
+      treasureAutoShownRef.current = true;
+      setTreasureOpen(true);
+    }, GIFT_LOADING_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [awaitingTreasure]);
 
   useEffect(() => {
     if (!preview && sessionVerified && screen === "questions") {
@@ -238,6 +275,47 @@ export function ResultUpgradeChat({
     }
   }
 
+  // 購入ボタン。購入カードと、宝箱の演出の最後の両方から使う（どちらも同じ結果アップグレードの決済へ進む）。
+  function renderPurchaseButton() {
+    if (preview && locale === "ko") {
+      return (
+        <button
+          type="button"
+          disabled
+          className="flex w-full items-center justify-center rounded-full bg-[#A87322] px-6 py-4 text-[16px] font-black text-white opacity-60"
+        >
+          {copy.cta}
+        </button>
+      );
+    }
+    if (preview) {
+      return (
+        <form action="/api/dev/result-upgrade-checkout" method="post">
+          <button
+            type="submit"
+            className="flex w-full items-center justify-center rounded-full bg-[#A87322] px-6 py-4 text-[16px] font-black text-white shadow-[0_4px_0_#7F5518] transition hover:translate-y-0.5 hover:shadow-[0_2px_0_#7F5518]"
+          >
+            {copy.cta}
+          </button>
+        </form>
+      );
+    }
+    return (
+      <FullAccessCta
+        ownerToken={ownerToken}
+        locale={locale}
+        product="premium_bundle"
+        salesChannel={salesChannel}
+        returnTo="me"
+        source="result_upgrade_after_answers"
+        accentColor="#A87322"
+        shadowColor="#7F5518"
+      >
+        {copy.cta}
+      </FullAccessCta>
+    );
+  }
+
   if (!sessionVerified) {
     return <ResultUpgradeSessionCheck salesChannel={salesChannel} ownerToken={ownerToken} locale={locale} onVerified={() => {
       if (!draftRestoredRef.current) {
@@ -320,9 +398,47 @@ export function ResultUpgradeChat({
 
           {screen === "saving" && <UpgradePreparationBubble locale={locale} />}
 
-          {screen === "purchase" && locale === "ja" && !lineFlow && (
+          {screen === "purchase" && webV2 && (
             <>
-              <AliceBubble>{webV2 ? WEB_RESULT_UPGRADE_OFFER_MESSAGE_V2 : LINE_UPGRADE_OFFER_MESSAGE}</AliceBubble>
+              {giftOpened ? (
+                <div className="animate-fade-in-up px-1">
+                  <CouponTicket couponJpy={LINE_RESULT_UPGRADE_COUPON_JPY} variant="chat" />
+                </div>
+              ) : !treasureDismissed ? (
+                <GiftLoadingBubble locale={locale} />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setTreasureOpen(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-[22px] border border-[#EFD79B] bg-[linear-gradient(180deg,#FFF8E4_0%,#FFFFFF_100%)] px-5 py-4 text-[15px] font-black text-[#7A4F0E] shadow-[0_8px_22px_rgba(154,106,36,0.14)] transition active:translate-y-0.5"
+                >
+                  <span aria-hidden="true" className="text-[22px]">🎁</span>
+                  プレゼントの宝箱を開ける
+                </button>
+              )}
+              {giftOpened && <AliceBubble>{WEB_RESULT_UPGRADE_AFTER_GIFT_MESSAGE_V2}</AliceBubble>}
+              {treasureOpen && (
+                <ResultUpgradeTreasure
+                  couponJpy={LINE_RESULT_UPGRADE_COUPON_JPY}
+                  listPriceJpy={LINE_RESULT_UPGRADE_LIST_PRICE_JPY}
+                  priceJpy={RESULT_UPGRADE_PRICE_JPY}
+                  purchaseCta={renderPurchaseButton()}
+                  onCouponReceived={() => {
+                    setGiftOpened(true);
+                    if (!preview) saveGiftOpened(ownerToken);
+                  }}
+                  onClose={() => setTreasureOpen(false)}
+                  onDismiss={() => {
+                    setTreasureOpen(false);
+                    setTreasureDismissed(true);
+                  }}
+                />
+              )}
+            </>
+          )}
+          {screen === "purchase" && locale === "ja" && !lineFlow && !webV2 && (
+            <>
+              <AliceBubble>{LINE_UPGRADE_OFFER_MESSAGE}</AliceBubble>
               <AliceBubble>{LINE_UPGRADE_PRICE_MESSAGE}</AliceBubble>
             </>
           )}
@@ -336,8 +452,19 @@ export function ResultUpgradeChat({
               </AliceBubble>
             </>
           )}
-          {screen === "purchase" && (
-            <div className="rounded-[24px] border border-[#EFD79B] bg-white p-5 shadow-[0_8px_25px_rgba(154,106,36,0.10)] md:p-7">
+          {/* 7問の会話では、クーポンを受け取ってから、フェルトの購入カード（値札と特典スライド）を出す。 */}
+          {screen === "purchase" && webV2 && giftOpened && (
+            <ResultUpgradeOfferCard
+              couponJpy={LINE_RESULT_UPGRADE_COUPON_JPY}
+              listPriceJpy={LINE_RESULT_UPGRADE_LIST_PRICE_JPY}
+              priceJpy={RESULT_UPGRADE_PRICE_JPY}
+              savedLabel={copy.saved}
+              note={copy.oneTime}
+              purchaseCta={renderPurchaseButton()}
+            />
+          )}
+          {screen === "purchase" && !webV2 && (
+            <div className={`${webV2 ? "animate-fade-in-up " : ""}rounded-[24px] border border-[#EFD79B] bg-white p-5 shadow-[0_8px_25px_rgba(154,106,36,0.10)] md:p-7`}>
               <p className="text-[12px] font-black tracking-[0.12em] text-[#9A6A24]">{copy.saved}</p>
               <h2 className="mt-2 text-[23px] font-black leading-[1.45] text-[#2E2E5C] md:text-[28px]">
                 {copy.purchaseTitle}
@@ -347,7 +474,7 @@ export function ResultUpgradeChat({
               </p>
               {locale === "ja" && <div className="mt-4 space-y-1 text-sm text-[#66657B]">
                 <p>通常価格 <s>¥{LINE_RESULT_UPGRADE_LIST_PRICE_JPY.toLocaleString("ja-JP")}</s></p>
-                <p>クーポン適用 −¥{LINE_RESULT_UPGRADE_COUPON_JPY}</p>
+                <p>{webV2 ? "受け取ったクーポン" : "クーポン適用"} −¥{LINE_RESULT_UPGRADE_COUPON_JPY}</p>
                 <p className="text-xl font-black text-[#2E2E5C]">お支払い ¥{RESULT_UPGRADE_PRICE_JPY}（税込・買い切り）</p>
               </div>}
               {locale === "ko" && <div className="mt-4 space-y-1 text-sm text-[#66657B]">
@@ -355,43 +482,11 @@ export function ResultUpgradeChat({
                 <p>30일 환불 보장</p>
               </div>}
               <div className="mt-6">
-                {preview && locale === "ko" ? (
-                  <button
-                    type="button"
-                    disabled
-                    className="flex w-full items-center justify-center rounded-full bg-[#A87322] px-6 py-4 text-[16px] font-black text-white opacity-60"
-                  >
-                    {copy.cta}
-                  </button>
-                ) : preview ? (
-                  <form action="/api/dev/result-upgrade-checkout" method="post">
-                    <button
-                      type="submit"
-                      className="flex w-full items-center justify-center rounded-full bg-[#A87322] px-6 py-4 text-[16px] font-black text-white shadow-[0_4px_0_#7F5518] transition hover:translate-y-0.5 hover:shadow-[0_2px_0_#7F5518]"
-                    >
-                      {copy.cta}
-                    </button>
-                  </form>
-                ) : (
-                  <FullAccessCta
-                    ownerToken={ownerToken}
-                    locale={locale}
-                    product="premium_bundle"
-                    salesChannel={salesChannel}
-                    returnTo="me"
-                    source="result_upgrade_after_answers"
-                    accentColor="#A87322"
-                    shadowColor="#7F5518"
-                  >
-                    {copy.cta}
-                  </FullAccessCta>
-                )}
+                {renderPurchaseButton()}
               </div>
-              {!preview && (
-                <p className="mt-3 text-center text-[11px] font-bold text-[#8A8AA3]">
-                  {copy.oneTime}
-                </p>
-              )}
+              <p className="mt-3 text-center text-[11px] font-bold text-[#8A8AA3]">
+                {copy.oneTime}
+              </p>
             </div>
           )}
 
@@ -508,6 +603,27 @@ function AliceTypingBubble({ locale }: { locale: ResultUpgradeLocale }) {
           ))}
         </span>
       </span>
+    </AliceBubble>
+  );
+}
+
+// 宝箱が出るまでの読み込み中の吹き出し（日本語Webの7問の会話）。
+function GiftLoadingBubble({ locale }: { locale: ResultUpgradeLocale }) {
+  return (
+    <AliceBubble>
+      <div role="status" aria-live="polite">
+        <p>{WEB_RESULT_UPGRADE_GIFT_LOADING_MESSAGE_V2}</p>
+        <div className="mt-3 flex items-center gap-2 text-[12px] text-[#9A6A24]">
+          <span aria-hidden="true">🎁</span>
+          <span>プレゼントを準備中</span>
+          <LoadingDots compact locale={locale} />
+        </div>
+        <div className="mt-4 space-y-2" aria-hidden="true">
+          <span className="block h-1.5 w-full animate-pulse rounded-full bg-[#F6E7C2]" />
+          <span className="block h-1.5 w-[82%] animate-pulse rounded-full bg-[#F8ECCF] [animation-delay:180ms]" />
+          <span className="block h-1.5 w-[64%] animate-pulse rounded-full bg-[#FAF1DC] [animation-delay:360ms]" />
+        </div>
+      </div>
     </AliceBubble>
   );
 }
