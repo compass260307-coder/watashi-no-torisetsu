@@ -6,7 +6,7 @@ import { useNavigationCopy, useNavigationText } from "@/i18n/ui/use-navigation-c
 //   - fixed bottom-0 全幅・白地・上端 0.5px 境界線 + 淡い上向き影・角丸なし。
 //   - 中身は max-w-[480px] 中央寄せ (スマホは全幅を均等分割・PCはアプリ風に中央)。
 //   - 5列均等 grid。各列アイコン(インラインSVG 32px)+ラベル(11px)縦積み。
-//   - 配色: 全タブ濃いネイビー #2A3A5C で統一 (2026-11-19 指示: 薄いタブが読みにくい)。
+//   - 配色: 通常タブは濃いネイビー #2A3A5C、鍵付きタブだけ薄いグレー #9BA3B4 (2026-11-19 指示)。
 //     現在地はインジケーターバーで示す。
 //   - アクティブ項目の上端に短いインジケーターバー (幅34px・高さ3px・角丸)。
 //   - iOS セーフエリア: paddingBottom: env(safe-area-inset-bottom)。
@@ -25,6 +25,10 @@ import {
   ME_ATTENTION_PENDING_KEY,
 } from "@/lib/me-attention";
 import { DIRECT_PAYWALL_SOURCE } from "@/lib/paywall-source";
+import {
+  FORTUNE_LOCK_REQUEST_EVENT,
+  type FortuneLockRequestDetail,
+} from "@/lib/fortune-switch";
 import {
   TAKO_ATTENTION_GRANTED_EVENT,
   TAKO_BUBBLE_REPLAY_EVENT,
@@ -47,6 +51,8 @@ import {
 const UNMEI_COURSE_PRODUCTS = ["premium_bundle"] as const;
 const ALICE_COURSE_PRODUCTS = ["full_access", "premium_bundle"] as const;
 const TAROT_COURSE_PRODUCTS = ["full_access"] as const;
+// 相性は完全版 (¥499) で解放する (2026-11-19 指示: 未課金は下部ナビで鍵)。
+const AISHO_COURSE_PRODUCTS = ["full_access"] as const;
 const FULL_ACCESS_PAYWALL_IMAGE =
   "/pricing/full-access-connection-felt-transparent.png";
 const FORTUNE_PAYWALL_IMAGE =
@@ -54,10 +60,12 @@ const FORTUNE_PAYWALL_IMAGE =
 const UNMEI_PAYWALL_HASH = "#unlock-unmei";
 const TAROT_PAYWALL_HASH = "#unlock-tarot";
 
-type CourseLockTarget = "hoshiyomi" | "unmei" | "tarot";
+type CourseLockTarget = "hoshiyomi" | "unmei" | "tarot" | "aisho";
 
-// 全タブ共通の文字・アイコン色 (ブランドのディープネイビー)。
+// 通常タブの文字・アイコン色 (ブランドのディープネイビー)。
 const ACTIVE = "#2A3A5C";
+// 鍵付き・準備中のタブだけ薄く表示する (2026-11-19 指示)。
+const LOCKED = "#9BA3B4";
 
 // 下部固定CTA (StickyCtaFooter / Floating* CTA) を持つフロー系ページでは、
 // ナビと衝突する / フローに集中させたいため表示しない。前方一致で判定。
@@ -109,6 +117,29 @@ function UsersIcon() {
       <circle cx="9" cy="8" r="3.2" stroke="currentColor" strokeWidth="2" />
       <path d="M3.5 19.5c0-3 2.5-5 5.5-5s5.5 2 5.5 5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
       <path d="M16 5.5a3.2 3.2 0 0 1 0 6.2M17.5 14.6c2 .6 3.5 2.4 3.5 4.9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+// 相性 (2つの円が重なる)。日本語の下部ナビ用 (2026-11-19)。
+function AishoIcon() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <circle cx="8.8" cy="12" r="5.3" stroke="currentColor" strokeWidth="2" />
+      <circle cx="15.2" cy="12" r="5.3" stroke="currentColor" strokeWidth="2" />
+      <path d="M12 8.2c.9 1 1.4 2.3 1.4 3.8s-.5 2.8-1.4 3.8c-.9-1-1.4-2.3-1.4-3.8s.5-2.8 1.4-3.8Z" fill="currentColor" />
+    </svg>
+  );
+}
+
+// 性格タイプ (4マスのグリッド)。日本語の下部ナビ用 (2026-11-19)。
+function TypesIcon() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="4" y="4" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2" />
+      <rect x="13" y="4" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2" />
+      <rect x="4" y="13" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2" />
+      <circle cx="16.5" cy="16.5" r="3.6" stroke="currentColor" strokeWidth="2" />
     </svg>
   );
 }
@@ -478,6 +509,48 @@ export function BottomNav() {
   const hasTarotNavigationAccess =
     isPaidNavigationPreview || (resolvedCourseAccess?.tarot ?? false);
 
+  // 鍵付きコースの課金カードを開く (下部ナビの鍵タブ / Alice ページの切り替えで共通)。
+  const openCoursePaywall = useCallback(
+    (courseTarget: CourseLockTarget, source: string) => {
+      if (!isCoursePaywallPreview) {
+        track("paywall_scroll_clicked", {
+          ownerToken,
+          metadata: {
+            source,
+            page: trackingPageFromPathname(pathname),
+            surface: courseTarget,
+            destination: courseTarget,
+            paywall_version: paywallVersion,
+          },
+        });
+      }
+      setDiagnosisLockTarget(null);
+      setCoursePaywallSource(source);
+      setCourseLockTarget(courseTarget);
+    },
+    [isCoursePaywallPreview, ownerToken, pathname, paywallVersion],
+  );
+
+  // Alice ページ上部の切り替え (FortuneSwitcher) で未購入の占星術・タロットを
+  // 選んだとき、鍵タブと同じく診断案内 / 課金カードをその場で開く。
+  useEffect(() => {
+    const onRequest = (event: Event) => {
+      const { target, source } = (event as CustomEvent<FortuneLockRequestDetail>)
+        .detail;
+      if (!hasToken) {
+        setCourseLockTarget(null);
+        setCoursePaywallSource(null);
+        setDiagnosisLockTarget(target);
+        return;
+      }
+      void preloadPaywall(locale).catch(() => {});
+      openCoursePaywall(target, source);
+    };
+    window.addEventListener(FORTUNE_LOCK_REQUEST_EVENT, onRequest);
+    return () =>
+      window.removeEventListener(FORTUNE_LOCK_REQUEST_EVENT, onRequest);
+  }, [hasToken, locale, openCoursePaywall]);
+
   // 2026-11-14の決定で、課金カード離脱時のLINE登録ポップを廃止 (購入前のLINE導線削除)。
   const closeCoursePaywall = useCallback(() => {
     setCourseLockTarget(null);
@@ -676,8 +749,10 @@ export function BottomNav() {
                 !isTakoAttentionPreview &&
                 !isPaidNavigationPreview,
             },
-            // AI占い師。未診断または購入権限が無い時は鍵を出し、
-            // 運命の設計図と同じくタップで診断案内 / 課金カードを開く。
+            // 占いは「Alice」1枠にまとめる (2026-11-19 指示)。占星術・タロットは
+            // Alice ページ上部の切り替え (FortuneSwitcher) から選ぶので、
+            // 占星術・タロットを見ている間も Alice を選択中にする。
+            // 未課金は従来どおり鍵を出し、タップで課金カードを開く。
             {
               key: "astrologer",
               label: navCopy.astrologer,
@@ -686,39 +761,38 @@ export function BottomNav() {
                 : "/hoshiyomi",
               active:
                 pathname.startsWith("/hoshiyomi") ||
+                pathname.startsWith("/unmei") ||
+                pathname.startsWith("/tarot") ||
                 pathname === "/dev/hoshiyomi-preview",
               Icon: AstrologerIcon,
               locked:
                 (!hasToken && !isPaidNavigationPreview) ||
                 !hasAliceNavigationAccess,
             },
-            // 運命の設計図。未購入は鍵を出し、タップで課金カードを開く。
-            // URL直打ちはページ側のサーバーガードが同じモーダルへ戻す。
+            // 相性。未課金 (完全版未購入) は鍵を出し、タップで課金カードを開く
+            // (2026-11-19 指示)。権限の確認中は安全側の鍵表示。
             {
-              key: "unmei",
-              label: navCopy.unmei,
-              href: "/unmei",
-              active: pathname.startsWith("/unmei"),
-              Icon: NatalWheelIcon,
+              key: "aisho",
+              label: navCopy.aisho ?? "相性",
+              href: "/aisho",
+              active: pathname.startsWith("/aisho"),
+              Icon: AishoIcon,
               locked:
-                (!hasToken && !isPaidNavigationPreview) ||
-                !hasUnmeiNavigationAccess,
+                !isPaidNavigationPreview && (!hasToken || !hasPaidAccess),
             },
             {
-              key: "tarot",
-              label: navCopy.tarot,
-              href: isPaidNavigationPreview ? "/tarot/dev-preview" : "/tarot",
-              active: pathname.startsWith("/tarot"),
-              Icon: TarotCardsIcon,
-              locked:
-                (!hasToken && !isPaidNavigationPreview) ||
-                !hasTarotNavigationAccess,
+              key: "types",
+              label: navCopy.types ?? "性格タイプ",
+              href: "/types",
+              active: pathname.startsWith("/types"),
+              Icon: TypesIcon,
             },
           ],
     [
       navCopy,
       hasToken,
       hasAliceNavigationAccess,
+      hasPaidAccess,
       hasTarotNavigationAccess,
       hasUnmeiNavigationAccess,
       isAstrologerPreview,
@@ -737,8 +811,65 @@ export function BottomNav() {
   );
 
   // フロー系ページに加え、自己診断が完了していない間はナビを描画しない。
+  // 診断案内 / 課金カード。ナビを描画しない状態 (未診断など) でも、
+  // Alice ページの切り替え (FortuneSwitcher) から開けるよう常にマウントする。
+  const overlays = (
+    <>
+      <TakoLockPopover
+        isOpen={diagnosisLockTarget !== null}
+        onClose={() => setDiagnosisLockTarget(null)}
+        locale={isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja"}
+        target={diagnosisLockTarget ?? "friend"}
+      />
+      {courseLockTarget ? (
+        <PaywallOverlay
+          ownerToken={ownerToken ?? undefined}
+          // 結果ページ外の共通ナビにはキャラ画像がないため、画像を明示しないと
+          // PCでも max-w-[460px] のモバイル向け単一カラムになる。スマホでは画像が
+          // hidden のまま、md 以上だけ既存の横長2カラム表示へ切り替える。
+          imageSrc={
+            courseLockTarget === "hoshiyomi" || courseLockTarget === "aisho"
+              ? FULL_ACCESS_PAYWALL_IMAGE
+              : FORTUNE_PAYWALL_IMAGE
+          }
+          imageAlt=""
+          locale={isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja"}
+          returnTo={courseLockTarget === "tarot" ? "me" : courseLockTarget}
+          ctaSource={
+            coursePaywallSource ?? `nav_locked_${courseLockTarget}`
+          }
+          products={
+            isKorean
+              ? TAROT_COURSE_PRODUCTS
+              : courseLockTarget === "hoshiyomi"
+              ? ALICE_COURSE_PRODUCTS
+              : courseLockTarget === "aisho"
+                ? AISHO_COURSE_PRODUCTS
+              : courseLockTarget === "tarot"
+                ? TAROT_COURSE_PRODUCTS
+                : UNMEI_COURSE_PRODUCTS
+          }
+          defaultProduct={
+            !isKorean && courseLockTarget === "unmei"
+              ? "premium_bundle"
+              : "full_access"
+          }
+          heading={
+            courseLockTarget === "hoshiyomi"
+              ? isKorean
+                ? undefined
+                : uiText("Aliceを試す・本格相談を選ぶ")
+              : undefined
+          }
+          previewMode={isCoursePaywallPreview}
+          onClose={closeCoursePaywall}
+        />
+      ) : null}
+    </>
+  );
+
   if (navHidden || (!hasToken && !isBottomNavPreview)) {
-    return null;
+    return overlays;
   }
 
   return (
@@ -786,7 +917,7 @@ export function BottomNav() {
                   uiText(" (準備中)")
                 }`}
                 className="relative flex flex-col items-center justify-center gap-1 py-2 select-none"
-                style={{ color: ACTIVE }}
+                style={{ color: LOCKED }}
               >
                 <span className="relative">
                   <Icon />
@@ -807,13 +938,15 @@ export function BottomNav() {
                 : it.key === "astrologer"
                   ? "astrologer"
                   : "friend";
-            const courseTarget =
+            const courseTarget: CourseLockTarget | null =
               it.key === "unmei"
                 ? "unmei"
                 : it.key === "tarot"
                   ? "tarot"
                 : it.key === "astrologer"
                   ? "hoshiyomi"
+                : it.key === "aisho"
+                  ? "aisho"
                   : null;
             return (
               <button
@@ -831,22 +964,7 @@ export function BottomNav() {
                     setCoursePaywallSource(null);
                     setDiagnosisLockTarget(diagnosisTarget);
                   } else if (courseTarget) {
-                    const source = `nav_locked_${courseTarget}`;
-                    if (!isCoursePaywallPreview) {
-                      track("paywall_scroll_clicked", {
-                        ownerToken,
-                        metadata: {
-                          source,
-                          page: trackingPageFromPathname(pathname),
-                          surface: courseTarget,
-                          destination: courseTarget,
-                          paywall_version: paywallVersion,
-                        },
-                      });
-                    }
-                    setDiagnosisLockTarget(null);
-                    setCoursePaywallSource(source);
-                    setCourseLockTarget(courseTarget);
+                    openCoursePaywall(courseTarget, `nav_locked_${courseTarget}`);
                   } else {
                     setCourseLockTarget(null);
                     setCoursePaywallSource(null);
@@ -854,7 +972,7 @@ export function BottomNav() {
                   }
                 }}
                 className="relative flex flex-col items-center justify-center gap-1 py-2 select-none touch-manipulation transition-transform duration-100 active:scale-90 active:opacity-70"
-                style={{ color: ACTIVE }}
+                style={{ color: LOCKED }}
               >
                 <span className="relative">
                   <Icon />
@@ -945,54 +1063,7 @@ export function BottomNav() {
           );
         })}
       </div>
-      <TakoLockPopover
-        isOpen={diagnosisLockTarget !== null}
-        onClose={() => setDiagnosisLockTarget(null)}
-        locale={isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja"}
-        target={diagnosisLockTarget ?? "friend"}
-      />
-      {courseLockTarget ? (
-        <PaywallOverlay
-          ownerToken={ownerToken ?? undefined}
-          // 結果ページ外の共通ナビにはキャラ画像がないため、画像を明示しないと
-          // PCでも max-w-[460px] のモバイル向け単一カラムになる。スマホでは画像が
-          // hidden のまま、md 以上だけ既存の横長2カラム表示へ切り替える。
-          imageSrc={
-            courseLockTarget === "hoshiyomi"
-              ? FULL_ACCESS_PAYWALL_IMAGE
-              : FORTUNE_PAYWALL_IMAGE
-          }
-          imageAlt=""
-          locale={isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja"}
-          returnTo={courseLockTarget === "tarot" ? "me" : courseLockTarget}
-          ctaSource={
-            coursePaywallSource ?? `nav_locked_${courseLockTarget}`
-          }
-          products={
-            isKorean
-              ? TAROT_COURSE_PRODUCTS
-              : courseLockTarget === "hoshiyomi"
-              ? ALICE_COURSE_PRODUCTS
-              : courseLockTarget === "tarot"
-                ? TAROT_COURSE_PRODUCTS
-                : UNMEI_COURSE_PRODUCTS
-          }
-          defaultProduct={
-            !isKorean && courseLockTarget === "unmei"
-              ? "premium_bundle"
-              : "full_access"
-          }
-          heading={
-            courseLockTarget === "hoshiyomi"
-              ? isKorean
-                ? undefined
-                : uiText("Aliceを試す・本格相談を選ぶ")
-              : undefined
-          }
-          previewMode={isCoursePaywallPreview}
-          onClose={closeCoursePaywall}
-        />
-      ) : null}
+      {overlays}
     </nav>
   );
 }

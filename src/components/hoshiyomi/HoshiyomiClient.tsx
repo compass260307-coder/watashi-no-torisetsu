@@ -1,5 +1,6 @@
 "use client";
 
+import { FortuneSwitcher } from "@/components/hoshiyomi/FortuneSwitcher";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, generateId, type UIMessage } from "ai";
 import Image from "next/image";
@@ -181,6 +182,8 @@ export function HoshiyomiClient({
         <TopHeader locale={locale === "en" ? "en" : locale === "id" ? "id" : "ja"} />
       )}
       <main className="bg-gradient-to-br from-[#F3F0FF] via-white to-[#FFF8E8] text-[#2E2E5C]">
+        {/* 占いの切り替え (Alice / 占星術 / タロット)。日本語の下部ナビは Alice 1枠にまとめた (2026-11-19)。 */}
+        {locale === "ja" ? <FortuneSwitcher className="relative z-10 pt-4" /> : null}
         <HoshiyomiHome
           remaining={remaining}
           totalCredits={totalCredits}
