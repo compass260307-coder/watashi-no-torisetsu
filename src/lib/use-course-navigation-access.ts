@@ -11,6 +11,8 @@ export type CourseNavigationAccess = {
   astrologer: boolean;
   unmei: boolean;
   tarot: boolean;
+  /** いずれかの有料商品 (full_access / premium_bundle) を購入済み。 */
+  paid: boolean;
 };
 
 /** 表示専用。Checkoutとコンテンツのサーバー認可は毎回DBで判定する。 */
@@ -51,5 +53,5 @@ export function useFullAccessStatus(ownerToken: string | null): FullAccessStatus
 
 export function useCourseNavigationAccess(ownerToken: string | null): CourseNavigationAccess | null {
   const access = useFullAccessStatus(ownerToken);
-  return ownerToken && access ? { ownerToken, astrologer: access.astrologer, unmei: access.unmei, tarot: access.tarot } : null;
+  return ownerToken && access ? { ownerToken, astrologer: access.astrologer, unmei: access.unmei, tarot: access.tarot, paid: access.full || access.premiumBundle } : null;
 }
