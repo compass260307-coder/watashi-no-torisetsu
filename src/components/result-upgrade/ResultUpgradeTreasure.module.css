@@ -1,0 +1,1292 @@
+/* 結果アップグレード: 完全版購入者向けクーポンを、Aliceの星空の書斎で宝箱から受け取る全画面演出。
+   絵（宝箱・Alice・背景）は羊毛フェルトの画像、動きはCSSでつける。
+   reduced-motion では動きを止め、開いた状態を静止表示する（末尾の指定）。 */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  overflow: hidden;
+  background: #0d1a33;
+  color: #fff7e6;
+  animation: overlay-in 0.4s ease-out both;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.closing {
+  animation: overlay-out 0.32s ease-in both;
+}
+
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; transform: scale(1.03); }
+}
+
+/* 舞台: 背景の絵（900x1599）と同じ比率の箱を画面の高さいっぱいに置き、宝箱やAliceを絵の中の位置に合わせる。
+   縦長のスマホでは左右が少し切れ、横長の画面では左右に同じ絵をぼかして敷く。 */
+.sceneBlur {
+  position: absolute;
+  inset: -6%;
+  pointer-events: none;
+  filter: blur(22px) brightness(0.55);
+}
+
+.sceneBlur img {
+  object-fit: cover;
+}
+
+.scene {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 100%;
+  aspect-ratio: 900 / 1599;
+  transform: translateX(-50%);
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.backdrop img {
+  object-fit: cover;
+}
+
+.backdropShade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(80% 50% at 50% 62%, rgba(13, 26, 51, 0) 0%, rgba(13, 26, 51, 0.25) 62%, rgba(8, 15, 32, 0.7) 100%),
+    linear-gradient(180deg, rgba(8, 15, 32, 0.6) 0%, rgba(8, 15, 32, 0) 26%);
+  transition: opacity 0.9s ease-out;
+}
+
+.backdropShadeOpen {
+  opacity: 0.65;
+}
+
+/* 開いた瞬間から回る、温かい光の筋（控えめ）。 */
+.rays {
+  position: absolute;
+  left: 50%;
+  top: 58%;
+  width: 190vmax;
+  height: 190vmax;
+  pointer-events: none;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 214, 140, 0.13) 0deg 4deg,
+    rgba(255, 214, 140, 0) 4deg 14deg
+  );
+  -webkit-mask-image: radial-gradient(circle, #000 0%, rgba(0, 0, 0, 0.5) 16%, transparent 40%);
+  mask-image: radial-gradient(circle, #000 0%, rgba(0, 0, 0, 0.5) 16%, transparent 40%);
+  opacity: 0;
+  transform: translate(-50%, -50%);
+  transition: opacity 0.8s ease-out;
+  animation: rays-spin 30s linear infinite;
+}
+
+.raysOn {
+  opacity: 1;
+}
+
+@keyframes rays-spin {
+  to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+.flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(circle at 50% 58%, #fffaf0 0%, rgba(255, 236, 190, 0.8) 24%, rgba(255, 214, 140, 0) 62%);
+  opacity: 0;
+}
+
+.flashOn {
+  animation: flash 0.8s ease-out both;
+}
+
+@keyframes flash {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.close {
+  position: absolute;
+  top: calc(14px + env(safe-area-inset-top));
+  right: 14px;
+  z-index: 10;
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  border: 1px solid rgba(234, 204, 141, 0.45);
+  border-radius: 999px;
+  background: rgba(13, 26, 51, 0.55);
+  padding: 0 14px;
+  color: #f3e3bd;
+  font-size: 12px;
+  font-weight: 800;
+  backdrop-filter: blur(6px);
+}
+
+.heading,
+.revealTop {
+  position: absolute;
+  top: calc(8% + env(safe-area-inset-top));
+  left: 50%;
+  z-index: 8;
+  width: min(92vw, 420px);
+  transform: translateX(-50%);
+  text-align: center;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.headingOut {
+  opacity: 0;
+  transform: translate(-50%, -10px);
+}
+
+.title {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.3em;
+  color: #eacc8d;
+}
+
+.lead {
+  margin: 0;
+  font-size: clamp(21px, 5.8vw, 28px);
+  font-weight: 900;
+  line-height: 1.5;
+  color: #fff7e6;
+  text-shadow: 0 2px 14px rgba(8, 15, 32, 0.9), 0 0 24px rgba(234, 204, 141, 0.35);
+}
+
+/* 宝箱は台座の天面の中心（絵の上から約78.5%）に底を合わせる。幅は舞台の54%。 */
+.stage {
+  position: absolute;
+  left: 23%;
+  bottom: 21.5%;
+  z-index: 3;
+  width: 54%;
+}
+
+.glow {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  width: 150%;
+  aspect-ratio: 1;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 220, 150, 0.42) 0%, rgba(255, 196, 110, 0.12) 40%, transparent 68%);
+  transform: translate(-50%, -50%) scale(0.8);
+  opacity: 0.6;
+  transition: transform 0.9s cubic-bezier(0.2, 1, 0.3, 1), opacity 0.9s ease-out;
+  animation: glow-pulse 2.6s ease-in-out infinite;
+}
+
+.glowOn {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1.3);
+}
+
+@keyframes glow-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.2); }
+}
+
+.chestButton {
+  all: unset;
+  position: relative;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.chestButton:focus-visible .chest {
+  filter: drop-shadow(0 0 16px rgba(255, 214, 140, 0.95));
+}
+
+.chestButton:disabled {
+  cursor: default;
+}
+
+/* 宝箱の画像は 880x914。閉じた絵と開いた絵は同じ位置に重ねてある。 */
+.chest {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 880 / 914;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 18px 24px rgba(4, 8, 20, 0.55));
+}
+
+.chestImage {
+  object-fit: contain;
+  transition: opacity 0.12s linear;
+}
+
+.hidden {
+  opacity: 0;
+}
+
+.dropIn {
+  animation: drop-in 0.95s cubic-bezier(0.22, 1.2, 0.36, 1) both;
+}
+
+@keyframes drop-in {
+  0% { opacity: 0; transform: translateY(-58vh) scale(0.72) rotate(-7deg); }
+  55% { opacity: 1; transform: translateY(12px) scale(1.07, 0.9) rotate(0deg); }
+  75% { transform: translateY(-8px) scale(0.97, 1.03); }
+  100% { transform: none; }
+}
+
+.idle {
+  animation: idle-float 2.8s ease-in-out infinite;
+}
+
+@keyframes idle-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(-1deg); }
+}
+
+.charging {
+  animation: charge 0.8s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes charge {
+  0% { transform: none; }
+  12% { transform: rotate(-4deg) scale(1.02); }
+  26% { transform: rotate(4deg) scale(1.04); }
+  40% { transform: rotate(-6deg) scale(1.06); }
+  54% { transform: rotate(6deg) scale(1.08); }
+  68% { transform: rotate(-4deg) scale(1.1); }
+  84% { transform: rotate(2deg) scale(1.14, 0.88); }
+  100% { transform: scale(1.16, 0.86); }
+}
+
+.opened {
+  animation: settle 0.65s cubic-bezier(0.22, 1.5, 0.36, 1) both;
+}
+
+@keyframes settle {
+  0% { transform: scale(1.16, 0.86); }
+  45% { transform: scale(0.95, 1.08) translateY(-10px); }
+  100% { transform: none; }
+}
+
+/* 閉じた宝箱のふたのすき間から漏れる光。 */
+.seam {
+  position: absolute;
+  left: 9%;
+  right: 9%;
+  top: 46%;
+  height: 4%;
+  z-index: 3;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255, 224, 150, 0) 0%, #ffe39a 30%, #fff6d6 50%, #ffe39a 70%, rgba(255, 224, 150, 0) 100%);
+  filter: blur(5px);
+  mix-blend-mode: screen;
+  opacity: 0.45;
+  pointer-events: none;
+  animation: seam 1.7s ease-in-out infinite;
+}
+
+.seamCharging {
+  animation: seam-charge 0.8s ease-in both;
+}
+
+.seamHidden {
+  opacity: 0;
+  animation: none;
+}
+
+@keyframes seam {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 0.65; }
+}
+
+@keyframes seam-charge {
+  from { opacity: 0.5; transform: scaleY(1); }
+  to { opacity: 1; transform: scaleY(2.6); filter: blur(7px); }
+}
+
+/* 開いた宝箱の口から上へ伸びる光の柱。口は画像の上から約37%の位置。 */
+.beam {
+  position: absolute;
+  left: 50%;
+  bottom: 60%;
+  z-index: 1;
+  width: 64%;
+  height: 130%;
+  pointer-events: none;
+  background: radial-gradient(60% 100% at 50% 100%, rgba(255, 214, 130, 0.75) 0%, rgba(255, 200, 110, 0.22) 50%, rgba(255, 200, 110, 0) 80%);
+  filter: blur(14px);
+  mix-blend-mode: screen;
+  opacity: 0;
+  transform: translateX(-50%) scaleY(0.2);
+  transform-origin: 50% 100%;
+}
+
+.beamOn {
+  animation: beam 0.9s cubic-bezier(0.2, 1, 0.3, 1) 0.06s both;
+}
+
+@keyframes beam {
+  from { opacity: 0; transform: translateX(-50%) scaleY(0.2); }
+  to { opacity: 0.7; transform: translateX(-50%) scaleY(1); }
+}
+
+/* Alice。宝箱が着地したあとに左下から現れ、開くと跳ねて喜ぶ。 */
+.alice {
+  position: absolute;
+  left: 9%;
+  bottom: 18%;
+  z-index: 5;
+  width: 27%;
+  aspect-ratio: 520 / 711;
+  pointer-events: none;
+  filter: drop-shadow(0 12px 16px rgba(4, 8, 20, 0.5));
+  transform-origin: 50% 100%;
+  animation: alice-in 0.7s cubic-bezier(0.22, 1.4, 0.36, 1) 0.75s both, alice-sway 3.2s ease-in-out 1.6s infinite;
+}
+
+.aliceHop {
+  animation: alice-hop 0.9s cubic-bezier(0.3, 1.5, 0.5, 1) 0.15s both, alice-sway 3.2s ease-in-out 1.2s infinite;
+}
+
+.alice img {
+  object-fit: contain;
+}
+
+@keyframes alice-in {
+  0% { opacity: 0; transform: translate(-30%, 20%) scale(0.6) rotate(-10deg); }
+  100% { opacity: 1; transform: none; }
+}
+
+@keyframes alice-sway {
+  0%, 100% { transform: rotate(-2deg); }
+  50% { transform: rotate(2deg) translateY(-4px); }
+}
+
+@keyframes alice-hop {
+  0% { transform: none; }
+  30% { transform: translateY(-26%) rotate(-6deg) scale(1.04); }
+  55% { transform: translateY(0) scale(1.06, 0.94); }
+  75% { transform: translateY(-8%) rotate(3deg); }
+  100% { transform: none; }
+}
+
+/* 宝箱の口から弾けるフェルトの星。 */
+.sparkle {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  z-index: 6;
+  width: var(--size);
+  height: var(--size);
+  margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
+  pointer-events: none;
+  animation: sparkle 1.2s cubic-bezier(0.12, 0.8, 0.3, 1) var(--delay) both;
+}
+
+@keyframes sparkle {
+  0% { opacity: 1; transform: translate(0, 0) scale(0) rotate(0deg); }
+  55% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1) rotate(var(--rot)); }
+}
+
+/* 上から舞い落ちるフェルトのハート・花・星。 */
+.confetti {
+  position: absolute;
+  top: -8vh;
+  left: var(--x);
+  z-index: 2;
+  width: var(--size);
+  height: var(--size);
+  pointer-events: none;
+  animation: confetti-fall var(--duration) cubic-bezier(0.25, 0.4, 0.5, 1) var(--delay) both;
+}
+
+.confetti img,
+.confetti svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+@keyframes confetti-fall {
+  0% { opacity: 1; transform: translate3d(0, 0, 0) rotate(0deg); }
+  85% { opacity: 1; }
+  100% { opacity: 0; transform: translate3d(var(--drift), 115vh, 0) rotate(var(--rot)); }
+}
+
+/* クーポン券は宝箱の口から回転しながら浮かび上がり、宝箱の上で止まる。 */
+.couponRise {
+  position: absolute;
+  left: 50%;
+  bottom: 49%;
+  z-index: 7;
+  width: min(94vw, 92%, 420px);
+  animation: coupon-rise 1.15s cubic-bezier(0.2, 1.15, 0.3, 1) 0.28s both;
+}
+
+@keyframes coupon-rise {
+  0% { opacity: 0; transform: translate(-50%, 85%) scale(0.18) rotate(-8deg); }
+  22% { opacity: 1; }
+  70% { transform: translate(-50%, -6%) scale(1.06) rotate(2deg); }
+  100% { transform: translate(-50%, 0) scale(1) rotate(0deg); }
+}
+
+.couponFloat {
+  animation: coupon-float 3.2s ease-in-out 1.5s infinite;
+}
+
+@keyframes coupon-float {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50% { transform: translateY(-6px) rotate(1deg); }
+}
+
+/* フェルトのクーポン券（演出の中とチャットの中で共通）。
+   文字ごと刺しゅうで描いた絵（1000x493）。スタンプの大きさは券の幅を基準に決める。 */
+.ticket {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1000 / 493;
+  container-type: inline-size;
+  user-select: none;
+}
+
+.ticket img {
+  object-fit: contain;
+}
+
+.ticketShadow {
+  filter: drop-shadow(0 16px 24px rgba(4, 8, 20, 0.55)) drop-shadow(0 0 20px rgba(255, 214, 140, 0.35));
+}
+
+.ticketInChat {
+  filter: drop-shadow(0 8px 14px rgba(30, 44, 90, 0.18));
+}
+
+/* 受け取り済みのスタンプ（チャットに残る券だけ）。 */
+.ticketStamp {
+  position: absolute;
+  right: 2.5%;
+  top: 14%;
+  display: flex;
+  width: 15.5cqw;
+  aspect-ratio: 1;
+  align-items: center;
+  justify-content: center;
+  border: 0.6cqw solid #2e8a5b;
+  border-radius: 50%;
+  color: #2e8a5b;
+  font-size: 2.8cqw;
+  font-weight: 900;
+  line-height: 1.25;
+  text-align: center;
+  transform: rotate(-12deg);
+  background: rgba(255, 250, 238, 0.55);
+  box-shadow: inset 0 0 0 0.6cqw rgba(255, 250, 238, 0.9), inset 0 0 0 1cqw #2e8a5b;
+  opacity: 0.92;
+}
+
+/* 開いたあとの見出しとボタン。 */
+.revealBottom {
+  position: absolute;
+  left: 50%;
+  bottom: calc(6% + env(safe-area-inset-bottom));
+  z-index: 8;
+  display: flex;
+  width: min(92vw, 420px);
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.revealHeadline {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 900;
+  color: #fff7e6;
+  text-shadow: 0 2px 16px rgba(8, 15, 32, 0.9), 0 0 26px rgba(234, 204, 141, 0.55);
+  animation: pop-in 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) 1.05s both;
+}
+
+.receive {
+  display: inline-flex;
+  min-height: 56px;
+  width: min(80vw, 320px);
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #c9963a 0%, #a87322 100%);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  box-shadow:
+    0 5px 0 #7f5518,
+    0 16px 30px rgba(201, 150, 58, 0.4),
+    inset 0 2px 0 rgba(255, 236, 190, 0.6);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  animation: fade-up 0.5s ease-out 1.45s both;
+}
+
+.receive:active {
+  transform: translateY(4px);
+  box-shadow:
+    0 1px 0 #7f5518,
+    0 8px 18px rgba(201, 150, 58, 0.3),
+    inset 0 2px 0 rgba(255, 236, 190, 0.6);
+}
+
+.receive:focus-visible {
+  outline: 3px solid #fff7e6;
+  outline-offset: 4px;
+}
+
+.hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(8% + env(safe-area-inset-bottom));
+  z-index: 4;
+  margin: 0;
+  display: inline-flex;
+  white-space: nowrap;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(234, 204, 141, 0.45);
+  border-radius: 999px;
+  background: rgba(13, 26, 51, 0.6);
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 900;
+  color: #fff3d6;
+  backdrop-filter: blur(6px);
+  animation: hint-bob 1.4s ease-in-out infinite;
+}
+
+@keyframes hint-bob {
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, -4px); }
+}
+
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay,
+  .closing,
+  .backdrop,
+  .rays,
+  .glow,
+  .dropIn,
+  .idle,
+  .charging,
+  .opened,
+  .seam,
+  .seamCharging,
+  .beamOn,
+  .alice,
+  .aliceHop,
+  .couponRise,
+  .couponFloat,
+  .revealHeadline,
+  .receive,
+  .hint {
+    animation: none !important;
+  }
+  .hint {
+    transform: translateX(-50%);
+  }
+  .glow,
+  .rays,
+  .heading,
+  .backdropShade {
+    transition: none !important;
+  }
+  .couponRise {
+    transform: translate(-50%, 0);
+  }
+  .beamOn {
+    opacity: 0.7;
+    transform: translateX(-50%);
+  }
+  .flash,
+  .sparkle,
+  .confetti {
+    display: none;
+  }
+}
+
+/* ===== 受け取ったあと: クーポンが値札に貼りつき、¥1,398 が ¥899 になる演出 ===== */
+
+/* クーポン券は小さくなりながら値札の右上へ飛んでいく。 */
+.couponToTag {
+  animation: coupon-to-tag 0.55s cubic-bezier(0.5, 0, 0.75, 0.3) both;
+}
+
+@keyframes coupon-to-tag {
+  0% { opacity: 1; transform: translate(-50%, 0) scale(1) rotate(0deg); }
+  80% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + 34%), -28%) scale(0.3) rotate(14deg); }
+}
+
+/* 値札（1000x518）。数字を書ける範囲は 横17〜94% / 縦35〜89%。 */
+.priceTag {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  z-index: 7;
+  width: min(88vw, 360px);
+  aspect-ratio: 1000 / 518;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 16px 24px rgba(4, 8, 20, 0.55)) drop-shadow(0 0 18px rgba(255, 214, 140, 0.3));
+  animation: tag-in 0.5s cubic-bezier(0.22, 1.4, 0.36, 1) both;
+}
+
+.priceTag > img {
+  object-fit: contain;
+}
+
+.tagShake {
+  animation: tag-in 0.5s cubic-bezier(0.22, 1.4, 0.36, 1) both, tag-shake 0.38s ease-in-out 0.5s both;
+}
+
+@keyframes tag-in {
+  0% { opacity: 0; transform: translateX(-50%) translateY(18px) scale(0.6) rotate(-4deg); }
+  100% { opacity: 1; transform: translateX(-50%) scale(1) rotate(0deg); }
+}
+
+@keyframes tag-shake {
+  0%, 100% { transform: translateX(-50%) rotate(0deg); }
+  25% { transform: translateX(-50%) rotate(-3deg) scale(1.03); }
+  55% { transform: translateX(-50%) rotate(2.5deg); }
+  80% { transform: translateX(-50%) rotate(-1deg); }
+}
+
+/* 値札の右上に貼りつくクーポン（シール）。 */
+.tagSticker {
+  position: absolute;
+  right: -8%;
+  top: 14%;
+  z-index: 3;
+  width: 36%;
+  transform: rotate(14deg);
+  filter: drop-shadow(0 6px 8px rgba(4, 8, 20, 0.35));
+  animation: sticker-slap 0.42s cubic-bezier(0.2, 1.6, 0.4, 1) 0.5s both;
+}
+
+@keyframes sticker-slap {
+  0% { opacity: 0; transform: rotate(24deg) scale(1.7); }
+  60% { opacity: 1; transform: rotate(10deg) scale(0.92); }
+  100% { opacity: 1; transform: rotate(14deg) scale(1); }
+}
+
+.tagBurst {
+  position: absolute;
+  right: 10%;
+  top: 26%;
+  z-index: 4;
+  width: 0;
+  height: 0;
+}
+
+.tagBurst .sparkle {
+  left: 0;
+  top: 0;
+}
+
+/* 刺しゅうの数字を並べる。高さは --h、カンマは小さく下へ寄せる。 */
+.price {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0;
+  height: var(--h);
+  line-height: 0;
+}
+
+.price img {
+  display: block;
+  height: 100%;
+  width: auto;
+  margin: 0 -1.5%;
+}
+
+.price img.comma {
+  height: 46%;
+  margin: 0 -0.5%;
+  transform: translateY(16%);
+}
+
+.price img.yen {
+  margin-right: 1%;
+}
+
+/* もとの値段。大きく出てから、取り消し線のあと小さく左上へ下がる。 */
+.oldPrice {
+  position: absolute;
+  left: 55.5%;
+  top: 62%;
+  z-index: 2;
+  height: 34%;
+  transform: translate(-50%, -50%);
+  transition: left 0.5s cubic-bezier(0.3, 1, 0.4, 1), top 0.5s cubic-bezier(0.3, 1, 0.4, 1), height 0.5s cubic-bezier(0.3, 1, 0.4, 1), opacity 0.5s ease;
+  animation: fade-in-quick 0.3s ease-out 0.15s both;
+}
+
+.oldPrice .price {
+  --h: 100%;
+}
+
+.oldPriceSmall {
+  left: 37%;
+  top: 41%;
+  height: 13%;
+  opacity: 0.6;
+}
+
+@keyframes fade-in-quick {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 金の糸の取り消し線。縫い進むように左から引かれる。 */
+.strike {
+  position: absolute;
+  left: -6%;
+  right: -6%;
+  top: 0;
+  bottom: 0;
+  width: 112%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.strike svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.strike {
+  clip-path: inset(0 100% 0 0);
+}
+
+.strikeOn {
+  animation: strike-sew 0.45s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes strike-sew {
+  from { clip-path: inset(0 100% 0 0); }
+  to { clip-path: inset(0 0 0 0); }
+}
+
+/* 新しい値段。1,398 から 899 まで数えて止まり、弾む。 */
+.newPrice {
+  position: absolute;
+  left: 56%;
+  top: 69%;
+  z-index: 2;
+  height: 29%;
+  transform: translate(-50%, -50%);
+  animation: fade-in-quick 0.25s ease-out both;
+}
+
+.newPrice .price {
+  --h: 100%;
+}
+
+.newPriceLanded {
+  animation: price-land 0.55s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+
+@keyframes price-land {
+  0% { transform: translate(-50%, -50%) scale(1.28); }
+  55% { transform: translate(-50%, -50%) scale(0.94); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+
+.priceBurst {
+  position: absolute;
+  left: 56%;
+  top: 69%;
+  z-index: 4;
+  width: 0;
+  height: 0;
+}
+
+.priceBurst .sparkle {
+  left: 0;
+  top: 0;
+}
+
+/* 値段が決まったあとの見出し・説明・購入ボタン。 */
+.offerSub {
+  margin: 8px auto 0;
+  max-width: 330px;
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1.6;
+  color: rgba(255, 247, 230, 0.92);
+  text-shadow: 0 1px 10px rgba(8, 15, 32, 0.95);
+  animation: fade-up 0.5s ease-out 0.15s both;
+}
+
+.offerHeadline {
+  margin: 0;
+  font-size: clamp(24px, 7vw, 30px);
+  font-weight: 900;
+  color: #fff7e6;
+  text-shadow: 0 2px 16px rgba(8, 15, 32, 0.9), 0 0 26px rgba(234, 204, 141, 0.55);
+  animation: pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.offerBottom {
+  position: absolute;
+  left: 50%;
+  bottom: calc(3.5% + env(safe-area-inset-bottom));
+  z-index: 9;
+  display: flex;
+  width: min(88vw, 360px);
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  transform: translateX(-50%);
+  animation: fade-up-centered 0.5s ease-out 0.25s both;
+}
+
+@keyframes fade-up-centered {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.offerCta {
+  width: 100%;
+}
+
+.offerLinks {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(255, 243, 214, 0.85);
+  text-shadow: 0 1px 8px rgba(8, 15, 32, 0.95);
+}
+
+.offerLater {
+  border: 0;
+  background: none;
+  padding: 6px 2px;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.glyphPreload {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .couponToTag,
+  .priceTag,
+  .tagShake,
+  .tagSticker,
+  .oldPrice,
+  .newPrice,
+  .newPriceLanded,
+  .offerSub,
+  .offerHeadline,
+  .offerBottom {
+    animation: none !important;
+  }
+  .oldPrice {
+    transition: none !important;
+  }
+  .strike,
+  .strikeOn {
+    animation: none !important;
+    clip-path: none;
+  }
+}
+
+/* ===== 値段が決まったあと: 値札は上へ小さく下がり、¥899 で手に入る特典をスライドで見せる ===== */
+
+.priceTagOffer {
+  bottom: calc(78.5% - env(safe-area-inset-top));
+  width: min(62vw, 250px);
+  transition: bottom 0.6s cubic-bezier(0.3, 1.2, 0.4, 1), width 0.6s cubic-bezier(0.3, 1.2, 0.4, 1);
+}
+
+.chestDim {
+  opacity: 0.55;
+  transition: opacity 0.6s ease;
+}
+
+/* 特典のスライド。カードが輪になって回る（正面・右奥・左奥が見える）。 */
+.deck {
+  position: absolute;
+  left: 50%;
+  top: 27%;
+  z-index: 8;
+  width: min(78vw, 296px);
+  height: min(46vh, 330px);
+  transform: translateX(-50%);
+  perspective: 900px;
+  animation: deck-in 0.6s cubic-bezier(0.22, 1.3, 0.36, 1) 0.2s both;
+}
+
+@keyframes deck-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(24px) scale(0.9); }
+  to { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+.benefitCard {
+  all: unset;
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 24px;
+  padding: 14px 16px 16px;
+  cursor: pointer;
+  text-align: center;
+  color: #1e2c5a;
+  background-color: #fff7e6;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.62  0 0 0 0 0.48  0 0 0 0 0.3  0 0 0 0.2 0'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>"),
+    radial-gradient(120% 80% at 50% 0%, #fffdf6 0%, #fff3d8 60%, #f5e1b8 100%);
+  box-shadow:
+    0 0 0 3px #e2b54e,
+    0 0 0 5px #a87322,
+    0 18px 30px rgba(4, 8, 20, 0.5);
+  transition:
+    transform 850ms cubic-bezier(0.34, 1.25, 0.64, 1),
+    filter 600ms ease,
+    opacity 450ms ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 金の糸の縫い目。 */
+.benefitCard::before {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border: 2px dashed #c9963a;
+  border-radius: 18px;
+  pointer-events: none;
+}
+
+.benefitCard:focus-visible {
+  outline: 3px solid #fff7e6;
+  outline-offset: 6px;
+}
+
+.benefitLabel {
+  position: relative;
+  display: inline-block;
+  border-radius: 999px;
+  background: #1e2c5a;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #fff3d6;
+  box-shadow: inset 0 0 0 1.5px rgba(242, 193, 78, 0.8);
+}
+
+.benefitVisual {
+  position: relative;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 8px;
+}
+
+.benefitVisual > img {
+  object-fit: contain;
+}
+
+.benefitTitle {
+  position: relative;
+  margin: 8px 0 0;
+  font-size: 16px;
+  font-weight: 900;
+  line-height: 1.45;
+  color: #1e2c5a;
+}
+
+.benefitBody {
+  position: relative;
+  margin: 4px 0 0;
+  font-size: 11.5px;
+  font-weight: 700;
+  line-height: 1.6;
+  color: #6a5236;
+}
+
+/* 特典①: 変身前 → 変身後。 */
+.beforeAfter {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2%;
+}
+
+.beforeImage {
+  position: relative;
+  width: 34%;
+  height: 74%;
+  opacity: 0.85;
+  filter: saturate(0.85);
+}
+
+.afterImage {
+  position: relative;
+  width: 52%;
+  height: 100%;
+}
+
+.beforeImage img,
+.afterImage img {
+  object-fit: contain;
+}
+
+.arrow {
+  flex: 0 0 auto;
+  width: 22px;
+  color: #c9963a;
+}
+
+.sampleBadge {
+  position: absolute;
+  right: 2%;
+  top: 0;
+  border-radius: 6px;
+  background: rgba(30, 44, 90, 0.85);
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 900;
+  color: #fff3d6;
+}
+
+.dots {
+  position: absolute;
+  left: 50%;
+  top: calc(27% + min(46vh, 330px) + 14px);
+  z-index: 8;
+  display: flex;
+  gap: 7px;
+  transform: translateX(-50%);
+  animation: fade-in-quick 0.4s ease-out 0.5s both;
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(255, 243, 214, 0.4);
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.dotActive {
+  width: 20px;
+  border-radius: 999px;
+  background: #f2c14e;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deck {
+    animation: none !important;
+  }
+  .benefitCard,
+  .priceTagOffer {
+    transition: none !important;
+  }
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ===== チャットの購入カード（受け取ったあと）。宝箱と同じフェルトの見た目で、値札と特典スライドを並べる ===== */
+
+.offerCard {
+  position: relative;
+  overflow: hidden;
+  border-radius: 26px;
+  margin: 6px 4px;
+  padding: 22px 14px 20px;
+  text-align: center;
+  color: #1e2c5a;
+  background-color: #fff7e6;
+  background-image:
+    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.62  0 0 0 0 0.48  0 0 0 0 0.3  0 0 0 0.2 0'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>"),
+    radial-gradient(120% 70% at 50% 0%, #fffdf6 0%, #fff3d8 60%, #f5e1b8 100%);
+  box-shadow:
+    0 0 0 3px #e2b54e,
+    0 0 0 5px #a87322,
+    0 14px 30px rgba(154, 106, 36, 0.22);
+  animation: fade-up 0.5s ease-out both;
+}
+
+.offerCard::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border: 2px dashed #c9963a;
+  border-radius: 20px;
+  pointer-events: none;
+}
+
+.offerCardSaved {
+  position: relative;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: #9a6a24;
+}
+
+.offerCardTax {
+  position: relative;
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 900;
+  color: #1e2c5a;
+}
+
+.offerCardHeading {
+  position: relative;
+  display: inline-block;
+  margin: 18px 0 0;
+  border-radius: 999px;
+  background: #1e2c5a;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #fff3d6;
+  box-shadow: inset 0 0 0 1.5px rgba(242, 193, 78, 0.8);
+}
+
+.offerCardCta {
+  position: relative;
+  margin: 18px auto 0;
+  max-width: 360px;
+}
+
+.offerCardNote {
+  position: relative;
+  margin: 10px 0 0;
+  font-size: 11px;
+  font-weight: 800;
+  color: #8a7356;
+}
+
+/* 値札を動かさずに置く（宝箱の演出の最後と同じ見た目）。 */
+.priceTagInline {
+  position: relative;
+  left: auto;
+  bottom: auto;
+  z-index: 1;
+  width: min(84%, 290px);
+  margin: 14px auto 0;
+  transform: none;
+  animation: none;
+  filter: drop-shadow(0 10px 14px rgba(154, 106, 36, 0.25));
+}
+
+.priceTagInline .tagSticker,
+.priceTagInline .oldPrice,
+.priceTagInline .newPrice {
+  animation: none;
+}
+
+.priceTagInline .strike {
+  clip-path: none;
+}
+
+/* スライドをカードの中に置く。奥のカードは左右へはみ出すので、外側のカードで切る。 */
+.deckInlineWrap {
+  position: relative;
+  margin-top: 14px;
+}
+
+.deckInline {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: min(100%, 290px);
+  height: 330px;
+  margin: 0 auto;
+  transform: none;
+  animation: none;
+}
+
+.dotsInline {
+  position: static;
+  justify-content: center;
+  margin-top: 14px;
+  transform: none;
+  animation: none;
+}
+
+.dotsInline .dot {
+  background: rgba(30, 44, 90, 0.2);
+}
+
+.dotsInline .dotActive {
+  background: #c9963a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .offerCard {
+    animation: none !important;
+  }
+}
