@@ -19,7 +19,7 @@ const ResultUpgradeChat = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="flex h-full min-h-0 items-center justify-center rounded-[28px] bg-[#F5F4FB] text-[14px] font-bold text-[#2E2E5C]/60">
+      <div className="flex h-full min-h-0 items-center justify-center bg-[#FBF8F3] text-[14px] font-bold text-[#2E2E5C]/60">
         <UpgradeLoadingLabel />
       </div>
     ),
@@ -62,7 +62,6 @@ export function ResultUpgradeChatLauncher({
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const viewportRef = useRef<HTMLDivElement | null>(null);
-  const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -82,34 +81,12 @@ export function ResultUpgradeChatLauncher({
       overflow: "hidden", position: "fixed", top: `-${scrollY}px`, width: "100%",
     });
     const viewport = window.visualViewport;
-    let stableHeight = viewport?.height ?? window.innerHeight;
-    let stableWidth = window.innerWidth;
-    let keyboardOpen = false;
-    let previousInset = 0;
+    // LINEと同じく、キーボードが出たら見えている範囲いっぱいにチャットを縮め、入力欄をキーボードのすぐ上に置く。
     const syncViewport = () => {
       const overlay = viewportRef.current;
       if (!overlay) return;
-      const visibleHeight = viewport?.height ?? window.innerHeight;
-      const offsetTop = viewport?.offsetTop ?? 0;
-      if (window.innerWidth !== stableWidth) {
-        stableWidth = window.innerWidth;
-        stableHeight = window.innerHeight;
-        keyboardOpen = false;
-      }
-      const editing = ["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName ?? "");
-      keyboardOpen = stableHeight - visibleHeight > 120 && (editing || keyboardOpen);
-      if (!keyboardOpen) stableHeight = visibleHeight;
-      // The keyboard occludes the chat; it must not resize/recenter the whole panel.
-      overlay.style.top = `${offsetTop}px`;
-      overlay.style.height = `${stableHeight}px`;
-      const panelBottom = panelRef.current?.getBoundingClientRect().bottom ?? offsetTop + stableHeight;
-      const inset = keyboardOpen ? Math.max(0, panelBottom - offsetTop - visibleHeight + 8) : 0;
-      overlay.style.setProperty("--upgrade-keyboard-inset", `${inset}px`);
-      if (inset > 0 && inset !== previousInset) {
-        const conversation = panelRef.current?.querySelector<HTMLElement>("[data-upgrade-conversation]");
-        conversation?.scrollTo({ top: conversation.scrollHeight, behavior: "instant" });
-      }
-      previousInset = inset;
+      overlay.style.top = `${viewport?.offsetTop ?? 0}px`;
+      overlay.style.height = `${viewport?.height ?? window.innerHeight}px`;
     };
     syncViewport();
     viewport?.addEventListener("resize", syncViewport);
@@ -152,19 +129,20 @@ export function ResultUpgradeChatLauncher({
               role="dialog"
               aria-modal="true"
               aria-label={copy.dialog}
-              className="fixed inset-x-0 top-0 h-svh z-[120] flex items-center justify-center bg-[#2E2E5C]/60 p-2 backdrop-blur-sm md:p-6"
+              onClick={(event) => { if (event.target === event.currentTarget) setOpen(false); }}
+              className="fixed inset-x-0 top-0 z-[120] flex h-svh justify-center overscroll-none bg-[#FBF8F3] md:items-center md:bg-[#2E2E5C]/55 md:p-6 md:backdrop-blur-sm"
             >
-              <div ref={panelRef} className="relative h-full max-h-[760px] min-h-0 w-full max-w-[720px] overflow-hidden rounded-[28px] shadow-[0_24px_70px_rgba(21,21,55,0.35)]">
+              <div className="relative h-full min-h-0 w-full overflow-hidden animate-chat-sheet-in md:max-h-[860px] md:max-w-[560px] md:rounded-[28px] md:shadow-[0_24px_70px_rgba(21,21,55,0.35)]">
                 <button
                   ref={closeRef}
                   type="button"
                   aria-label={copy.close}
                   onClick={() => setOpen(false)}
-                  className="absolute right-4 top-4 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white transition-colors hover:bg-white/25 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  className="absolute left-1.5 top-2.5 z-20 flex h-10 w-10 items-center justify-center rounded-full text-[#2E2E5C] transition-colors hover:bg-[#F2F1F8] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5B5BEF]"
                 >
-                  <span aria-hidden="true" className="text-[17px] leading-none">
-                    ✕
-                  </span>
+                  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M15 5l-7 7 7 7" />
+                  </svg>
                 </button>
                 <ResultUpgradeChat
                   locale={locale}
