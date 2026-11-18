@@ -6,7 +6,8 @@ import { useNavigationCopy, useNavigationText } from "@/i18n/ui/use-navigation-c
 //   - fixed bottom-0 全幅・白地・上端 0.5px 境界線 + 淡い上向き影・角丸なし。
 //   - 中身は max-w-[480px] 中央寄せ (スマホは全幅を均等分割・PCはアプリ風に中央)。
 //   - 5列均等 grid。各列アイコン(インラインSVG 32px)+ラベル(11px)縦積み。
-//   - 配色は全ネイビー濃淡: アクティブ #2A3A5C / 非アクティブ #9BA3B4。
+//   - 配色: 全タブ濃いネイビー #2A3A5C で統一 (2026-11-19 指示: 薄いタブが読みにくい)。
+//     現在地はインジケーターバーで示す。
 //   - アクティブ項目の上端に短いインジケーターバー (幅34px・高さ3px・角丸)。
 //   - iOS セーフエリア: paddingBottom: env(safe-area-inset-bottom)。
 //   - アクティブ判定は usePathname()。トリセツ(2) の URL は既存 HamburgerMenu と同じく
@@ -32,10 +33,6 @@ import {
 } from "@/lib/tako-attention";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
-import {
-  UNMEI_ATTENTION_PENDING_KEY,
-  unmeiAttentionImpressionKey,
-} from "@/lib/unmei-attention";
 import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -59,9 +56,8 @@ const TAROT_PAYWALL_HASH = "#unlock-tarot";
 
 type CourseLockTarget = "hoshiyomi" | "unmei" | "tarot";
 
-// アクティブ=ブランドのディープネイビー / 非アクティブ=グレーネイビー。
+// 全タブ共通の文字・アイコン色 (ブランドのディープネイビー)。
 const ACTIVE = "#2A3A5C";
-const INACTIVE = "#9BA3B4";
 
 // 下部固定CTA (StickyCtaFooter / Floating* CTA) を持つフロー系ページでは、
 // ナビと衝突する / フローに集中させたいため表示しない。前方一致で判定。
@@ -337,7 +333,6 @@ export function BottomNav() {
     window.addEventListener(TAKO_BUBBLE_REPLAY_EVENT, replay);
     return () => window.removeEventListener(TAKO_BUBBLE_REPLAY_EVENT, replay);
   }, []);
-  const [showUnmeiAttention, setShowUnmeiAttention] = useState(false);
   // 未診断者への「自己診断」誘いバッジ (評価送信後ページで付与 / 2026-08-04)。
   const [showMeAttention, setShowMeAttention] = useState(false);
   const navHidden = HIDE_ON_PREFIXES.some((p) => pathname.startsWith(p));
@@ -361,7 +356,6 @@ export function BottomNav() {
     const evaluate = () => {
       let token: string | null = null;
       let attentionPending = false;
-      let unmeiPending = false;
       let mePending = false;
       try {
         token = localStorage.getItem("torisetsu_owner_token");
@@ -391,24 +385,7 @@ export function BottomNav() {
           }
         }
 
-        // 運命タブの赤バッジ (友達診断と同じ流儀)。/unmei 上では出さない
-        // (未確認解除は /unmei レイアウト内の UnmeiAttentionClear が担う)。
-        const unmeiPendingToken = localStorage.getItem(
-          UNMEI_ATTENTION_PENDING_KEY,
-        );
-        const unmeiPath = `${localePrefix}/unmei`;
-        if (!pathname.startsWith(unmeiPath)) {
-          unmeiPending = Boolean(
-            token && unmeiPendingToken === token && !navHidden,
-          );
-          if (unmeiPending && token) {
-            const impressionKey = unmeiAttentionImpressionKey(token);
-            if (localStorage.getItem(impressionKey) !== "1") {
-              localStorage.setItem(impressionKey, "1");
-              track("unmei_nav_badge_shown", { ownerToken: token });
-            }
-          }
-        }
+        // 運命(占星術)タブの赤バッジは 2026-11-19 に廃止 (赤バッジは友達診断だけ)。
 
         // 「自己診断」誘いバッジ: 評価送信後ページ (MeAttentionOnGuide) が付与した
         // pending を未診断の間だけ表示する。診断済みになった / 目的地 (/diagnosis) に
@@ -442,7 +419,6 @@ export function BottomNav() {
       setHasToken(Boolean(token));
       setOwnerToken(token);
       setShowTakoAttention(attentionPending);
-      setShowUnmeiAttention(unmeiPending);
       setShowMeAttention(mePending);
     };
     evaluate();
@@ -497,6 +473,7 @@ export function BottomNav() {
   const hasAliceNavigationAccess =
     !isCoursePaywallPreview &&
     (isPaidNavigationPreview || (resolvedCourseAccess?.astrologer ?? false));
+  const hasPaidAccess = resolvedCourseAccess?.paid ?? false;
   // タロットは常時表示し、権限のない間は鍵付きにする。
   const hasTarotNavigationAccess =
     isPaidNavigationPreview || (resolvedCourseAccess?.tarot ?? false);
@@ -793,10 +770,11 @@ export function BottomNav() {
       >
         {items.map((it) => {
           const { Icon } = it;
+          // 友達診断のバッジ・吹き出しは課金後は出さない (2026-11-19 指示)。
           const hasAttention =
             (it.key === "friend" &&
-              (showTakoAttention || isTakoAttentionPreview)) ||
-            (it.key === "unmei" && showUnmeiAttention) ||
+              (isTakoAttentionPreview ||
+                (showTakoAttention && !hasPaidAccess))) ||
             (it.key === "me" && showMeAttention);
           if (it.disabled) {
             return (
@@ -808,7 +786,7 @@ export function BottomNav() {
                   uiText(" (準備中)")
                 }`}
                 className="relative flex flex-col items-center justify-center gap-1 py-2 select-none"
-                style={{ color: INACTIVE }}
+                style={{ color: ACTIVE }}
               >
                 <span className="relative">
                   <Icon />
@@ -876,7 +854,7 @@ export function BottomNav() {
                   }
                 }}
                 className="relative flex flex-col items-center justify-center gap-1 py-2 select-none touch-manipulation transition-transform duration-100 active:scale-90 active:opacity-70"
-                style={{ color: INACTIVE }}
+                style={{ color: ACTIVE }}
               >
                 <span className="relative">
                   <Icon />
@@ -892,7 +870,7 @@ export function BottomNav() {
           //   - me (自己診断の誘い / 未診断=ownerToken 無し): pending を消して1回きりにし、
           //     既存の評価者→診断KPI (friend_to_diagnosis_clicked) に source 違いで載せる
           //     (新イベント名は events テーブルの RLS 変更が要るため増やさない)。
-          //   - friend / unmei: 従来どおり *_nav_badge_clicked (ownerToken 必須)。
+          //   - friend: 従来どおり tako_nav_badge_clicked (ownerToken 必須)。
           const handleAttentionClick = !hasAttention
             ? undefined
             : it.key === "me"
@@ -909,18 +887,10 @@ export function BottomNav() {
                 }
               : ownerToken
                 ? () =>
-                    track(
-                      it.key === "unmei"
-                        ? "unmei_nav_badge_clicked"
-                        : "tako_nav_badge_clicked",
-                      {
-                        ownerToken,
-                        metadata:
-                          it.key === "friend"
-                            ? { destination: it.href, ui: locale === "ja" ? "bubble" : "badge" }
-                            : { destination: it.href },
-                      },
-                    )
+                    track("tako_nav_badge_clicked", {
+                      ownerToken,
+                      metadata: { destination: it.href, ui: locale === "ja" ? "bubble" : "badge" },
+                    })
                 : undefined;
           return (
             <Link
@@ -943,9 +913,7 @@ export function BottomNav() {
               // touch-manipulation: モバイルのタップ遅延を排除。
               // active:scale/opacity: 押下を即時に視覚反応させ「無反応」感を消す。
               className="relative flex flex-col items-center justify-center gap-1 py-2 select-none touch-manipulation transition-transform duration-100 active:scale-90 active:opacity-70"
-              style={{
-                color: it.active || hasAttention ? ACTIVE : INACTIVE,
-              }}
+              style={{ color: ACTIVE }}
             >
               {it.active && (
                 <span
