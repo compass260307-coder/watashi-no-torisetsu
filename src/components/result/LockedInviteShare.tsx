@@ -48,6 +48,15 @@ const SHARE_TEXT: Record<AppResultLocale, string> = {
   id: "Menurutmu aku seperti apa? Jawab 30 pertanyaan singkat dan bandingkan pandanganmu dengan penilaianku sendiri.",
 };
 
+// 吹き出しの中に「LINE」の文字が抜かれた、LINE のロゴ形。
+function LineLogo({ className }: { className: string }) {
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden="true">
+      <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" />
+    </svg>
+  );
+}
+
 export function LockedInviteShare({
   inviteUrl,
   compact = false,
@@ -71,6 +80,9 @@ export function LockedInviteShare({
   const shareText = SHARE_TEXT[locale];
   // 日本語と韓国語は同じ並び (メッセージアプリ / X / その他) と間隔にする。
   const usesCompactShareRow = locale === "ja" || isKorean;
+  // 日本語は LINE を横幅いっぱいの主ボタンにし、X・その他は下に小さく並べる (2026-11-19)。
+  // 招待の大半は LINE で送られる想定のため、押すものを1つに絞る。
+  const lineIsPrimary = locale === "ja";
 
   // 解除後の「＋」タブはクリックだけでなく、招待UIが実際に見えたかも計測する。
   useEffect(() => {
@@ -118,7 +130,12 @@ export function LockedInviteShare({
     track("friend_invite_clicked", {
       ownerToken,
       inviteCode,
-      metadata: { channel, source: trackSource, ...details },
+      metadata: {
+        channel,
+        source: trackSource,
+        ...(lineIsPrimary ? { ui: "line_primary" } : {}),
+        ...details,
+      },
     });
   };
 
@@ -184,6 +201,11 @@ export function LockedInviteShare({
   const shareIcon =
     "flex h-12 w-12 items-center justify-center rounded-full shadow-[0_5px_14px_rgba(46,46,92,0.12)] transition-transform group-hover:-translate-y-0.5 group-active:scale-95 md:h-14 md:w-14";
 
+  // 日本語版の X・その他ボタンの共通形。LINE と同じ高さ・形で横に並べる
+  // (X は黒の塗り、その他は白地 + 枠線。色は各ボタン側で付ける)。
+  const sideButton =
+    "flex h-[52px] min-w-0 items-center justify-center gap-2 rounded-full border text-[15px] font-black outline-none transition focus-visible:ring-2 focus-visible:ring-[#5B5BEF]/45 focus-visible:ring-offset-2 active:scale-[0.98]";
+
   const qrPanel = (
     <div className="mx-auto w-full max-w-[248px] rounded-2xl bg-white p-4 shadow-[0_8px_24px_rgba(46,46,92,0.10)]">
       <div className="relative">
@@ -215,98 +237,170 @@ export function LockedInviteShare({
       ref={rootRef}
       className={
         compact
-          ? "mx-auto w-full max-w-[560px]"
+          ? lineIsPrimary
+            ? // 日本語: 見出しと左端をそろえるため、カードの横幅いっぱいに使う
+              "w-full"
+            : "mx-auto w-full max-w-[560px]"
           : "mx-auto max-w-[340px] md:max-w-[288px]"
       }
     >
+      {lineIsPrimary ? null : (
       <p className="text-[13px] font-black text-[#2E2E5C]">
         {isEnglish ? "Send the invitation" : isKorean ? "초대 링크 보내기" : isIndonesian ? "Kirim undangan" : "招待リンクを送る"}
       </p>
+      )}
 
-      {/* SNSを主導線にする。大きな丸アイコン + ラベルで、共有先を一目で選べる。 */}
-      <div
-        className={`mt-3 flex items-start ${
-          // 日本語はアイコン同士を近づける (他言語は長いラベルがあるため従来の間隔)
-          usesCompactShareRow ? "gap-3.5 md:gap-4" : "gap-4 md:gap-5"
-        }`}
-      >
-        {isKorean ? (
-          <button
-            type="button"
-            onClick={handleKakao}
-            disabled={kakaoBusy}
-            aria-busy={kakaoBusy}
-            className={shareButton}
-          >
-            <span className={`${shareIcon} bg-[#FEE500] text-[#3C1E1E]`}>
-              <KakaoTalkGlyph className="h-6 w-6" />
-            </span>
-            카카오톡
-          </button>
-        ) : isEnglish ? null : (
+      {lineIsPrimary ? (
+        <>
+          {/* 日本語: LINE を横幅いっぱいに置き、その下に X・その他を同じ形で横並びにする。 */}
           <a
             href={lineUrl}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => fire("line")}
-            className={shareButton}
+            className="flex h-[52px] w-full items-center justify-center gap-2.5 rounded-full bg-[#06C755] text-[16px] font-black text-white shadow-[0_6px_16px_rgba(6,199,85,0.22)] outline-none transition hover:bg-[#05B84E] focus-visible:ring-2 focus-visible:ring-[#06C755]/50 focus-visible:ring-offset-2 active:scale-[0.98]"
           >
-            <span className={`${shareIcon} bg-[#06C755]`}>
-              {/* 吹き出しの中に「LINE」の文字が抜かれた、LINE のロゴ形 */}
-              <svg viewBox="0 0 24 24" className="h-7 w-7 fill-white md:h-8 md:w-8" aria-hidden="true">
-                <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63H17.61v1.125h1.755c.349 0 .63.283.63.63 0 .344-.281.629-.63.629h-2.386c-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63h2.386c.346 0 .627.285.627.63 0 .349-.281.63-.63.63H17.61v1.125h1.755zm-3.855 3.016c0 .27-.174.51-.432.596-.064.021-.133.031-.199.031-.211 0-.391-.09-.51-.25l-2.443-3.317v2.94c0 .344-.279.629-.631.629-.346 0-.626-.285-.626-.629V8.108c0-.27.173-.51.43-.595.06-.023.136-.033.194-.033.195 0 .375.104.495.254l2.462 3.33V8.108c0-.345.282-.63.63-.63.345 0 .63.285.63.63v4.771zm-5.741 0c0 .344-.282.629-.631.629-.345 0-.627-.285-.627-.629V8.108c0-.345.282-.63.63-.63.346 0 .628.285.628.63v4.771zm-2.466.629H4.917c-.345 0-.63-.285-.63-.629V8.108c0-.345.285-.63.63-.63.348 0 .63.285.63.63v4.141h1.756c.348 0 .629.283.629.63 0 .344-.282.629-.629.629M24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08l-.164 1.02c-.045.301-.24 1.186 1.049.645 1.291-.539 6.916-4.078 9.436-6.975C23.176 14.393 24 12.458 24 10.314" />
-              </svg>
-            </span>
-            LINE
+            <LineLogo className="h-7 w-7 fill-white" />
+            LINEで友達に送る
           </a>
-        )}
-        <a
-          href={xUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={() => fire("x")}
-          className={shareButton}
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <a
+              href={xUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => fire("x")}
+              className={`${sideButton} border-black bg-black text-white shadow-[0_6px_16px_rgba(0,0,0,0.16)] hover:border-[#2A2A2A] hover:bg-[#2A2A2A]`}
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white" aria-hidden="true">
+                <path d="M18.244 2H21.5l-7.5 8.59L23 22h-6.844l-5.357-7.012L4.66 22H1.4l8.04-9.196L1 2h6.998l4.84 6.4Zm-1.2 18h1.846L7.04 4H5.09l11.954 16Z" />
+              </svg>
+              Xで送る
+            </a>
+            <button
+              type="button"
+              onClick={handleShare}
+              className={`${sideButton} border-[#DADBE8] bg-white text-[#2E2E5C] shadow-[0_3px_10px_rgba(46,46,92,0.06)] hover:border-[#5B5BEF]/45 hover:bg-[#FAFAFF]`}
+            >
+              <svg viewBox="0 0 24 24" className="h-5 w-5 text-[#5B5BEF]" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 16V3" />
+                <path d="m7 8 5-5 5 5" />
+                <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
+              </svg>
+              その他
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+        {/* SNSを主導線にする。大きな丸アイコン + ラベルで、共有先を一目で選べる。 */}
+        <div
+          className={`mt-3 flex items-start ${
+            // 日本語はアイコン同士を近づける (他言語は長いラベルがあるため従来の間隔)
+            usesCompactShareRow ? "gap-3.5 md:gap-4" : "gap-4 md:gap-5"
+          }`}
         >
-          <span className={`${shareIcon} bg-black`}>
-            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white" aria-hidden="true">
-              <path d="M18.244 2H21.5l-7.5 8.59L23 22h-6.844l-5.357-7.012L4.66 22H1.4l8.04-9.196L1 2h6.998l4.84 6.4Zm-1.2 18h1.846L7.04 4H5.09l11.954 16Z" />
-            </svg>
-          </span>
-          X
-        </a>
-        {/* 日本語・韓国語は Facebook を出さない (選択肢を絞る。「その他」の共有メニューからは送れる)。 */}
-        {usesCompactShareRow ? null : (
+          {isKorean ? (
+            <button
+              type="button"
+              onClick={handleKakao}
+              disabled={kakaoBusy}
+              aria-busy={kakaoBusy}
+              className={shareButton}
+            >
+              <span className={`${shareIcon} bg-[#FEE500] text-[#3C1E1E]`}>
+                <KakaoTalkGlyph className="h-6 w-6" />
+              </span>
+              카카오톡
+            </button>
+          ) : isEnglish ? null : (
+            <a
+              href={lineUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => fire("line")}
+              className={shareButton}
+            >
+              <span className={`${shareIcon} bg-[#06C755]`}>
+                <LineLogo className="h-7 w-7 fill-white md:h-8 md:w-8" />
+              </span>
+              LINE
+            </a>
+          )}
           <a
-            href={facebookUrl}
+            href={xUrl}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={() => fire("facebook")}
+            onClick={() => fire("x")}
             className={shareButton}
           >
-            <span className={`${shareIcon} bg-[#1877F2]`}>
-              <svg viewBox="0 0 24 24" className="h-6 w-6 fill-white" aria-hidden="true">
-                <path d="M13.6 22v-9h3l.45-3.5H13.6V7.27c0-1.01.28-1.7 1.74-1.7h1.86V2.44A24.8 24.8 0 0 0 14.5 2C11.83 2 10 3.63 10 6.62V9.5H7V13h3v9h3.6Z" />
+            <span className={`${shareIcon} bg-black`}>
+              <svg viewBox="0 0 24 24" className="h-5 w-5 fill-white" aria-hidden="true">
+                <path d="M18.244 2H21.5l-7.5 8.59L23 22h-6.844l-5.357-7.012L4.66 22H1.4l8.04-9.196L1 2h6.998l4.84 6.4Zm-1.2 18h1.846L7.04 4H5.09l11.954 16Z" />
               </svg>
             </span>
-            Facebook
+            X
           </a>
-        )}
+          {/* 日本語・韓国語は Facebook を出さない (選択肢を絞る。「その他」の共有メニューからは送れる)。 */}
+          {usesCompactShareRow ? null : (
+            <a
+              href={facebookUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => fire("facebook")}
+              className={shareButton}
+            >
+              <span className={`${shareIcon} bg-[#1877F2]`}>
+                <svg viewBox="0 0 24 24" className="h-6 w-6 fill-white" aria-hidden="true">
+                  <path d="M13.6 22v-9h3l.45-3.5H13.6V7.27c0-1.01.28-1.7 1.74-1.7h1.86V2.44A24.8 24.8 0 0 0 14.5 2C11.83 2 10 3.63 10 6.62V9.5H7V13h3v9h3.6Z" />
+                </svg>
+              </span>
+              Facebook
+            </a>
+          )}
+          <button
+            type="button"
+            onClick={handleShare}
+            className={shareButton}
+          >
+            <span className={`${shareIcon} bg-[#EEEEFF] text-[#5B5BEF]`}>
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 16V3" />
+                <path d="m7 8 5-5 5 5" />
+                <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
+              </svg>
+            </span>
+            {isEnglish ? "More" : isKorean ? "기타" : isIndonesian ? "Lainnya" : "その他"}
+          </button>
+        </div>
+        </>
+      )}
+
+      {lineIsPrimary ? (
+        // 日本語: 小見出しを置かず、URL とコピーを細い1行にまとめる。
         <button
           type="button"
-          onClick={handleShare}
-          className={shareButton}
+          onClick={handleCopy}
+          aria-label="招待リンクをコピー"
+          className="mt-4 flex h-11 w-full items-center gap-2.5 rounded-full bg-[#F4F4F9] pl-4 pr-1.5 text-left outline-none transition hover:bg-[#EEEEF6] focus-visible:ring-2 focus-visible:ring-[#5B5BEF]/40"
         >
-          <span className={`${shareIcon} bg-[#EEEEFF] text-[#5B5BEF]`}>
-            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 16V3" />
-              <path d="m7 8 5-5 5 5" />
-              <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7" />
-            </svg>
+          <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-[#8A8AA3]" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M10 13a5 5 0 0 0 7.07 0l3-3a5 5 0 0 0-7.07-7.07l-1.5 1.5" />
+            <path d="M14 11a5 5 0 0 0-7.07 0l-3 3a5 5 0 0 0 7.07 7.07l1.5-1.5" />
+          </svg>
+          <span className="min-w-0 flex-1 truncate text-[12.5px] font-bold text-[#73738A]">
+            {withRef(inviteUrl, "copy")}
           </span>
-          {isEnglish ? "More" : isKorean ? "기타" : isIndonesian ? "Lainnya" : "その他"}
+          <span
+            aria-live="polite"
+            className={`flex h-8 shrink-0 items-center rounded-full px-3.5 text-[12px] font-black transition ${
+              copied ? "bg-[#5B5BEF] text-white" : "bg-white text-[#5B5BEF] shadow-[0_1px_4px_rgba(46,46,92,0.10)]"
+            }`}
+          >
+            {copied ? "コピーしました" : "コピー"}
+          </span>
         </button>
-      </div>
-
+      ) : (
+      <>
       {/* URL全体をコピーできるフィールド。長いURLは一行で省略する。 */}
       {/* QRなし (hideQr) のカードは、コピー完了の知らせをこのラベルの位置に出す。
           下に知らせ用の1行を空けておく必要がなくなり、カード下の余白が詰まる。 */}
@@ -349,6 +443,8 @@ export function LockedInviteShare({
         <p aria-live="polite" className="mt-1.5 min-h-5 text-[11px] font-bold text-[#5B5BEF]">
           {kakaoNote || (copied ? (isEnglish ? "Link copied" : isKorean ? "링크를 복사했어요" : isIndonesian ? "Tautan disalin" : "リンクをコピーしました") : "")}
         </p>
+      )}
+      </>
       )}
 
       {/* QRは補助導線。ユーザーが選んだ時だけ展開する。 */}
