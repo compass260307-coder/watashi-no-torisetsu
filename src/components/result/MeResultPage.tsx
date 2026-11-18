@@ -99,7 +99,6 @@ import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import { TakoAttentionOnResult } from "@/components/result/TakoAttentionOnResult";
 import { TakoBubbleReplayTrigger } from "@/components/result/TakoBubbleReplayTrigger";
-import { UnmeiAttentionOnPaid } from "@/components/result/UnmeiAttentionOnPaid";
 import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
 import { PreferredLocaleSync } from "@/components/result/PreferredLocaleSync";
 import TopHeader from "@/components/top/TopHeader";
@@ -1091,13 +1090,16 @@ async function MeResultPageContent({
           product={paidAccessProduct}
         />
       )}
-      {/* 友達診断の赤バッジ付与: /me を表示した全員に言語を問わず1回。 */}
-      {isOwnedResult && <TakoAttentionOnResult ownerToken={token} />}
-      {isOwnedResult && showUnmeiPromo && <PaidMeChatPreload />}
-      {/* 運命の赤バッジ付与: 従来どおり課金 (full_access) 済みのみ (変更しない)。 */}
-      {isOwnedResult && fullAccessPaid && !premiumBundlePaid && (
-        <UnmeiAttentionOnPaid ownerToken={token} />
+      {/* 友達診断の赤バッジ付与: /me を表示した全員に言語を問わず1回。
+          課金済みなら付与せず、残っている未確認バッジも消す (2026-11-19 指示)。 */}
+      {isOwnedResult && (
+        <TakoAttentionOnResult
+          ownerToken={token}
+          paid={fullAccessPaid || premiumBundlePaid}
+        />
       )}
+      {isOwnedResult && showUnmeiPromo && <PaidMeChatPreload />}
+      {/* 運命(占星術)の赤バッジは 2026-11-19 に廃止 (赤バッジは友達診断だけ)。 */}
 
       {/* 表示計測 (result_viewed / result_revisited / three_friends_unlocked)。
           プレビュー (?previewType) はモック描画なので計測しない。 */}
