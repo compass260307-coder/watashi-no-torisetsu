@@ -13,8 +13,10 @@ export const ACCESS_PRODUCTS = [
 // 新規Checkoutは現行バージョン以外を受理しない。
 // カード表示 → CTA → Stripe → 決済完了まで同じ値を引き継ぎ、
 // 以前の価格テストと混ぜずに効果を測る。
+// 2026-11-18: 課金カードを開くCTAで、宝箱から「リリース記念 ¥800 OFF」クーポンを受け取る演出に変更。
+// 通常価格を¥1,299に改め（請求額¥499は不変）、演出の前後を比べられるよう計測世代を分ける。
 export const THREE_COURSE_PAYWALL_VERSION =
-  "legacy_card_v43_ja_full_499_restored_1290_measurement_v4" as const;
+  "legacy_card_v44_ja_full_499_treasure_coupon800_1299_list" as const;
 export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V1 =
   "en_single_full_access_v1_jpy_499" as const;
 export const EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V2 =
@@ -73,6 +75,7 @@ export const THREE_COURSE_PAYWALL_VERSIONS = [
   "legacy_card_v40_ja_full_499_release_1290_list",
   "legacy_card_v41_ja_full_499_release_1290_measurement_v2",
   "legacy_card_v42_ja_full_599_release_1290_measurement_v3",
+  "legacy_card_v43_ja_full_499_restored_1290_measurement_v4",
   THREE_COURSE_PAYWALL_VERSION,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V1,
   EN_SINGLE_FULL_ACCESS_PAYWALL_VERSION_V2,
@@ -281,12 +284,16 @@ export function purchaseIncludesAishoFeatures(
 // self_report と全部入りは過去購入・アップグレード互換用に価格定義を維持する。
 export const SELF_REPORT_LIST_PRICE_JPY = 499;
 export const SELF_REPORT_PRICE_JPY = 499;
-// 2026-09-21の明示判断で、完全版を通常価格 ¥1,290 から
-// 「リリース記念」¥791引き、実際の請求額 ¥499 へ戻す。
+// 2026-09-21の明示判断で、完全版の実際の請求額を ¥499 へ戻す。
+// 2026-11-18の明示判断で、通常価格を ¥1,290 から ¥1,299 に改め、
+// 「リリース記念」¥800引きのクーポンとして見せる（請求額 ¥499 は変えない）。
 export const FULL_ACCESS_PRICE_EFFECTIVE_AT =
   "2026-09-21T10:02:00+09:00" as const;
-export const FULL_ACCESS_LIST_PRICE_JPY = 1290;
+export const FULL_ACCESS_LIST_PRICE_JPY = 1299;
 export const FULL_ACCESS_PRICE_JPY = 499;
+/** 宝箱で渡す「リリース記念」クーポンの額（通常価格 − 請求額）。 */
+export const FULL_ACCESS_COUPON_JPY =
+  FULL_ACCESS_LIST_PRICE_JPY - FULL_ACCESS_PRICE_JPY;
 export const PREMIUM_BUNDLE_LIST_PRICE_JPY = 1980;
 export const PREMIUM_BUNDLE_PRICE_JPY = 1299;
 // 旧完全版からのアップグレード価格。新規完全版の価格テストとは独立させる。

@@ -36,7 +36,33 @@ const PRICE_TAG_SRC = "/result-upgrade/price-tag.webp";
 // 特典①の絵は、サイトのうさぎ（アテンダント）を答えに合わせて変身させた見本。
 const BENEFIT_ROTATE_MS = 3200;
 const BENEFIT_BEFORE_SRC = "/characters/cut/rabbit_N.webp";
-const BENEFITS = [
+
+export type TreasureBenefit = {
+  label: string;
+  title: string;
+  body: string;
+  image: string;
+  /** 元のうさぎ → 変身後の絵を並べる（結果アップグレードの専用キャラクター）。 */
+  beforeAfter?: boolean;
+  /** 実際の画面の見本。角丸の枠に上から切り取って「見本」を付ける。 */
+  screenshot?: boolean;
+};
+
+/** 宝箱の演出で、商品ごとに変える文言・絵。 */
+export type TreasureOffer = {
+  dialogLabel: string;
+  /** 宝箱の上の案内（2行）。 */
+  lead: readonly [string, string];
+  couponSrc: string;
+  couponLabel: (couponJpy: number) => string;
+  /** 値札から特典スライドへ移ったときに読み上げる説明。 */
+  offerSummary: (priceJpy: number, benefitCount: number) => string;
+  benefits: readonly TreasureBenefit[];
+  /** deck: 回るカード（既定） / stack: 積み重ねて合計額を見せてから回るカードへ。 */
+  benefitStyle?: "deck" | "stack";
+};
+
+const BENEFITS: readonly TreasureBenefit[] = [
   {
     label: "特典①",
     title: "世界に一体だけのキャラクター",
@@ -68,7 +94,17 @@ const BENEFITS = [
     body: "タロットや四柱推命で、気になる相手との相性などをAliceが占います",
     image: "/result-upgrade/benefit-love-reading.webp",
   },
-] as const;
+];
+
+/** 完全版購入者向けの結果アップグレード（¥899）。 */
+export const RESULT_UPGRADE_TREASURE_OFFER: TreasureOffer = {
+  dialogLabel: "完全版購入者さまへのプレゼント",
+  lead: ["完全版を買ってくれた", "あなたへのプレゼント"],
+  couponSrc: COUPON_SRC,
+  couponLabel: (couponJpy) => `完全版購入者さま限定 ¥${couponJpy.toLocaleString("ja-JP")} OFFクーポン`,
+  offerSummary: (priceJpy, count) => `クーポンを使うと ${priceJpy.toLocaleString("ja-JP")}円で、次の${count}つの特典が手に入ります。`,
+  benefits: BENEFITS,
+};
 // 刺しゅうの数字（0〜9・¥・カンマ）を1文字ずつ切り出した絵。並べて金額を表示する。
 const GLYPHS = ["yen", "comma", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 function glyphSrc(char: string): string {
@@ -129,6 +165,14 @@ type Props = {
   onClose: () => void;
   /** 宝箱を開けずに閉じたとき。チャットからもう一度開ける。 */
   onDismiss: () => void;
+  /** 商品ごとの文言・絵。省略時は結果アップグレード。 */
+  offer?: TreasureOffer;
+  /** "offer": クーポンを受け取り済みの人に、値札と特典から見せる。 */
+  startAt?: "chest" | "offer";
+  /** 宝箱を開ける前に閉じるボタンの文言。 */
+  dismissLabel?: string;
+  /** 値札と特典を見せたとき（課金カードの表示計測用）。 */
+  onOfferShown?: () => void;
 };
 
 /**
@@ -143,11 +187,25 @@ export function ResultUpgradeTreasure({
   onCouponReceived,
   onClose,
   onDismiss,
+  offer = RESULT_UPGRADE_TREASURE_OFFER,
+  startAt = "chest",
+  dismissLabel = "あとで開ける",
+  onOfferShown,
 }: Props) {
   const [reducedMotion] = useState(prefersReducedMotion);
-  const [phase, setPhase] = useState<Phase>(reducedMotion ? "idle" : "intro");
-  const [priceStep, setPriceStep] = useState<PriceStep>("tag");
-  const [shownPrice, setShownPrice] = useState(listPriceJpy);
+  const [phase, setPhase] = useState<Phase>(startAt === "offer" ? "offer" : reducedMotion ? "idle" : "intro");
+  const [priceStep, setPriceStep] = useState<PriceStep>(startAt === "offer" ? "landed" : "tag");
+  const [shownPrice, setShownPrice] = useState(startAt === "offer" ? priceJpy : listPriceJpy);
+  const onOfferShownRef = useRef(onOfferShown);
+  const offerShown = phase === "offer";
+
+  useEffect(() => {
+    onOfferShownRef.current = onOfferShown;
+  }, [onOfferShown]);
+
+  useEffect(() => {
+    if (offerShown) onOfferShownRef.current?.();
+  }, [offerShown]);
   const receiveRef = useRef<HTMLButtonElement>(null);
   const laterRef = useRef<HTMLButtonElement>(null);
   const timers = useRef<number[]>([]);
@@ -277,11 +335,11 @@ export function ResultUpgradeTreasure({
       className={`${styles.overlay} ${phase === "closing" ? styles.closing : ""}`}
       role="dialog"
       aria-modal="true"
-      aria-label="完全版購入者さまへのプレゼント"
+      aria-label={offer.dialogLabel}
     >
       {!opened && (
         <button type="button" className={styles.close} onClick={() => onDismissRef.current()}>
-          あとで開ける
+          {dismissLabel}
         </button>
       )}
       <div className={styles.sceneBlur} aria-hidden="true">
@@ -331,7 +389,7 @@ export function ResultUpgradeTreasure({
       <div className={`${styles.heading} ${opened ? styles.headingOut : ""}`}>
         <p className={styles.title}>PRESENT</p>
         <p className={styles.lead}>
-          完全版を買ってくれた<br />あなたへのプレゼント
+          {offer.lead[0]}<br />{offer.lead[1]}
         </p>
       </div>
 
@@ -375,13 +433,13 @@ export function ResultUpgradeTreasure({
       {phase === "open" && (
         <div className={styles.couponRise}>
           <div className={reducedMotion ? "" : styles.couponFloat}>
-            <CouponTicket couponJpy={couponJpy} variant="reveal" />
+            <CouponTicket couponJpy={couponJpy} variant="reveal" src={offer.couponSrc} label={offer.couponLabel(couponJpy)} />
           </div>
         </div>
       )}
       {phase === "pricing" && !stuck && !reducedMotion && (
         <div className={`${styles.couponRise} ${styles.couponToTag}`} aria-hidden="true">
-          <CouponTicket couponJpy={couponJpy} variant="reveal" />
+          <CouponTicket couponJpy={couponJpy} variant="reveal" src={offer.couponSrc} label={offer.couponLabel(couponJpy)} />
         </div>
       )}
       {pricing && (
@@ -404,7 +462,7 @@ export function ResultUpgradeTreasure({
           )}
           {stuck && (
             <div className={styles.tagSticker} aria-hidden="true">
-              <CouponTicket couponJpy={couponJpy} variant="reveal" />
+              <CouponTicket couponJpy={couponJpy} variant="reveal" src={offer.couponSrc} label={offer.couponLabel(couponJpy)} />
             </div>
           )}
           {stuck && !reducedMotion && (
@@ -482,9 +540,18 @@ export function ResultUpgradeTreasure({
       ) : phase === "offer" || phase === "closing" ? (
         <>
           <p className={styles.srOnly} role="status" aria-live="polite">
-            {`クーポンを使うと ${priceJpy.toLocaleString("ja-JP")}円で、次の${BENEFITS.length}つの特典が手に入ります。`}
+            {offer.offerSummary(priceJpy, offer.benefits.length)}
           </p>
-          <BenefitDeck reducedMotion={reducedMotion} />
+          {offer.benefitStyle === "stack" ? (
+            <BenefitStack
+              benefits={offer.benefits}
+              priceJpy={priceJpy}
+              reducedMotion={reducedMotion}
+              skipIntro={startAt === "offer"}
+            />
+          ) : (
+            <BenefitDeck reducedMotion={reducedMotion} benefits={offer.benefits} />
+          )}
           <div className={styles.offerBottom}>
             <div className={styles.offerCta}>{purchaseCta}</div>
             <div className={styles.offerLinks}>
@@ -508,15 +575,25 @@ export function ResultUpgradeTreasure({
 }
 
 /** フェルトのクーポン券。演出の中（reveal）と、受け取ったあとのチャットの中（chat）で使う。 */
-export function CouponTicket({ couponJpy, variant }: { couponJpy: number; variant: "reveal" | "chat" }) {
+export function CouponTicket({
+  couponJpy,
+  variant,
+  src = COUPON_SRC,
+  label = RESULT_UPGRADE_TREASURE_OFFER.couponLabel(couponJpy),
+}: {
+  couponJpy: number;
+  variant: "reveal" | "chat";
+  src?: string;
+  label?: string;
+}) {
   return (
     <div className={variant === "reveal" ? styles.ticketShadow : styles.ticketInChat}>
       <div
         className={styles.ticket}
         role="img"
-        aria-label={`完全版購入者さま限定 ¥${couponJpy.toLocaleString("ja-JP")} OFFクーポン${variant === "chat" ? "（受け取り済み）" : ""}`}
+        aria-label={`${label}${variant === "chat" ? "（受け取り済み）" : ""}`}
       >
-        <Image src={COUPON_SRC} alt="" fill sizes="(max-width: 520px) 84vw, 330px" priority={variant === "reveal"} />
+        <Image src={src} alt="" fill sizes="(max-width: 520px) 84vw, 330px" priority={variant === "reveal"} />
         {variant === "chat" && (
           <span className={styles.ticketStamp} aria-hidden="true">受け取り<br />済み</span>
         )}
@@ -525,10 +602,143 @@ export function CouponTicket({ couponJpy, variant }: { couponJpy: number; varian
   );
 }
 
-/** ¥899 で手に入る特典のスライド。カードが輪になって回り、タップでも次へ進む。 */
-function BenefitDeck({ reducedMotion, inline = false }: { reducedMotion: boolean; inline?: boolean }) {
+/** 特典カードの中身（ラベル・絵・タイトル・説明）。 */
+function BenefitFace({ benefit, compact = false }: { benefit: TreasureBenefit; compact?: boolean }) {
+  return (
+    <>
+      <span className={styles.benefitLabel}>{benefit.label}</span>
+      <span className={styles.benefitVisual} aria-hidden="true">
+        {benefit.beforeAfter ? (
+          <span className={styles.beforeAfter}>
+            <span className={styles.beforeImage}>
+              <Image src={BENEFIT_BEFORE_SRC} alt="" fill sizes="110px" />
+            </span>
+            <svg className={styles.arrow} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 12h14M13 6l6 6-6 6" />
+            </svg>
+            <span className={styles.afterImage}>
+              <Image src={benefit.image} alt="" fill sizes="160px" />
+            </span>
+            <span className={styles.sampleBadge}>見本</span>
+          </span>
+        ) : benefit.screenshot ? (
+          <>
+            <span className={styles.benefitShot}>
+              <Image src={benefit.image} alt="" fill sizes="(max-width: 520px) 52vw, 200px" />
+            </span>
+            {!compact && <span className={styles.sampleBadge}>見本</span>}
+          </>
+        ) : (
+          <Image src={benefit.image} alt="" fill sizes="(max-width: 520px) 70vw, 260px" />
+        )}
+      </span>
+      <span className={styles.benefitTitle}>{benefit.title}</span>
+      {!compact && <span className={styles.benefitBody}>{benefit.body}</span>}
+    </>
+  );
+}
+
+// 特典カードが1枚ずつ飛んできて積み重なる位置（毎回同じ見た目にするため固定値）。
+const STACK_GAP_MS = 190;
+const STACK_SETTLE_MS = 520;
+const STACK_TOTAL_HOLD_MS = 1500;
+const STACK_POSES = [
+  { rot: -9, dx: -18, dy: 14, fromX: -140, fromRot: -40 },
+  { rot: 7, dx: 16, dy: 6, fromX: 150, fromRot: 35 },
+  { rot: -4, dx: -8, dy: -4, fromX: -120, fromRot: -28 },
+  { rot: 10, dx: 20, dy: -10, fromX: 140, fromRot: 42 },
+  { rot: -7, dx: -14, dy: -2, fromX: -150, fromRot: -36 },
+  { rot: 4, dx: 8, dy: -8, fromX: 120, fromRot: 30 },
+  { rot: -1, dx: 0, dy: -4, fromX: 0, fromRot: -12 },
+] as const;
+
+function buzz(pattern: number | number[]) {
+  try { navigator.vibrate?.(pattern); } catch { /* optional */ }
+}
+
+/**
+ * 特典カードがバッと積み重なり「◯つ全部で ¥499」を押したあと、回る特典スライドに変わる。
+ */
+function BenefitStack({
+  benefits,
+  priceJpy,
+  reducedMotion,
+  skipIntro,
+}: {
+  benefits: readonly TreasureBenefit[];
+  priceJpy: number;
+  reducedMotion: boolean;
+  skipIntro: boolean;
+}) {
+  const instant = reducedMotion || skipIntro;
+  const count = benefits.length;
+  const [step, setStep] = useState<"stacking" | "total" | "deck">(instant ? "deck" : "stacking");
+
+  useEffect(() => {
+    if (instant) return;
+    const timers: number[] = [];
+    for (let i = 0; i < count; i++) {
+      timers.push(window.setTimeout(() => buzz(8), i * STACK_GAP_MS + 380));
+    }
+    const stacked = count * STACK_GAP_MS + STACK_SETTLE_MS;
+    timers.push(window.setTimeout(() => { setStep("total"); buzz([18, 40, 28]); }, stacked));
+    timers.push(window.setTimeout(() => setStep("deck"), stacked + STACK_TOTAL_HOLD_MS));
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [count, instant]);
+
+  if (step === "deck") {
+    return <BenefitDeck reducedMotion={reducedMotion} benefits={benefits} />;
+  }
+  return (
+    <div className={styles.stackArea}>
+      <div className={`${styles.stackPile} ${step === "total" ? styles.stackPileDone : ""}`} aria-hidden="true">
+        {benefits.map((benefit, i) => {
+          const pose = STACK_POSES[i % STACK_POSES.length];
+          return (
+            <div
+              key={benefit.label}
+              className={styles.stackCard}
+              style={{
+                "--rot": `${pose.rot}deg`,
+                "--dx": `${pose.dx}px`,
+                "--dy": `${pose.dy}px`,
+                "--from-x": `${pose.fromX}px`,
+                "--from-rot": `${pose.fromRot}deg`,
+                "--delay": `${i * STACK_GAP_MS}ms`,
+                zIndex: i,
+              } as CSSProperties}
+            >
+              <span className={`${styles.benefitCard} ${styles.stackFace}`}>
+                <BenefitFace benefit={benefit} compact />
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      {step === "total" && (
+        <div className={styles.totalStamp} role="img" aria-label={`${count}つ全部で ${priceJpy.toLocaleString("ja-JP")}円`}>
+          <span className={styles.totalCount}>{count}つ全部で</span>
+          <span className={styles.totalPrice}>
+            <EmbroideredPrice value={priceJpy} />
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 購入で手に入る特典のスライド。カードが輪になって回り、タップでも次へ進む。 */
+function BenefitDeck({
+  reducedMotion,
+  inline = false,
+  benefits = BENEFITS,
+}: {
+  reducedMotion: boolean;
+  inline?: boolean;
+  benefits?: readonly TreasureBenefit[];
+}) {
   const [index, setIndex] = useState(0);
-  const count = BENEFITS.length;
+  const count = benefits.length;
   useEffect(() => {
     if (reducedMotion) return;
     const timer = window.setInterval(() => setIndex((value) => (value + 1) % count), BENEFIT_ROTATE_MS);
@@ -538,7 +748,7 @@ function BenefitDeck({ reducedMotion, inline = false }: { reducedMotion: boolean
   return (
     <>
       <div className={`${styles.deck} ${inline ? styles.deckInline : ""}`}>
-        {BENEFITS.map((benefit, i) => {
+        {benefits.map((benefit, i) => {
           const position = (i - index + count) % count;
           const front = position === 0;
           const right = position === 1;
@@ -564,33 +774,13 @@ function BenefitDeck({ reducedMotion, inline = false }: { reducedMotion: boolean
                 zIndex: front ? 3 : right ? 2 : left ? 1 : 0,
               }}
             >
-              <span className={styles.benefitLabel}>{benefit.label}</span>
-              <span className={styles.benefitVisual} aria-hidden="true">
-                {"beforeAfter" in benefit ? (
-                  <span className={styles.beforeAfter}>
-                    <span className={styles.beforeImage}>
-                      <Image src={BENEFIT_BEFORE_SRC} alt="" fill sizes="110px" />
-                    </span>
-                    <svg className={styles.arrow} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 12h14M13 6l6 6-6 6" />
-                    </svg>
-                    <span className={styles.afterImage}>
-                      <Image src={benefit.image} alt="" fill sizes="160px" />
-                    </span>
-                    <span className={styles.sampleBadge}>見本</span>
-                  </span>
-                ) : (
-                  <Image src={benefit.image} alt="" fill sizes="(max-width: 520px) 70vw, 260px" />
-                )}
-              </span>
-              <span className={styles.benefitTitle}>{benefit.title}</span>
-              <span className={styles.benefitBody}>{benefit.body}</span>
+              <BenefitFace benefit={benefit} />
             </button>
           );
         })}
       </div>
       <div className={`${styles.dots} ${inline ? styles.dotsInline : ""}`} aria-hidden="true">
-        {BENEFITS.map((benefit, i) => (
+        {benefits.map((benefit, i) => (
           <span key={benefit.label} className={`${styles.dot} ${i === index ? styles.dotActive : ""}`} />
         ))}
       </div>
