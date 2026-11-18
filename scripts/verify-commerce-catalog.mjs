@@ -71,9 +71,9 @@ const contractChecks = [
   { label: "Korean result upgrade requires saved answers and owner login",
     valid: checkoutRoute.includes('upgrade?.locale !== checkoutLocale || !normalizeResultUpgradeAnswers(upgrade?.answers)') && checkoutRoute.includes("session.id !== userId") && checkoutRoute.includes('!(product === "premium_bundle" && body.paywall_source === "result_upgrade_after_answers")') },
   {
-    label: "Japanese full access reference price is JPY 1,290",
+    label: "Japanese full access reference price is JPY 1,299",
     valid: accessProducts.includes(
-      "export const FULL_ACCESS_LIST_PRICE_JPY = 1290;",
+      "export const FULL_ACCESS_LIST_PRICE_JPY = 1299;",
     ),
   },
   {
@@ -89,9 +89,9 @@ const contractChecks = [
     ),
   },
   {
-    label: "Japanese full access measurement generation records the restored JPY 499 offer",
+    label: "Japanese full access measurement generation records the JPY 800 treasure coupon from JPY 1,299",
     valid: accessProducts.includes(
-      '"legacy_card_v43_ja_full_499_restored_1290_measurement_v4" as const',
+      '"legacy_card_v44_ja_full_499_treasure_coupon800_1299_list" as const',
     ),
   },
   {
@@ -361,5 +361,5 @@ if (failures.length > 0) {
 }
 
 console.log(
-  `Commerce catalog verified (${contractChecks.length} checks): Japanese full access is JPY 499 from JPY 1,290 and the purchaser-only result upgrade is JPY 899; Korean full access is KRW 4,900 and the purchaser-only result upgrade is KRW 8,900; Indonesian full access is IDR 49,000 from IDR 129,000; English full access is USD 4.99 from USD 12.90.`,
+  `Commerce catalog verified (${contractChecks.length} checks): Japanese full access is JPY 499 from JPY 1,299 and the purchaser-only result upgrade is JPY 899; Korean full access is KRW 4,900 and the purchaser-only result upgrade is KRW 8,900; Indonesian full access is IDR 49,000 from IDR 129,000; English full access is USD 4.99 from USD 12.90.`,
 );

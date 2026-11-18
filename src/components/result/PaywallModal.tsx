@@ -18,8 +18,10 @@ import { useUiText } from "@/i18n/ui/use-ui-copy";
 // open/onClose を自前管理して直接使えるようにした。
 
 import type { AppResultLocale } from "@/i18n/result";
-import type { AccessProduct } from "@/lib/access-products";
-import type { PaywallCardMode } from "@/lib/feature-flags";
+import { FULL_ACCESS_PRICE_JPY, type AccessProduct } from "@/lib/access-products";
+import { paywallCardMode, type PaywallCardMode } from "@/lib/feature-flags";
+import { useFullAccessQuote } from "@/lib/use-full-access-quote";
+import { FullAccessTreasure } from "./FullAccessTreasure";
 import { PAYWALL_OPEN_EVENT } from "@/lib/scroll-to-paywall";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { useEffect, useRef, useState } from "react";
@@ -53,6 +55,112 @@ interface PaywallModalProps {
 // 呼び出し側がユーザー操作 (クリック) 経由でマウントする前提のため、
 // createPortal 時点では常にクライアント環境 (SSR ガード不要)。
 export function PaywallOverlay({
+  onClose,
+  ctaSource,
+  scrollLocked = false,
+  ...cardProps
+}: PaywallModalProps & {
+  onClose: () => void;
+  ctaSource?: string;
+  scrollLocked?: boolean;
+}) {
+  const presentation = useFullAccessTreasurePresentation(cardProps, ctaSource);
+  if (presentation.mode === "pending") {
+    return createPortal(
+      <div
+        aria-hidden="true"
+        className="fixed inset-0 z-[100] bg-[#2E2E5C]/55 backdrop-blur-sm"
+        onClick={onClose}
+      />,
+      document.body,
+    );
+  }
+  if (presentation.mode === "treasure") {
+    return (
+      <FullAccessTreasure
+        ownerToken={cardProps.ownerToken}
+        characterImageSrc={cardProps.reportCharacterImageSrc ?? cardProps.imageSrc}
+        ctaSource={ctaSource}
+        returnTo={cardProps.returnTo}
+        surface={cardProps.surface}
+        variant={cardProps.variant}
+        previewMode={cardProps.previewMode}
+        priceState={presentation.priceState}
+        onShowCard={presentation.showCard}
+        onClose={onClose}
+      />
+    );
+  }
+  return (
+    <PaywallCardOverlay
+      {...cardProps}
+      ctaSource={ctaSource}
+      scrollLocked={scrollLocked}
+      onClose={onClose}
+    />
+  );
+}
+
+// 日本語Webの完全版¥499（日本円の見積もり）で、対象の導線から開いたときだけ、課金カードの代わりに宝箱の演出を出す。
+// 2026-11-19: 小規模テストとして、自己診断結果の本文にあるロック解除CTA（「今すぐアクセス」系）だけを対象にする。
+// 上部バー・ページ下部のカード・友達/相性ページ・下部ナビは従来の課金カードのまま。
+const TREASURE_CTA_SOURCES: ReadonlySet<string> = new Set([
+  "love_payoff_card",
+  "love_endure_card",
+  "career_fit_card",
+  "career_relations_card",
+  "deepdive_card",
+  "scene_caution_card",
+  "moshimo_card",
+  "friend_dislike_card",
+  "relations_card",
+  "caution_lock_card",
+  "traits_card",
+]);
+// 見積もりが返るまでは暗い背景だけを出し、返らなければ従来のカードにする。
+// 一度決めた表示は、見積もりがあとから届いても切り替えない。
+const TREASURE_QUOTE_WAIT_MS = 2500;
+
+function useFullAccessTreasurePresentation(cardProps: PaywallModalProps, ctaSource?: string) {
+  const locale = cardProps.locale ?? "ja";
+  const previewMode = cardProps.previewMode ?? false;
+  const eligible =
+    (previewMode || (ctaSource !== undefined && TREASURE_CTA_SOURCES.has(ctaSource))) &&
+    locale === "ja" &&
+    !cardProps.legacyPlanStyle &&
+    cardProps.variant !== "aisho" &&
+    (cardProps.cardMode ?? paywallCardMode()) === "legacy";
+  const priceState = useFullAccessQuote(eligible && !previewMode, "ja", cardProps.ownerToken);
+  const [decision, setDecision] = useState<"treasure" | "card" | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
+  const { quote, failed } = priceState;
+  if (decision === null) {
+    const next = !eligible
+      ? "card"
+      : previewMode
+        ? "treasure"
+        : quote
+          ? quote.market === "ja" && quote.amountMinor === FULL_ACCESS_PRICE_JPY
+            ? "treasure"
+            : "card"
+          : failed || timedOut
+            ? "card"
+            : null;
+    if (next) setDecision(next);
+  }
+  useEffect(() => {
+    if (decision !== null) return;
+    const timer = window.setTimeout(() => setTimedOut(true), TREASURE_QUOTE_WAIT_MS);
+    return () => window.clearTimeout(timer);
+  }, [decision]);
+  return {
+    mode: decision ?? "pending",
+    priceState,
+    showCard: () => setDecision("card"),
+  } as const;
+}
+
+function PaywallCardOverlay({
   onClose,
   ctaSource,
   scrollLocked = false,
