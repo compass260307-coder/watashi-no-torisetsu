@@ -98,7 +98,9 @@ export interface UiCopy {
     bodyLine1: string;
     bodyLine2: string;
   }>;
-  nav: Record<"me" | "friend" | "astrologer" | "unmei" | "tarot", string>;
+  nav: Record<"me" | "friend" | "astrologer" | "unmei" | "tarot", string> &
+    // 日本語の下部ナビ (2026-11-19〜) だけで使うタブ名。
+    Partial<Record<"aisho" | "types", string>>;
   labels: Record<string, Record<string, string>>;
   header: HeaderContent;
   footer: FooterContent;
@@ -127,6 +129,8 @@ export interface UiCopy {
     alice: UnlockItem;
     fortune: UnlockItem;
     unmei: UnlockItem;
+    /** 相性から開いたカードで先頭に置く項目 (日本語のみ / 2026-11-19)。 */
+    aisho?: UnlockItem;
   };
   carousel: {
     peekForItem: (item: string, ebookPeek?: UnlockPeek) => UnlockPeek | undefined;
