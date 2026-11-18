@@ -25,3 +25,8 @@ export function takoAttentionPaidGrantedKey(ownerToken: string): string {
 // コミットされた時点 (= 付与前) に判定が走ったきりになり、/me を読んでいる間
 // バッジが一度も出ない (2026-08-04 修正。バッジ表示率 37.5% の原因)。
 export const TAKO_ATTENTION_GRANTED_EVENT = "wt_tako_attention_granted_v1";
+
+// /me を読み進めて「あなたの注意点」まで来たとき、下部ナビの吹き出し
+// 「友達診断はここから！」をもう一度出すための通知イベント (2026-11-17)。
+// 着いた直後の1回目は結果を読む前なので、読み終えるころにもう一度だけ後押しする。
+export const TAKO_BUBBLE_REPLAY_EVENT = "wt_tako_bubble_replay_v1";

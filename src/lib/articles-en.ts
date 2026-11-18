@@ -317,7 +317,7 @@ export const EN_ARTICLES: EnArticle[] = [
         { term: "2. Use consistent questions", body: "The same prompts make similarities and differences easier to compare." },
         { term: "3. Look for patterns", body: "Prioritize repeated observations and concrete examples over one surprising comment." },
       ] },
-      { heading: "Anonymous and choice-based questions reduce awkwardness", paragraphs: ["People answer more honestly when they are not forced to compose a criticism or attach their name to every observation.", "Choice-based questions create a shared structure, while an optional message leaves room for nuance and kindness." ] },
+      { heading: "Online, choice-based questions reduce awkwardness", paragraphs: ["People answer more honestly when they are not put on the spot face to face or forced to compose a criticism from scratch.", "Choice-based questions create a shared structure, while an optional message leaves room for nuance and kindness. When you ask, tell friends up front who will see their nickname and message." ] },
       { heading: "Try friend feedback in Alice Personalities", paragraphs: ["Complete your own OCEAN test, share your invitation link, and compare your self-view with the patterns in your friends’ answers.", "Use the result as the beginning of a conversation. A good insight should make understanding easier, not make anyone feel reduced to a label." ] },
     ],
   },

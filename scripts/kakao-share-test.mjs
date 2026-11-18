@@ -46,7 +46,7 @@ try {
     assert.equal(payload.objectType, "feed");
     assert.equal(payload.content.link.webUrl, url);
     assert.equal(payload.buttons[0].link.mobileWebUrl, url);
-    assert.equal(payload.content.imageUrl, "https://www.watashi-torisetsu.com/ogp-ko-v1.jpg");
+    assert.equal(payload.content.imageUrl, "https://www.watashi-torisetsu.com/ogp-ko-v2.jpg");
     assert.equal(payload.buttons[0].title, "친구 진단 시작하기");
   });
   await check("self-diagnosis sharing retains the text-only template", async () => {
