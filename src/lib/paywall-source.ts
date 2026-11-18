@@ -29,6 +29,10 @@ const PAYWALL_SOURCES = new Set([
   FRIEND_INDIVIDUAL_PAYWALL_SOURCE,
   "love_payoff_card",
   "love_failure_card",
+  // 2026-11-19: 計測上「直接」に混ざっていた本文のロック解除CTAを、導線として記録する。
+  "love_endure_card",
+  "caution_lock_card",
+  "traits_card",
   "career_fit_card",
   "career_avoid_card",
   "career_relations_card",
