@@ -1072,6 +1072,11 @@ html[data-unmei-chat-open="true"] .unmei-site-footer {
   display: none;
 }
 
+/* 結果アップグレードのチャット中は、サイト共通の下部ナビを隠す。 */
+html[data-upgrade-chat-open="true"] [data-bottom-nav] {
+  display: none;
+}
+
 /* 結果アップグレードのチャット: 吹き出しがふわっと出る、フル画面の会話が下から開く。 */
 @keyframes chat-in {
   from {
