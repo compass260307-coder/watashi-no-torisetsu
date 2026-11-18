@@ -155,7 +155,7 @@ const copy: PurchaseUiCopy = {
       list: `¥${FULL_ACCESS_LIST_PRICE_JPY.toLocaleString("ja-JP")}`,
       sale: `¥${FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}`,
       offPercent: LEGACY_FULL_ACCESS_DISCOUNT_PERCENT,
-    }, selfReportPrice: `¥${SELF_REPORT_PRICE_JPY.toLocaleString("ja-JP")}`, self: FULL_ACCESS_SELF_UNLOCKS, tako: FULL_ACCESS_TAKO_UNLOCKS, studentSelf: STUDENT_LITE_UNLOCKS, studentTako: STUDENT_LITE_TAKO_UNLOCKS, alice: U_ALICE, fortune: U_ALICE_FORTUNE, unmei: U_UNMEI
+    }, selfReportPrice: `¥${SELF_REPORT_PRICE_JPY.toLocaleString("ja-JP")}`, self: FULL_ACCESS_SELF_UNLOCKS, tako: FULL_ACCESS_TAKO_UNLOCKS, studentSelf: STUDENT_LITE_UNLOCKS, studentTako: STUDENT_LITE_TAKO_UNLOCKS, alice: U_ALICE, fortune: U_ALICE_FORTUNE, unmei: U_UNMEI, aisho: U_AISHO
   },
   carousel: {
     peekForItem, ctaLabel: (product) => {

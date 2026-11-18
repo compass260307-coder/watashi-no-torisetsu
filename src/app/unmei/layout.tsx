@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
+import { FortuneSwitcher } from "@/components/hoshiyomi/FortuneSwitcher";
 import { UnmeiAttentionClear } from "@/components/uranai/UnmeiAttentionClear";
 
 // /unmei の全状態 (未購入ティーザー / 出生情報入力 / 生成中 / 鑑定表示) に
@@ -13,6 +14,8 @@ export default function UnmeiLayout({ children }: { children: ReactNode }) {
       <UnmeiAttentionClear />
       <div className="unmei-site-header">
         <TopHeader />
+        {/* 占いの切り替え。鑑定チャット表示中はヘッダーと一緒に隠れる (globals.css)。 */}
+        <FortuneSwitcher className="pt-4" />
       </div>
       {children}
       <div className="unmei-site-footer">

@@ -329,7 +329,10 @@ export function FullAccessPromoCard({
     ? promoteUnlockItem(baseUnlocks, copy.alice)
     : returnTo === "unmei"
       ? promoteUnlockItem(baseUnlocks, copy.fortune, copy.unmei)
-      : baseUnlocks;
+      // 下部ナビの鍵付き「相性」から開いたカードは、相性の項目を先頭に置く (2026-11-19)。
+      : returnTo === "aisho" && copy.aisho
+        ? promoteUnlockItem(baseUnlocks, copy.aisho)
+        : baseUnlocks;
   const reportCharacterSource = reportCharacterImageSrc ?? imageSrc;
   // 韓国語は韓国語PDFから書き出したキャラ別画像 (560×793) を使う。
   const peekLocale = isKorean ? "ko" : "ja";

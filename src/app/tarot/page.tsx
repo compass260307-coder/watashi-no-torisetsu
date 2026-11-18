@@ -1,4 +1,5 @@
 import TarotLanding from "@/components/tarot/TarotLanding";
+import { FortuneSwitcher } from "@/components/hoshiyomi/FortuneSwitcher";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import {
   getTarotAccessState,
@@ -23,5 +24,11 @@ export default async function TarotPage({ searchParams }: PageProps) {
     }
     redirectToTarotPaywall("ja", access.ownerToken);
   }
-  return <TarotLanding />;
+  return (
+    <>
+      {/* 占いの切り替え (Alice / 占星術 / タロット)。占う画面 (/tarot/[mode]) には出さない。 */}
+      <FortuneSwitcher className="pt-4" />
+      <TarotLanding />
+    </>
+  );
 }
