@@ -9,7 +9,19 @@ import { FullAccessCta } from "@/components/result/FullAccessCta";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import { ResultUpgradeSpendPause } from "./ResultUpgradeSpendPause";
 import { watchResultUpgrade, type ResultUpgradeSpendPauseStatus } from "@/lib/result-upgrade-polling";
-import { LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH, RESULT_UPGRADE_QUESTIONS } from "@/lib/result-upgrade";
+import {
+  LEGACY_RESULT_UPGRADE_ANSWER_COUNT,
+  LINE_RESULT_UPGRADE_ANSWER_MAX_LENGTH,
+  RESULT_UPGRADE_QUESTIONS,
+  WEB_RESULT_UPGRADE_QUESTIONS_V2,
+} from "@/lib/result-upgrade";
+import {
+  WEB_RESULT_UPGRADE_INTRO_V2,
+  WEB_RESULT_UPGRADE_OFFER_MESSAGE_V2,
+  WEB_RESULT_UPGRADE_QUESTION_MESSAGES_V2,
+  fallbackResultUpgradeReaction,
+  sanitizeResultUpgradeReaction,
+} from "@/lib/result-upgrade-reaction";
 import { RESULT_UPGRADE_COPY, type ResultUpgradeLocale } from "@/i18n/result-upgrade";
 import { RESULT_UPGRADE_SESSION_COPY } from "@/i18n/result-upgrade-session";
 import { ResultUpgradeSessionCheck } from "./ResultUpgradeSessionCheck";
@@ -30,6 +42,8 @@ type Screen = "questions" | "saving" | "purchase" | "generating" | "failed" | "b
 
 const ALICE_REPLY_DELAY_MS = 900;
 const UPGRADE_PREPARATION_DELAY_MS = 15_000;
+// Aliceの反応を待つ上限。超えたら定型文に切り替えて会話を止めない。
+const ALICE_REACTION_TIMEOUT_MS = 7_000;
 const ALICE_AVATAR_SRC = "/mascot/hoshiyomi-alice-avatar-transparent.png";
 
 
@@ -50,12 +64,22 @@ export function ResultUpgradeChat({
   const copy = RESULT_UPGRADE_COPY[locale];
   const sessionCopy = RESULT_UPGRADE_SESSION_COPY[locale];
   const [sessionVerified, setSessionVerified] = useState(preview);
-  const ALICE_QUESTION_MESSAGES = copy.questionMessages;
+  // 日本語Webは7問＋Aliceの反応つき。LINE・韓国語と、従来の5問を保存済みの人は従来の会話のまま。
+  const webV2 = locale === "ja" && !lineFlow &&
+    existingAnswers.length !== LEGACY_RESULT_UPGRADE_ANSWER_COUNT;
+  const ALICE_QUESTION_MESSAGES: readonly string[] = webV2
+    ? WEB_RESULT_UPGRADE_QUESTION_MESSAGES_V2
+    : copy.questionMessages;
+  const questionCount = webV2
+    ? WEB_RESULT_UPGRADE_QUESTIONS_V2.length
+    : RESULT_UPGRADE_QUESTIONS.length;
   const localePrefix = localePath(locale, "/") === "/" ? "" : localePath(locale, "/");
-  const hasSavedAnswers = existingAnswers.length === RESULT_UPGRADE_QUESTIONS.length;
+  const hasSavedAnswers = existingAnswers.length === questionCount;
   const [answers, setAnswers] = useState<string[]>(existingAnswers);
+  // 回答番号ごとのAliceの反応。再読み込みで復元した回答には無く、その場合は質問だけを表示する。
+  const [reactions, setReactions] = useState<Record<number, string>>({});
   const [draft, setDraft] = useState("");
-  const [index, setIndex] = useState(hasSavedAnswers ? RESULT_UPGRADE_QUESTIONS.length : 0);
+  const [index, setIndex] = useState(hasSavedAnswers ? questionCount : 0);
   const [screen, setScreen] = useState<Screen>(() => {
     if (!hasSavedAnswers) return "questions";
     if (!premiumPaid) return "purchase";
@@ -92,9 +116,9 @@ export function ResultUpgradeChat({
 
   useEffect(() => {
     if (!preview && sessionVerified && screen === "questions") {
-      saveResultUpgradeDraft(ownerToken, answers, draft);
+      saveResultUpgradeDraft(ownerToken, answers, draft, questionCount);
     }
-  }, [answers, draft, ownerToken, preview, screen, sessionVerified]);
+  }, [answers, draft, ownerToken, preview, questionCount, screen, sessionVerified]);
 
   const watchGeneration = !preview && sessionVerified && premiumPaid &&
     (screen === "generating" || screen === "failed" || screen === "blocked");
@@ -114,6 +138,27 @@ export function ResultUpgradeChat({
     });
   }, [watchGeneration, retryKey, router, ownerToken, localePrefix, lineFlow]);
 
+  async function fetchReaction(nextAnswers: string[]): Promise<string> {
+    const questionIndex = nextAnswers.length - 1;
+    const fallback = fallbackResultUpgradeReaction(questionIndex, nextAnswers[questionIndex]);
+    try {
+      const response = await fetch(
+        preview ? "/api/dev/result-upgrade-reaction" : "/api/result-upgrade/reaction",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(preview ? { answers: nextAnswers } : { answers: nextAnswers, ownerToken }),
+          signal: AbortSignal.timeout(ALICE_REACTION_TIMEOUT_MS),
+        },
+      );
+      if (!response.ok) return fallback;
+      const data = await response.json().catch(() => null);
+      return sanitizeResultUpgradeReaction(data?.reaction) ?? fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
   async function submitAnswer() {
     const answer = draft.trim();
     if (!answer || answer.length > maxAnswerLength || answerSubmittingRef.current) return;
@@ -124,11 +169,17 @@ export function ResultUpgradeChat({
     setError(null);
     setAliceTyping(true);
 
-    await new Promise((resolve) => window.setTimeout(resolve, ALICE_REPLY_DELAY_MS));
+    const [reaction] = await Promise.all([
+      webV2 ? fetchReaction(nextAnswers) : Promise.resolve(null),
+      new Promise((resolve) => window.setTimeout(resolve, ALICE_REPLY_DELAY_MS)),
+    ]);
     if (!isMountedRef.current) return;
+    if (reaction) {
+      setReactions((previous) => ({ ...previous, [nextAnswers.length - 1]: reaction }));
+    }
     setAliceTyping(false);
 
-    if (nextAnswers.length < RESULT_UPGRADE_QUESTIONS.length) {
+    if (nextAnswers.length < questionCount) {
       setIndex(nextAnswers.length);
       answerSubmittingRef.current = false;
       return;
@@ -192,7 +243,7 @@ export function ResultUpgradeChat({
       if (!draftRestoredRef.current) {
         draftRestoredRef.current = true;
         if (!hasSavedAnswers) {
-          const saved = loadResultUpgradeDraft(ownerToken);
+          const saved = loadResultUpgradeDraft(ownerToken, questionCount);
           if (saved) {
             setAnswers(saved.answers);
             setIndex(saved.answers.length);
@@ -242,22 +293,28 @@ export function ResultUpgradeChat({
       >
         <div className="space-y-5">
           {!(lineFlow && screen === "purchase") && <AliceBubble>
-            {copy.intro}
+            {webV2 ? WEB_RESULT_UPGRADE_INTRO_V2 : copy.intro}
           </AliceBubble>}
+          {/* 7問の会話では、答えたあとも1問目を残して会話の流れを読めるようにする。 */}
+          {((webV2 && !(lineFlow && screen === "purchase")) ||
+            (answers.length === 0 && screen === "questions")) && (
+            <AliceBubble>{ALICE_QUESTION_MESSAGES[0]}</AliceBubble>
+          )}
           {!(lineFlow && screen === "purchase") && answers.map((answer, answerIndex) => (
             <div key={`${answerIndex}-${answer}`} className="space-y-5">
               <div className="ml-auto max-w-[82%] rounded-2xl rounded-br-[5px] bg-[#5B5BEF] px-4 py-3 text-[14px] font-bold leading-[1.8] text-white shadow-sm">
                 {answer}
               </div>
-              {answerIndex + 1 < RESULT_UPGRADE_QUESTIONS.length &&
-                answerIndex + 1 <= index && (
-                  <AliceBubble>{ALICE_QUESTION_MESSAGES[answerIndex + 1]}</AliceBubble>
-                )}
+              {answerIndex + 1 < questionCount && answerIndex + 1 <= index ? (
+                <AliceBubble>
+                  {reactions[answerIndex] && <span className="mb-2 block">{reactions[answerIndex]}</span>}
+                  {ALICE_QUESTION_MESSAGES[answerIndex + 1]}
+                </AliceBubble>
+              ) : answerIndex + 1 === questionCount && reactions[answerIndex] ? (
+                <AliceBubble>{reactions[answerIndex]}</AliceBubble>
+              ) : null}
             </div>
           ))}
-          {answers.length === 0 && screen === "questions" && (
-            <AliceBubble>{ALICE_QUESTION_MESSAGES[0]}</AliceBubble>
-          )}
 
           {aliceTyping && <AliceTypingBubble locale={locale} />}
 
@@ -265,7 +322,7 @@ export function ResultUpgradeChat({
 
           {screen === "purchase" && locale === "ja" && !lineFlow && (
             <>
-              <AliceBubble>{LINE_UPGRADE_OFFER_MESSAGE}</AliceBubble>
+              <AliceBubble>{webV2 ? WEB_RESULT_UPGRADE_OFFER_MESSAGE_V2 : LINE_UPGRADE_OFFER_MESSAGE}</AliceBubble>
               <AliceBubble>{LINE_UPGRADE_PRICE_MESSAGE}</AliceBubble>
             </>
           )}
@@ -374,7 +431,7 @@ export function ResultUpgradeChat({
         </div>
       </div>
 
-      {screen === "questions" && index < RESULT_UPGRADE_QUESTIONS.length && (
+      {screen === "questions" && index < questionCount && (
         <div
           className="relative z-10 shrink-0 border-t border-[#ECEAF5] bg-white p-3 md:p-4"
           style={modal ? { transform: "translateY(calc(0px - var(--upgrade-keyboard-inset, 0px)))" } : undefined}
