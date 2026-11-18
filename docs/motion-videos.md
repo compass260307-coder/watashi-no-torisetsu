@@ -145,7 +145,7 @@ Subtle idle animation. The felt dog gently breathes, swaying slightly up and dow
 Subtle idle animation. The felt elephant gently breathes, swaying slightly up and down in place, blinking occasionally, and once raises its trunk energetically. The tiny sparkles and confetti around it drift very gently. Camera completely static, no zoom, no pan. Calm, soft, seamless looping motion.
 ```
 
-**20. bear_R（支配人）**
+**20. bear_R（実務家）**
 ```
 Subtle idle animation. The felt bear gently breathes, swaying slightly up and down in place, blinking occasionally, and once nods firmly with reassurance. The tiny sparkles around it drift very gently. Camera completely static, no zoom, no pan. Calm, soft, seamless looping motion.
 ```
@@ -264,7 +264,7 @@ Subtle idle animation. The felt skeleton gently breathes, swaying slightly up an
 | 17 | ⬜ | rabbit_N | せわやきイヌ | アテンダント | 陸 |
 | 18 | ⬜ | dog_R | たよれるウマ | 幹事 | 陸 |
 | 19 | ⬜ | elephant_N | がんばりトラ | 師範 | 陸 |
-| 20 | ⬜ | bear_R | どっしりクマ | 支配人 | 陸 |
+| 20 | ⬜ | bear_R | どっしりクマ | 実務家 | 陸 |
 | 21 | ⬜ | fox_N | にこにこパンダ | 演出家 | 陸 |
 | 22 | ⬜ | squirrel_R | おっとりゾウ | 楽天家 | 陸 |
 | 23 | ⬜ | cheetah_N | やんちゃアライグマ | 開拓者 | 陸 |
