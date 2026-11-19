@@ -171,6 +171,14 @@ export default function TopHeader({
         : n,
     );
 
+  // ハンバーガーメニュー (SP ドロワー) は、自己診断が終わるまで「性格診断テスト / 性格タイプ / ログイン」だけにする
+  // (2026-11-19 指示: 診断前に友達診断・相性・Alice・タロットを見せる必要はない)。
+  // 診断済み (owner_token あり) なら従来どおり全項目を出す (未課金のコースは鍵付き)。
+  // PC の常時表示ナビは対象外。
+  const drawerNav = hasToken
+    ? nav
+    : nav.filter((n) => !n.tako && !n.course && !n.href.includes("/aisho"));
+
   // ドロワーを開いている間は背景スクロールを固定 + Escape で閉じる。
   useEffect(() => {
     if (!open) return;
@@ -391,7 +399,7 @@ export default function TopHeader({
 
           {/* リンク一覧 */}
           <div className="flex flex-col px-6 py-2">
-            {nav.map((n) =>
+            {drawerNav.map((n) =>
               n.disabled ? (
                 <span
                   key={n.href}
