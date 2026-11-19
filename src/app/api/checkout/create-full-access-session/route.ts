@@ -189,14 +189,6 @@ const JA_COURSE_COUPON_NAME = "リリース記念";
 // 表示変更の前後を比較できるよう、Checkoutの表示バージョンとして記録する。
 const JA_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION =
   "ja_full_access_checkout_plain_499_v1_20261116";
-// 2026-11-19の明示判断: 結果ページの宝箱で「リリース記念 ¥800 OFF」を受け取った人だけ、
-// Stripe Checkoutでも通常価格¥1,299とクーポン−¥800を表示し、合計¥499にする（請求額は変えない）。
-// 宝箱の演出とCheckoutの金額表示をそろえ、決済画面での離脱を減らすための表示変更。
-const JA_FULL_ACCESS_TREASURE_CHECKOUT_DISPLAY_VERSION =
-  "ja_full_access_checkout_treasure_coupon800_v1_20261119";
-// 宝箱経由だけ、支払いボタンの直上で宝箱の7つの特典が「すぐ使える」ことを伝える（商品説明は出さない）。
-const JA_FULL_ACCESS_TREASURE_SUBMIT_MESSAGE =
-  "お支払い終了後、すぐに7つの特典が利用可能になります。";
 // 韓国版完全版も、2026-11-17の明示判断により日本版と同じ表示にする。通常価格₩12,900と
 // 「출시 기념」クーポンを出さず、実売価格₩4,900だけを表示・課金する。請求額は変えない。
 const KO_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION =
@@ -361,21 +353,8 @@ function checkoutProductImage(
   return `${BASE_URL}${path}`;
 }
 
-// 宝箱経由の決済画面に出す、光が溢れだす宝箱とAliceの絵（宝箱の演出の続きとして見せる）。
-function checkoutTreasureImage(): string | null {
-  // ローカル開発だけ、DEV_CHECKOUT_TREASURE_IMAGE_URL で Stripe から読める画像URLを指定できる
-  // （localhost の画像は Stripe が読めないため）。本番ビルド・Vercelでは無視する。
-  const devImage =
-    process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1"
-      ? process.env.DEV_CHECKOUT_TREASURE_IMAGE_URL?.trim() || null
-      : null;
-  if (devImage?.startsWith("https://")) return devImage;
-  if (!BASE_URL.startsWith("https://")) return null;
-  return `${BASE_URL}/checkout/treasure-alice-glow.webp`;
-}
-
 // 日本語Webの結果アップグレード（¥899）の決済画面に出す、宝箱から専用キャラクターのうさぎが顔を出し、
-// Aliceが紹介している絵。完全版¥499の宝箱の絵（treasure-alice-glow）とシリーズにしている。
+// Aliceが紹介している絵。完全版¥499の宝箱の演出とシリーズにしている。
 function checkoutResultUpgradeImage(): string | null {
   // ローカル開発だけ、DEV_CHECKOUT_RESULT_UPGRADE_IMAGE_URL で Stripe から読める画像URLを指定できる
   // （localhost の画像は Stripe が読めないため）。本番ビルド・Vercelでは無視する。
@@ -1044,17 +1023,8 @@ export async function POST(request: NextRequest) {
   //   - 韓国版完全版は Price ID の実額検証とクーポン解決の両方が成功した場合だけ
   //     二重価格を表示する。
   // どの経路でもクーポン失敗によって元値を誤請求しない。
-  // 宝箱でクーポンを受け取った人の日本語完全版の通常購入（クライアント値は表示の切替にだけ使い、金額には使わない）。
-  const treasureCheckoutRequested =
-    body.checkout_presentation === "treasure" &&
-    checkoutLocale === "ja" &&
-    product === "full_access" &&
-    !isResultUpgradeCheckout &&
-    upgradeFrom === "none";
-  // 宝箱経由は、宝箱の絵を商品画像にして演出からの流れをつなぐ。
-  const productImage = treasureCheckoutRequested
-    ? checkoutTreasureImage()
-    : japaneseUpgradeCheckout && !lineUpgradeCheckout
+  const productImage =
+    japaneseUpgradeCheckout && !lineUpgradeCheckout
       ? checkoutResultUpgradeImage()
       : checkoutProductImage(checkoutLocale, product);
   const productDescription = lineUpgradeCheckout
@@ -1111,13 +1081,8 @@ export async function POST(request: NextRequest) {
     upgradeFrom === "none" &&
     effectivePrice === coursePrice;
   // 完全版はクーポンを使わず、下の inline price_data で実売価格を直接表示・課金する。
-  // 宝箱でクーポンを受け取った人だけ、Checkoutでも同じクーポンを表示する（クライアント値は表示の切替にだけ使い、金額には使わない）。
-  const usesTreasureJapaneseFullAccessCheckout =
-    isStandardJapaneseCoursePurchase && treasureCheckoutRequested;
   const usesPlainJapaneseFullAccessCheckout =
-    isStandardJapaneseCoursePurchase &&
-    product === "full_access" &&
-    !usesTreasureJapaneseFullAccessCheckout;
+    isStandardJapaneseCoursePurchase && product === "full_access";
   // 韓国市場の完全版の通常購入も同じく、実売価格だけを直接表示・課金する。
   const usesPlainKoreanFullAccessCheckout =
     !isResultUpgradeCheckout &&
@@ -1126,6 +1091,14 @@ export async function POST(request: NextRequest) {
     usesCurrentOffer &&
     upgradeFrom === "none" &&
     effectivePrice === coursePrice;
+  const checkoutDisplayMetadata: Record<string, string> =
+    usesPlainJapaneseFullAccessCheckout
+      ? { checkout_display_version: JA_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION }
+      : usesPlainKoreanFullAccessCheckout
+        ? { checkout_display_version: KO_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION }
+        : japaneseUpgradeCheckout && !lineUpgradeCheckout
+          ? { checkout_display_version: JA_WEB_RESULT_UPGRADE_CHECKOUT.displayVersion }
+          : {};
   const japaneseCourseCouponId =
     isStandardJapaneseCoursePurchase &&
     !usesPlainJapaneseFullAccessCheckout &&
@@ -1133,21 +1106,6 @@ export async function POST(request: NextRequest) {
       JA_COURSE_CHECKOUT_PRICING[product].saleAmount
       ? await getJapaneseCourseCouponIdCached(stripe, product)
       : null;
-  // 宝箱経由でもクーポンを解決できなかったときは、従来どおり¥499だけの表示で課金する。
-  const showsTreasureCoupon =
-    usesTreasureJapaneseFullAccessCheckout && japaneseCourseCouponId !== null;
-  const checkoutSubmitMessage = usesTreasureJapaneseFullAccessCheckout
-    ? JA_FULL_ACCESS_TREASURE_SUBMIT_MESSAGE
-    : submitMessage;
-  const checkoutDisplayMetadata: Record<string, string> = showsTreasureCoupon
-    ? { checkout_display_version: JA_FULL_ACCESS_TREASURE_CHECKOUT_DISPLAY_VERSION }
-    : usesPlainJapaneseFullAccessCheckout || usesTreasureJapaneseFullAccessCheckout
-      ? { checkout_display_version: JA_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION }
-      : usesPlainKoreanFullAccessCheckout
-        ? { checkout_display_version: KO_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION }
-        : japaneseUpgradeCheckout && !lineUpgradeCheckout
-          ? { checkout_display_version: JA_WEB_RESULT_UPGRADE_CHECKOUT.displayVersion }
-          : {};
   const isStandardLocalizedFullAccessPurchase =
     (priceMarket === "en" || priceMarket === "id") &&
     product === "full_access" &&
@@ -1400,12 +1358,12 @@ export async function POST(request: NextRequest) {
             },
           }
         : {}),
-      // 支払い直前の補足コピーがある商品だけ表示する。宝箱経由は「すぐ使える」ことだけを伝える。
-      ...(checkoutSubmitMessage
+      // 支払い直前の補足コピーがある商品だけ表示する。
+      ...(submitMessage
         ? {
             custom_text: {
               submit: {
-                message: checkoutSubmitMessage,
+                message: submitMessage,
               },
             },
           }

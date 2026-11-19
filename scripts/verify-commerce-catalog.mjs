@@ -156,22 +156,13 @@ const contractChecks = [
     label: "Japanese full access Stripe Checkout shows JPY 499 directly without a coupon",
     valid:
       checkoutRoute.includes(
-        "!usesTreasureJapaneseFullAccessCheckout;",
+        'isStandardJapaneseCoursePurchase && product === "full_access";',
       ) &&
       checkoutRoute.includes("!usesPlainJapaneseFullAccessCheckout &&") &&
       checkoutRoute.includes(
         '"ja_full_access_checkout_plain_499_v1_20261116"',
       ) &&
       catalogIncludes("`ja_full_access_checkout_plain_499_v1_20261116`"),
-  },
-  {
-    label: "Japanese full access treasure Stripe Checkout shows the JPY 800 coupon from JPY 1,299",
-    valid:
-      checkoutRoute.includes('body.checkout_presentation === "treasure" &&') &&
-      checkoutRoute.includes(
-        '"ja_full_access_checkout_treasure_coupon800_v1_20261119"',
-      ) &&
-      catalogIncludes("`ja_full_access_checkout_treasure_coupon800_v1_20261119`"),
   },
   {
     label: "English Stripe Checkout uses the frozen reference price",

@@ -64,7 +64,6 @@ export function FullAccessCta({
   accentColor,
   shadowColor,
   priceState,
-  checkoutPresentation,
 }: {
   children?: React.ReactNode;
   ownerToken?: string;
@@ -91,8 +90,6 @@ export function FullAccessCta({
   /** CTA下辺の立体影。accentColor と組で指定する。 */
   shadowColor?: string;
   priceState?: FullAccessQuoteState;
-  /** 決済画面の見せ方。宝箱でクーポンを受け取った人は、Stripeでも同じクーポンを表示する。 */
-  checkoutPresentation?: "treasure";
 }) {
   const uiText = useUiText(locale, "result.FullAccessCta");
   const [loading, setLoading] = useState(false);
@@ -178,7 +175,6 @@ export function FullAccessCta({
           ...(ttp ? { ttp } : {}),
           paywall_version: resolvedPaywallVersion,
           ...(placement ? { paywall_placement: placement } : {}),
-          ...(checkoutPresentation ? { checkout_presentation: checkoutPresentation } : {}),
         }),
       });
       // 旧カードならクエリ付きでキャッシュを避けて現行カードへ復帰する。
