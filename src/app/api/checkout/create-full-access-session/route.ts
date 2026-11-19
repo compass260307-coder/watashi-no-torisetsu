@@ -63,6 +63,7 @@ import {
   PREMIUM_BUNDLE_PRICE_JPY,
   KO_RESULT_UPGRADE_OFFER_VERSION,
   KO_RESULT_UPGRADE_PRICE_KRW,
+  JA_WEB_RESULT_UPGRADE_CHECKOUT,
   LINE_RESULT_UPGRADE_LIST_PRICE_JPY,
   LINE_RESULT_UPGRADE_COUPON_JPY,
   LINE_RESULT_UPGRADE_OFFER_VERSION,
@@ -371,6 +372,20 @@ function checkoutTreasureImage(): string | null {
   if (devImage?.startsWith("https://")) return devImage;
   if (!BASE_URL.startsWith("https://")) return null;
   return `${BASE_URL}/checkout/treasure-alice-glow.webp`;
+}
+
+// 日本語Webの結果アップグレード（¥899）の決済画面に出す、宝箱から専用キャラクターのうさぎが顔を出し、
+// Aliceが紹介している絵。完全版¥499の宝箱の絵（treasure-alice-glow）とシリーズにしている。
+function checkoutResultUpgradeImage(): string | null {
+  // ローカル開発だけ、DEV_CHECKOUT_RESULT_UPGRADE_IMAGE_URL で Stripe から読める画像URLを指定できる
+  // （localhost の画像は Stripe が読めないため）。本番ビルド・Vercelでは無視する。
+  const devImage =
+    process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1"
+      ? process.env.DEV_CHECKOUT_RESULT_UPGRADE_IMAGE_URL?.trim() || null
+      : null;
+  if (devImage?.startsWith("https://")) return devImage;
+  if (!BASE_URL.startsWith("https://")) return null;
+  return `${BASE_URL}/checkout/result-upgrade-alice-rabbit.webp`;
 }
 
 // getStripe() の非 null 戻り値 = Stripe クライアント型。
@@ -1039,11 +1054,13 @@ export async function POST(request: NextRequest) {
   // 宝箱経由は、宝箱の絵を商品画像にして演出からの流れをつなぐ。
   const productImage = treasureCheckoutRequested
     ? checkoutTreasureImage()
-    : checkoutProductImage(checkoutLocale, product);
+    : japaneseUpgradeCheckout && !lineUpgradeCheckout
+      ? checkoutResultUpgradeImage()
+      : checkoutProductImage(checkoutLocale, product);
   const productDescription = lineUpgradeCheckout
     ? `5つの自由回答から専用キャラクター・タイプ名・自己診断結果・5章の鑑定書を作成。税込${RESULT_UPGRADE_PRICE_JPY}円の買い切り。`
     : isResultUpgradeCheckout && checkoutLocale === "ja"
-    ? "あなたの回答から作る専用キャラクター・専用タイプ名・自己診断結果・鑑定書。Webで受け取れる買い切り。"
+    ? JA_WEB_RESULT_UPGRADE_CHECKOUT.productDescription
     : isResultUpgradeCheckout && checkoutLocale === "ko"
     ? "5개 답변으로 만드는 나만의 캐릭터, 유형 이름, 자기 분석 결과와 전용 보고서 · 1회 결제"
     : checkoutCopy.productDescription;
@@ -1054,7 +1071,7 @@ export async function POST(request: NextRequest) {
     tax_code?: string;
   } = {
     name:
-      lineUpgradeCheckout ? "結果アップグレード（LINE）" : isResultUpgradeCheckout && checkoutLocale === "ja" ? "結果アップグレード" : isResultUpgradeCheckout && checkoutLocale === "ko"
+      lineUpgradeCheckout ? "結果アップグレード（LINE）" : isResultUpgradeCheckout && checkoutLocale === "ja" ? JA_WEB_RESULT_UPGRADE_CHECKOUT.productName : isResultUpgradeCheckout && checkoutLocale === "ko"
         ? "결과 업그레이드"
         : upgradeFrom !== "none"
         ? checkoutLocale === "ko"
@@ -1075,7 +1092,7 @@ export async function POST(request: NextRequest) {
   const productSubmitMessage = lineUpgradeCheckout
     ? `通常価格${LINE_RESULT_UPGRADE_LIST_PRICE_JPY.toLocaleString("ja-JP")}円から${LINE_RESULT_UPGRADE_COUPON_JPY}円クーポン適用で税込${RESULT_UPGRADE_PRICE_JPY}円の買い切りです。Alice Plusの定期課金とは別購入で、LINEメニューから結果を受け取れます。30日間の返金保証。`
     : isResultUpgradeCheckout && checkoutLocale === "ja"
-    ? `通常価格${LINE_RESULT_UPGRADE_LIST_PRICE_JPY.toLocaleString("ja-JP")}円から${LINE_RESULT_UPGRADE_COUPON_JPY}円クーポン適用で税込${RESULT_UPGRADE_PRICE_JPY}円の買い切りです。5つの回答から専用キャラクターと鑑定書を作成し、Webで受け取れます。`
+    ? JA_WEB_RESULT_UPGRADE_CHECKOUT.submitMessage
     : isResultUpgradeCheckout && checkoutLocale === "ko"
     ? "5개 답변으로 나만의 캐릭터와 전용 보고서를 만들어요. 1회 결제 · 추가 요금 없음 · 30일 환불 보장."
     : checkoutCopy.submitMessage;
@@ -1128,7 +1145,9 @@ export async function POST(request: NextRequest) {
       ? { checkout_display_version: JA_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION }
       : usesPlainKoreanFullAccessCheckout
         ? { checkout_display_version: KO_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION }
-        : {};
+        : japaneseUpgradeCheckout && !lineUpgradeCheckout
+          ? { checkout_display_version: JA_WEB_RESULT_UPGRADE_CHECKOUT.displayVersion }
+          : {};
   const isStandardLocalizedFullAccessPurchase =
     (priceMarket === "en" || priceMarket === "id") &&
     product === "full_access" &&
@@ -1141,12 +1160,20 @@ export async function POST(request: NextRequest) {
       ? await getCouponIdCached(stripe, priceMarket)
       : null;
 
+  // Webの決済画面は宝箱のクーポン名で見せる（Stripeのクーポン名は変えられないため、LINEとは別ID）。
   const lineUpgradeCouponId = japaneseUpgradeCheckout
-    ? await resolveJapaneseCourseCoupon(stripe, product, {
+    ? await resolveJapaneseCourseCoupon(stripe, product, lineUpgradeCheckout
+      ? {
         listAmount: LINE_RESULT_UPGRADE_LIST_PRICE_JPY,
         saleAmount: RESULT_UPGRADE_PRICE_JPY,
         couponId: `wt-line-result-upgrade-off${LINE_RESULT_UPGRADE_COUPON_JPY}-jpy`,
         couponName: "LINE結果アップグレードクーポン",
+      }
+      : {
+        listAmount: JA_WEB_RESULT_UPGRADE_CHECKOUT.listAmount,
+        saleAmount: JA_WEB_RESULT_UPGRADE_CHECKOUT.saleAmount,
+        couponId: JA_WEB_RESULT_UPGRADE_CHECKOUT.couponId,
+        couponName: JA_WEB_RESULT_UPGRADE_CHECKOUT.couponName,
       })
     : null;
 

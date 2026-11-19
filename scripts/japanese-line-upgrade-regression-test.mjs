@@ -85,14 +85,14 @@ assert.equal(invalid.headers.get('location'), 'https://example.test/line/menu');
 assert.equal(invalid.headers.get('set-cookie'), null);
 console.log('PASS: signed entry issues a restricted HttpOnly cookie, removes token from the destination, and rejects invalid links.');
 
-async function checkout({ full = true, premium = false, line = true, saved = answers, savedLocale = 'ja', couponMode = 'valid', ...body } = {}) {
+async function checkout({ full = true, premium = false, line = true, saved = answers, savedLocale = 'ja', couponMode = 'valid', siteUrl = null, ...body } = {}) {
   const calls = [];
   const stripe = { checkout: { sessions: { create: async params => { calls.push(params); return { id: 'cs_isolated', url: 'https://checkout.example.test', currency: 'jpy', amount_total: 499 }; } } },
     prices: { retrieve: async () => ({ active: true, type: 'one_time', currency: 'jpy', unit_amount: 499, tax_behavior: 'inclusive' }) },
     coupons: {
       retrieve: async id => {
         if (couponMode === 'missing' || couponMode === 'unavailable') throw new Error('missing');
-        return { id, valid: true, currency: couponMode === 'wrong_currency' ? 'usd' : 'jpy', amount_off: id.includes('line-result-upgrade') ? (couponMode === 'wrong_amount' ? 498 : 499) : 791 };
+        return { id, valid: true, currency: couponMode === 'wrong_currency' ? 'usd' : 'jpy', amount_off: id.includes('result-upgrade-off499') ? (couponMode === 'wrong_amount' ? 498 : 499) : 791 };
       },
       create: async params => { if (couponMode === 'unavailable') throw new Error('unavailable'); return { ...params, valid: true }; },
     },
@@ -121,7 +121,7 @@ async function checkout({ full = true, premium = false, line = true, saved = ans
     '@/lib/paywall-source': { DIRECT_PAYWALL_SOURCE: 'direct', normalizePaywallSource: value => value ?? 'direct' },
     '@/lib/checkout-measurement': { normalizeCheckoutAttemptId: value => value },
     '@/lib/checkout-cancel-signature': { signCheckoutCancellation: () => 'test-signature' },
-  });
+  }, siteUrl ? { process: { env: { NEXT_PUBLIC_SITE_URL: siteUrl, VERCEL: '1' } } } : {});
   const request = new NextRequest('https://example.test/api/checkout/create-full-access-session', { method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-vercel-ip-country': 'JP' }, body: JSON.stringify({ locale: 'ja', owner_token: owner.owner_token,
       product: 'premium_bundle', paywall_source: 'result_upgrade_after_answers', sales_channel: 'line',
@@ -133,13 +133,24 @@ const webPurchase = await checkout({ sales_channel: 'web', line: false });
 assert.equal(webPurchase.status, 200);
 assert.equal(webPurchase.body.amount, 899);
 assert.equal(webPurchase.calls[0].line_items[0].price_data.unit_amount, 1398);
-assert.equal(webPurchase.calls[0].discounts[0].coupon, 'wt-line-result-upgrade-off499-jpy');
+assert.equal(webPurchase.calls[0].discounts[0].coupon, 'wt-result-upgrade-off499-jpy');
+assert.equal(webPurchase.calls[0].line_items[0].price_data.product_data.name, '結果アップグレード｜買い切り');
+assert.equal(webPurchase.calls[0].line_items[0].price_data.product_data.description, undefined);
+assert.equal(webPurchase.calls[0].custom_text.submit.message, 'お支払い終了後、すぐに5つの特典の準備が始まります。');
+assert.equal(webPurchase.calls[0].metadata.checkout_display_version, 'ja_result_upgrade_checkout_coupon_899_v1_20261119');
 for (const couponMode of ['wrong_amount', 'wrong_currency', 'unavailable']) {
   const fallback = await checkout({ sales_channel: 'web', line: false, couponMode });
   assert.equal(fallback.body.amount, 899);
   assert.equal(fallback.calls[0].line_items[0].price_data.unit_amount, 899);
   assert.equal(fallback.calls[0].discounts, undefined);
 }
+const webWithImage = await checkout({ sales_channel: 'web', line: false, siteUrl: 'https://site.example.test' });
+assert.deepEqual([...webWithImage.calls[0].line_items[0].price_data.product_data.images], ['https://site.example.test/checkout/result-upgrade-alice-rabbit.webp']);
+const lineWithImage = await checkout({ siteUrl: 'https://site.example.test' });
+assert.deepEqual([...lineWithImage.calls[0].line_items[0].price_data.product_data.images], ['https://site.example.test/mascot/unmei-hero.png']);
+const webCreatedCoupon = await checkout({ sales_channel: 'web', line: false, couponMode: 'missing' });
+assert.equal(webCreatedCoupon.calls[0].line_items[0].price_data.unit_amount, 1398);
+assert.equal(webCreatedCoupon.calls[0].discounts[0].coupon, 'wt-result-upgrade-off499-jpy');
 assert.equal(webPurchase.calls[0].metadata.sales_channel, undefined);
 assert.match(webPurchase.calls[0].success_url, /\/me\/owner-token\?paid=1/);
 assert.match(webPurchase.calls[0].cancel_url, /\/me\/owner-token\?checkout=cancelled/);
@@ -157,6 +168,7 @@ assert.equal(purchase.calls[0].line_items[0].price_data.unit_amount, 1398);
 assert.equal(purchase.calls[0].discounts[0].coupon, 'wt-line-result-upgrade-off499-jpy');
 assert.match(purchase.calls[0].line_items[0].price_data.product_data.name, /結果アップグレード/);
 assert.match(purchase.calls[0].custom_text.submit.message, /Alice Plusの定期課金とは別購入/);
+assert.equal(purchase.calls[0].metadata.checkout_display_version, undefined);
 assert.equal(purchase.calls[0].metadata.sales_channel, 'line');
 assert.equal(purchase.calls[0].metadata.sales_channel_version, policy.LINE_RESULT_UPGRADE_OFFER_VERSION);
 assert.match(purchase.calls[0].success_url, /\/line\/result-upgrade\?paid=1/);

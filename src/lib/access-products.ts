@@ -304,6 +304,30 @@ export const RESULT_UPGRADE_PRICE_JPY = 899;
 // 2026-10-21: LINE限定。クーポン適用後の請求額899円を維持する。
 export const LINE_RESULT_UPGRADE_LIST_PRICE_JPY = 1398;
 export const LINE_RESULT_UPGRADE_COUPON_JPY = 499;
+
+/**
+ * 日本語Webの結果アップグレード（¥899）のStripe決済画面の表示。
+ * 2026-11-19の本人判断で、完全版¥499の宝箱経由の決済画面（商品名の下に説明文を出さず、ボタン直上の1文で特典を伝える）に寄せる。
+ * 通常価格¥1,398と、チャットの宝箱で渡すクーポン（−¥499）は決済画面でもそのまま見せる。請求額は¥899のまま。
+ * 本番の決済（create-full-access-session）とローカル確認用の決済（api/dev/result-upgrade-checkout）で同じ値を使う。
+ * LINE経由・韓国語の決済画面は対象外。
+ */
+export const JA_WEB_RESULT_UPGRADE_CHECKOUT = {
+  productName: "結果アップグレード｜買い切り",
+  // 説明文は価格の下に出て「文章→価格→文章」になり読みにくいので、¥499と同じく表示しない。
+  productDescription: null,
+  listAmount: LINE_RESULT_UPGRADE_LIST_PRICE_JPY,
+  saleAmount: RESULT_UPGRADE_PRICE_JPY,
+  // クーポン名はチャットの宝箱のクーポン券（「完全版購入者さま限定 ¥499 OFFクーポン」）に合わせる。
+  // Stripeのクーポン名は作成後に変えられないため、LINE用（wt-line-result-upgrade-off499-jpy）とは別のIDにする。
+  couponId: `wt-result-upgrade-off${LINE_RESULT_UPGRADE_COUPON_JPY}-jpy`,
+  couponName: "完全版購入者さま限定クーポン",
+  // 「5つの特典」は ResultUpgradeTreasure の BENEFITS（宝箱の特典カード）の数。変えるときはそろえる。
+  // キャラクターと結果は生成に時間がかかるため、¥499の「すぐに利用可能」ではなく「準備が始まる」と書く。
+  submitMessage: "お支払い終了後、すぐに5つの特典の準備が始まります。",
+  // 表示変更の前後を比較できるよう、Stripe Session と checkout_session_created に記録する。
+  displayVersion: "ja_result_upgrade_checkout_coupon_899_v1_20261119",
+} as const;
 export const LINE_RESULT_UPGRADE_OFFER_VERSION =
   "ja_line_result_upgrade_v2_1398_coupon499_20261021" as const;
 export const RESULT_UPGRADE_OFFER_VERSION =
