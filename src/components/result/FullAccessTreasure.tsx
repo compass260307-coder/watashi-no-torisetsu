@@ -72,13 +72,13 @@ function fullAccessBenefits(): TreasureBenefit[] {
       label: "特典⑤",
       title: "相性診断をすべて解放",
       body: "恋愛・友情・仕事での相性から、すれ違いやすいポイントまで読み解けます",
-      image: "/pricing/full-access-connection-felt-transparent.png",
+      image: "/result-upgrade/benefit-aisho.webp",
     },
     {
       label: "特典⑥",
       title: "2人目以降の友達診断結果",
       body: "友達から見たキャラ・性格のギャップ・恋愛傾向まで、友達ごとの結果をすべて読めます",
-      image: "/empty-states/tako-friends-waiting-felt.png",
+      image: "/result-upgrade/benefit-friends.webp",
     },
     {
       label: "特典⑦",
