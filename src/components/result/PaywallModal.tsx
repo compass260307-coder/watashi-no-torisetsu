@@ -103,7 +103,9 @@ export function PaywallOverlay({
 
 // 日本語Webの完全版¥499（日本円の見積もり）で、対象の導線から開いたときだけ、課金カードの代わりに宝箱の演出を出す。
 // 2026-11-19: 小規模テストとして、自己診断結果の本文にあるロック解除CTA（「今すぐアクセス」系）だけを対象にする。
-// 上部バー・ページ下部のカード・友達/相性ページ・下部ナビは従来の課金カードのまま。
+// 同日、自己診断結果ページ上部の固定バー（sticky_bar）も対象に加えた。友達診断ページの上部バーも
+// 同じ sticky_bar を使うため、そちらは surface="tako" で除外する。
+// ページ下部のカード・友達/相性ページ・下部ナビは従来の課金カードのまま。
 const TREASURE_CTA_SOURCES: ReadonlySet<string> = new Set([
   "love_payoff_card",
   "love_endure_card",
@@ -117,6 +119,8 @@ const TREASURE_CTA_SOURCES: ReadonlySet<string> = new Set([
   "caution_lock_card",
   "traits_card",
 ]);
+// 自己診断結果ページ（surface が tako 以外）のときだけ宝箱にする導線。
+const TREASURE_SELF_ONLY_CTA_SOURCES: ReadonlySet<string> = new Set(["sticky_bar"]);
 // 見積もりが返るまでは暗い背景だけを出し、返らなければ従来のカードにする。
 // 一度決めた表示は、見積もりがあとから届いても切り替えない。
 const TREASURE_QUOTE_WAIT_MS = 2500;
@@ -124,8 +128,12 @@ const TREASURE_QUOTE_WAIT_MS = 2500;
 function useFullAccessTreasurePresentation(cardProps: PaywallModalProps, ctaSource?: string) {
   const locale = cardProps.locale ?? "ja";
   const previewMode = cardProps.previewMode ?? false;
+  const treasureSource =
+    ctaSource !== undefined &&
+    (TREASURE_CTA_SOURCES.has(ctaSource) ||
+      (TREASURE_SELF_ONLY_CTA_SOURCES.has(ctaSource) && cardProps.surface !== "tako"));
   const eligible =
-    (previewMode || (ctaSource !== undefined && TREASURE_CTA_SOURCES.has(ctaSource))) &&
+    (previewMode || treasureSource) &&
     locale === "ja" &&
     !cardProps.legacyPlanStyle &&
     cardProps.variant !== "aisho" &&
