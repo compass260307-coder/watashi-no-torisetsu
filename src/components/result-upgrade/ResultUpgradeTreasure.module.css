@@ -702,6 +702,12 @@
   animation: sticker-slap 0.42s cubic-bezier(0.2, 1.6, 0.4, 1) 0.5s both;
 }
 
+/* 値札に貼ったクーポンは小さいので、演出用の大きい影と光（.ticketShadow）は外す。
+   影が重なると、回転した箱の端で切れて四角い帯に見えるため。影は .tagSticker の1つだけにする。 */
+.tagSticker .ticketShadow {
+  filter: none;
+}
+
 @keyframes sticker-slap {
   0% { opacity: 0; transform: rotate(24deg) scale(1.7); }
   60% { opacity: 1; transform: rotate(10deg) scale(0.92); }
