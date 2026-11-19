@@ -191,6 +191,22 @@ assert.equal('description' in japanPlain.calls[0].line_items[0].price_data.produ
 assert.equal(japanPlain.calls[0].custom_text.submit.message,
   'お支払い後、すべての診断結果が解放されます。**自動更新・追加請求はありません。**');
 assert.equal(japanPlain.calls[0].metadata.checkout_display_version, 'ja_full_access_checkout_plain_499_v1_20261116');
+// 宝箱でクーポンを受け取った人だけ、Checkoutでも ¥1,299 − リリース記念¥800 = ¥499 を表示する。
+const japanTreasure = await checkout({ ...japan, locale: 'ja', checkout_presentation: 'treasure',
+  paywall_version: policy.accessPaywallVersionForLocale('ja') });
+assert.equal(japanTreasure.status, 200, JSON.stringify(japanTreasure.data));
+assert.equal(japanTreasure.data.amount, 499);
+assert.equal(japanTreasure.calls[0].line_items[0].price_data.unit_amount, 1299);
+assert.equal(japanTreasure.calls[0].discounts[0].coupon, 'wt-release-full-access-off800-jpy');
+assert.equal(japanTreasure.calls[0].line_items[0].price_data.product_data.name, '完全版｜買い切り・30日間返金保証つき');
+assert.equal('description' in japanTreasure.calls[0].line_items[0].price_data.product_data, false);
+assert.equal(japanTreasure.calls[0].custom_text.submit.message, 'お支払い終了後、すぐに7つの特典が利用可能になります。');
+assert.equal(japanTreasure.calls[0].metadata.checkout_display_version, 'ja_full_access_checkout_treasure_coupon800_v1_20261119');
+// 想定外の値は無視し、従来の¥499だけの表示にする。
+const japanUnknownPresentation = await checkout({ ...japan, locale: 'ja', checkout_presentation: 'other',
+  paywall_version: policy.accessPaywallVersionForLocale('ja') });
+assert.equal(japanUnknownPresentation.calls[0].discounts, undefined);
+assert.equal(japanUnknownPresentation.calls[0].line_items[0].price_data.unit_amount, 499);
 // 日本語表示でも他市場の価格では従来どおりの値引き表示を維持し、表示バージョンを付けない。
 const japaneseAbroad = await checkout({ ...fullPurchase, country: 'FR', locale: 'ja',
   displayed_price_market: 'en', displayed_price_minor: 499, paywall_version: policy.accessPaywallVersionForLocale('ja') });

@@ -184,6 +184,7 @@ export function FullAccessTreasure({
           placement="modal"
           previewMode={previewMode}
           priceState={priceState}
+          checkoutPresentation="treasure"
           accentColor="#A87322"
           shadowColor="#7F5518"
         >
