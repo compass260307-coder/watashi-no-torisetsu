@@ -147,9 +147,17 @@ export default function TopFooter({
   // BottomNav と同じリクエストを共有し、購入済みの場合だけ通常リンクへ戻す。
   const resolvedCourseAccess = useCourseNavigationAccess(ownerToken);
 
+  // 自己診断が終わるまでは、ハンバーガーメニューと同じく友達診断・相性・Alice・運命・タロットを出さない
+  // (2026-11-19 指示: 診断前にこれらの機能を見せる必要はない)。
+  // 診断済み (owner_token あり) なら従来どおり全項目を出す (未課金のコースは鍵付き)。
   const columns = content.columns.map((col) => ({
     ...col,
     links: col.links
+      .filter(
+        (link) =>
+          hasToken ||
+          (!link.tako && !link.course && !link.href.includes("/aisho")),
+      )
       .filter(
         (link) =>
           !link.href.includes("/aisho") || hasAishoNavigationAccess,
