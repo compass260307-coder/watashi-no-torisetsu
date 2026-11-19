@@ -727,7 +727,38 @@ function BenefitStack({
   );
 }
 
-/** 購入で手に入る特典のスライド。カードが輪になって回り、タップでも次へ進む。 */
+// 指でスライドを動かすときの設定。
+// これ以上横に動いたらスワイプとして扱う（それ未満はタップ）。
+const SWIPE_START_PX = 8;
+// カード幅のこの割合ぶん指を動かすと、ちょうど1枚ぶん回る。
+const SWIPE_CARD_RATIO = 0.62;
+// 1枚ぶんのこの割合を超えて離したら、次（前）のカードへ送る。
+const SWIPE_COMMIT_RATIO = 0.18;
+
+/** 正面からの距離（0=正面、+1=右奥、-1=左奥、小数は指で動かしている途中）から、カードの見た目を決める。 */
+function deckCardStyle(distance: number): CSSProperties {
+  const away = Math.abs(distance);
+  const side = distance < 0 ? -1 : 1;
+  const zIndex = 30 - Math.round(away * 10) + (distance > 0 ? 1 : 0);
+  if (away <= 1) {
+    return {
+      transform: `translateX(${46 * distance}%) translateZ(${-220 * away}px) rotateY(${-40 * distance}deg) scale(${1 - 0.14 * away})`,
+      filter: away < 0.001 ? "none" : `brightness(${1 - 0.38 * away}) saturate(${1 - 0.2 * away})`,
+      opacity: 1,
+      zIndex,
+    };
+  }
+  // 左右の奥から、さらに裏へ回って消えていく。
+  const behind = Math.min(away - 1, 1);
+  return {
+    transform: `translateX(${46 * side * (1 - behind)}%) translateZ(${-220 - 200 * behind}px) rotateY(${-40 * side * (1 - behind)}deg) scale(${0.86 - 0.06 * behind})`,
+    filter: "brightness(0.62) saturate(0.8)",
+    opacity: 1 - behind,
+    zIndex,
+  };
+}
+
+/** 購入で手に入る特典のスライド。カードが輪になって回り、指で左右に動かすことも、タップで次へ進むこともできる。 */
 function BenefitDeck({
   reducedMotion,
   inline = false,
@@ -738,40 +769,93 @@ function BenefitDeck({
   benefits?: readonly TreasureBenefit[];
 }) {
   const [index, setIndex] = useState(0);
+  // 指で動かしている量（カード何枚ぶんか。正の値で次のカードが正面に来る）。動かしていないときは null。
+  const [drag, setDrag] = useState<number | null>(null);
+  const pointer = useRef<{ id: number; startX: number; width: number; swiping: boolean; moved: number } | null>(null);
+  const skipClick = useRef(false);
   const count = benefits.length;
+  const dragging = drag !== null;
   useEffect(() => {
-    if (reducedMotion) return;
+    // 指で動かしている間は自動で回さない。離すと、そこからまた数え直す。
+    if (reducedMotion || dragging) return;
     const timer = window.setInterval(() => setIndex((value) => (value + 1) % count), BENEFIT_ROTATE_MS);
     return () => window.clearInterval(timer);
-  }, [count, index, reducedMotion]);
+  }, [count, index, reducedMotion, dragging]);
+
+  const wrap = (value: number) => ((value % count) + count) % count;
+  const offset = drag ?? 0;
+
+  const endSwipe = (commit: boolean) => {
+    const state = pointer.current;
+    pointer.current = null;
+    if (!state?.swiping) return;
+    if (commit) {
+      // 画面の描き直しを待たず、指が最後にいた位置で決める（素早く払ったときに取りこぼさない）。
+      const moved = state.moved;
+      let steps = Math.round(moved);
+      if (steps === 0 && Math.abs(moved) > SWIPE_COMMIT_RATIO) steps = moved > 0 ? 1 : -1;
+      if (steps !== 0) setIndex((value) => wrap(value + steps));
+    }
+    setDrag(null);
+  };
 
   return (
     <>
-      <div className={`${styles.deck} ${inline ? styles.deckInline : ""}`}>
+      <div
+        className={`${styles.deck} ${inline ? styles.deckInline : ""}`}
+        onPointerDown={(event) => {
+          if (event.pointerType === "mouse" && event.button !== 0) return;
+          skipClick.current = false;
+          pointer.current = {
+            id: event.pointerId,
+            startX: event.clientX,
+            width: event.currentTarget.offsetWidth || 1,
+            swiping: false,
+            moved: 0,
+          };
+        }}
+        onPointerMove={(event) => {
+          const state = pointer.current;
+          if (!state || state.id !== event.pointerId) return;
+          const dx = event.clientX - state.startX;
+          if (!state.swiping) {
+            if (Math.abs(dx) < SWIPE_START_PX) return;
+            state.swiping = true;
+            // 指を離したときにカードの「タップで次へ」が動かないようにする。
+            skipClick.current = true;
+            try { event.currentTarget.setPointerCapture(event.pointerId); } catch { /* optional */ }
+          }
+          state.moved = -dx / (state.width * SWIPE_CARD_RATIO);
+          setDrag(state.moved);
+        }}
+        onPointerUp={() => endSwipe(true)}
+        onPointerCancel={() => endSwipe(false)}
+        onDragStart={(event) => event.preventDefault()}
+      >
         {benefits.map((benefit, i) => {
-          const position = (i - index + count) % count;
-          const front = position === 0;
-          const right = position === 1;
-          const left = position === count - 1;
-          const hidden = !front && !right && !left;
+          // 正面からの距離を -count/2 〜 count/2 に収める（輪になっているので、近い側で数える）。
+          let distance = wrap(i - index) - offset;
+          distance -= Math.round(distance / count) * count;
+          const front = wrap(i - index) === 0;
           return (
             <button
               key={benefit.label}
               type="button"
               className={styles.benefitCard}
-              onClick={() => setIndex((value) => (value + 1) % count)}
+              onClick={() => {
+                if (skipClick.current) {
+                  skipClick.current = false;
+                  return;
+                }
+                setIndex((value) => (value + 1) % count);
+              }}
               aria-label={`${benefit.label} ${benefit.title}。${benefit.body}`}
               aria-hidden={front ? undefined : true}
               tabIndex={front ? 0 : -1}
               style={{
-                transform: front
-                  ? "translateX(0) translateZ(0) rotateY(0deg) scale(1)"
-                  : hidden
-                    ? "translateX(0) translateZ(-420px) scale(0.8)"
-                    : `translateX(${right ? 46 : -46}%) translateZ(-220px) rotateY(${right ? -40 : 40}deg) scale(0.86)`,
-                filter: front ? "none" : "brightness(0.62) saturate(0.8)",
-                opacity: hidden ? 0 : 1,
-                zIndex: front ? 3 : right ? 2 : left ? 1 : 0,
+                ...deckCardStyle(distance),
+                // 指で動かしている間は、指にぴったり付いてくるようにする。
+                ...(dragging ? { transition: "none" } : null),
               }}
             >
               <BenefitFace benefit={benefit} />
@@ -781,7 +865,10 @@ function BenefitDeck({
       </div>
       <div className={`${styles.dots} ${inline ? styles.dotsInline : ""}`} aria-hidden="true">
         {benefits.map((benefit, i) => (
-          <span key={benefit.label} className={`${styles.dot} ${i === index ? styles.dotActive : ""}`} />
+          <span
+            key={benefit.label}
+            className={`${styles.dot} ${i === wrap(index + Math.round(offset)) ? styles.dotActive : ""}`}
+          />
         ))}
       </div>
     </>
