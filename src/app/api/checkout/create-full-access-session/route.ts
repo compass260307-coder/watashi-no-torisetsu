@@ -374,6 +374,20 @@ function checkoutTreasureImage(): string | null {
   return `${BASE_URL}/checkout/treasure-alice-glow.webp`;
 }
 
+// 日本語Webの結果アップグレード（¥899）の決済画面に出す、宝箱から専用キャラクターのうさぎが顔を出し、
+// Aliceが紹介している絵。完全版¥499の宝箱の絵（treasure-alice-glow）とシリーズにしている。
+function checkoutResultUpgradeImage(): string | null {
+  // ローカル開発だけ、DEV_CHECKOUT_RESULT_UPGRADE_IMAGE_URL で Stripe から読める画像URLを指定できる
+  // （localhost の画像は Stripe が読めないため）。本番ビルド・Vercelでは無視する。
+  const devImage =
+    process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1"
+      ? process.env.DEV_CHECKOUT_RESULT_UPGRADE_IMAGE_URL?.trim() || null
+      : null;
+  if (devImage?.startsWith("https://")) return devImage;
+  if (!BASE_URL.startsWith("https://")) return null;
+  return `${BASE_URL}/checkout/result-upgrade-alice-rabbit.webp`;
+}
+
 // getStripe() の非 null 戻り値 = Stripe クライアント型。
 type StripeClient = NonNullable<ReturnType<typeof getStripe>>;
 
@@ -1040,7 +1054,9 @@ export async function POST(request: NextRequest) {
   // 宝箱経由は、宝箱の絵を商品画像にして演出からの流れをつなぐ。
   const productImage = treasureCheckoutRequested
     ? checkoutTreasureImage()
-    : checkoutProductImage(checkoutLocale, product);
+    : japaneseUpgradeCheckout && !lineUpgradeCheckout
+      ? checkoutResultUpgradeImage()
+      : checkoutProductImage(checkoutLocale, product);
   const productDescription = lineUpgradeCheckout
     ? `5つの自由回答から専用キャラクター・タイプ名・自己診断結果・5章の鑑定書を作成。税込${RESULT_UPGRADE_PRICE_JPY}円の買い切り。`
     : isResultUpgradeCheckout && checkoutLocale === "ja"

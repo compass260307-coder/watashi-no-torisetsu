@@ -32,6 +32,8 @@ export async function POST(request: NextRequest) {
   const baseUrl = request.nextUrl.origin;
 
   const linePreview = request.nextUrl.searchParams.get("channel") === "line";
+  // Stripe は localhost の画像を読めないため、Webの表示確認では DEV_CHECKOUT_RESULT_UPGRADE_IMAGE_URL（https）があるときだけ画像を付ける。
+  const previewImage = process.env.DEV_CHECKOUT_RESULT_UPGRADE_IMAGE_URL?.trim();
   try {
     // 本番と同じく、LINEは「LINE結果アップグレードクーポン」、Webは宝箱のクーポン名で ¥1,398 − ¥499 を見せる。
     let couponId: string | undefined;
@@ -73,7 +75,7 @@ export async function POST(request: NextRequest) {
               name: linePreview ? "結果アップグレード（LINE限定）" : JA_WEB_RESULT_UPGRADE_CHECKOUT.productName,
               ...(linePreview
                 ? { description: "あなた専用のキャラクター・自己診断結果・Aliceの鑑定書を作成します。" }
-                : {}),
+                : previewImage?.startsWith("https://") ? { images: [previewImage] } : {}),
             },
           },
         },

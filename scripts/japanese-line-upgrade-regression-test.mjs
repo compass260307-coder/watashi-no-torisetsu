@@ -85,7 +85,7 @@ assert.equal(invalid.headers.get('location'), 'https://example.test/line/menu');
 assert.equal(invalid.headers.get('set-cookie'), null);
 console.log('PASS: signed entry issues a restricted HttpOnly cookie, removes token from the destination, and rejects invalid links.');
 
-async function checkout({ full = true, premium = false, line = true, saved = answers, savedLocale = 'ja', couponMode = 'valid', ...body } = {}) {
+async function checkout({ full = true, premium = false, line = true, saved = answers, savedLocale = 'ja', couponMode = 'valid', siteUrl = null, ...body } = {}) {
   const calls = [];
   const stripe = { checkout: { sessions: { create: async params => { calls.push(params); return { id: 'cs_isolated', url: 'https://checkout.example.test', currency: 'jpy', amount_total: 499 }; } } },
     prices: { retrieve: async () => ({ active: true, type: 'one_time', currency: 'jpy', unit_amount: 499, tax_behavior: 'inclusive' }) },
@@ -121,7 +121,7 @@ async function checkout({ full = true, premium = false, line = true, saved = ans
     '@/lib/paywall-source': { DIRECT_PAYWALL_SOURCE: 'direct', normalizePaywallSource: value => value ?? 'direct' },
     '@/lib/checkout-measurement': { normalizeCheckoutAttemptId: value => value },
     '@/lib/checkout-cancel-signature': { signCheckoutCancellation: () => 'test-signature' },
-  });
+  }, siteUrl ? { process: { env: { NEXT_PUBLIC_SITE_URL: siteUrl, VERCEL: '1' } } } : {});
   const request = new NextRequest('https://example.test/api/checkout/create-full-access-session', { method: 'POST',
     headers: { 'Content-Type': 'application/json', 'x-vercel-ip-country': 'JP' }, body: JSON.stringify({ locale: 'ja', owner_token: owner.owner_token,
       product: 'premium_bundle', paywall_source: 'result_upgrade_after_answers', sales_channel: 'line',
@@ -144,6 +144,10 @@ for (const couponMode of ['wrong_amount', 'wrong_currency', 'unavailable']) {
   assert.equal(fallback.calls[0].line_items[0].price_data.unit_amount, 899);
   assert.equal(fallback.calls[0].discounts, undefined);
 }
+const webWithImage = await checkout({ sales_channel: 'web', line: false, siteUrl: 'https://site.example.test' });
+assert.deepEqual([...webWithImage.calls[0].line_items[0].price_data.product_data.images], ['https://site.example.test/checkout/result-upgrade-alice-rabbit.webp']);
+const lineWithImage = await checkout({ siteUrl: 'https://site.example.test' });
+assert.deepEqual([...lineWithImage.calls[0].line_items[0].price_data.product_data.images], ['https://site.example.test/mascot/unmei-hero.png']);
 const webCreatedCoupon = await checkout({ sales_channel: 'web', line: false, couponMode: 'missing' });
 assert.equal(webCreatedCoupon.calls[0].line_items[0].price_data.unit_amount, 1398);
 assert.equal(webCreatedCoupon.calls[0].discounts[0].coupon, 'wt-result-upgrade-off499-jpy');
