@@ -1968,6 +1968,7 @@ async function MeResultPageContent({
             locale={locale}
             noShadow
             benefitsBeforePrice
+            opensTreasure
           />
         </div>
         {/* ロックCTAはその場で松竹梅の商品カードを表示する。 */}
@@ -1978,6 +1979,8 @@ async function MeResultPageContent({
           imageAlt={dispName}
           group={resultGroup}
           locale={locale}
+          // 自己診断結果ページからの流入は、導線を問わず全て宝箱にする (2026-11-20 指示)。
+          treasureEntry
         />
       </>
     )}
