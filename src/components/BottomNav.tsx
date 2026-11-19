@@ -121,25 +121,16 @@ function UsersIcon() {
   );
 }
 
-// 相性 (2つの円が重なる)。日本語の下部ナビ用 (2026-11-19)。
+// 相性 (大小2つのハートが重なる)。日本語の下部ナビ用 (2026-11-20 に2つの円から変更)。
+//   手前のハートは白で塗り、奥のハートとの重なりを隠す (TarotCardsIcon と同じ流儀)。
+const AISHO_HEART_PATH =
+  "M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z";
+
 function AishoIcon() {
   return (
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <circle cx="8.8" cy="12" r="5.3" stroke="currentColor" strokeWidth="2" />
-      <circle cx="15.2" cy="12" r="5.3" stroke="currentColor" strokeWidth="2" />
-      <path d="M12 8.2c.9 1 1.4 2.3 1.4 3.8s-.5 2.8-1.4 3.8c-.9-1-1.4-2.3-1.4-3.8s.5-2.8 1.4-3.8Z" fill="currentColor" />
-    </svg>
-  );
-}
-
-// 性格タイプ (4マスのグリッド)。日本語の下部ナビ用 (2026-11-19)。
-function TypesIcon() {
-  return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="4" y="4" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2" />
-      <rect x="13" y="4" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2" />
-      <rect x="4" y="13" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2" />
-      <circle cx="16.5" cy="16.5" r="3.6" stroke="currentColor" strokeWidth="2" />
+      <path d={AISHO_HEART_PATH} transform="translate(9.48 1.32) scale(0.56)" stroke="currentColor" strokeWidth="3.2" strokeLinejoin="round" />
+      <path d={AISHO_HEART_PATH} transform="translate(0.52 4.98) scale(0.74)" fill="white" stroke="currentColor" strokeWidth="2.7" strokeLinejoin="round" />
     </svg>
   );
 }
@@ -749,9 +740,9 @@ export function BottomNav() {
                 !isTakoAttentionPreview &&
                 !isPaidNavigationPreview,
             },
-            // 占いは「Alice」1枠にまとめる (2026-11-19 指示)。占星術・タロットは
-            // Alice ページ上部の切り替え (FortuneSwitcher) から選ぶので、
-            // 占星術・タロットを見ている間も Alice を選択中にする。
+            // Alice。占星術は Alice ページ上部の切り替え (FortuneSwitcher) から選ぶので、
+            // 占星術を見ている間も Alice を選択中にする (2026-11-19 指示)。
+            // タロットは専用タブに戻したため、ここでは選択中にしない (2026-11-20 指示)。
             // 未課金は従来どおり鍵を出し、タップで課金カードを開く。
             {
               key: "astrologer",
@@ -762,30 +753,34 @@ export function BottomNav() {
               active:
                 pathname.startsWith("/hoshiyomi") ||
                 pathname.startsWith("/unmei") ||
-                pathname.startsWith("/tarot") ||
                 pathname === "/dev/hoshiyomi-preview",
               Icon: AstrologerIcon,
               locked:
                 (!hasToken && !isPaidNavigationPreview) ||
                 !hasAliceNavigationAccess,
             },
+            // タロット。性格タイプの枠をタロットに戻す (2026-11-20 指示)。
+            // 未購入は鍵を出し、タップで診断案内 / 課金カードを開く。
+            {
+              key: "tarot",
+              label: navCopy.tarot,
+              href: isPaidNavigationPreview ? "/tarot/dev-preview" : "/tarot",
+              active: pathname.startsWith("/tarot"),
+              Icon: TarotCardsIcon,
+              locked:
+                (!hasToken && !isPaidNavigationPreview) ||
+                !hasTarotNavigationAccess,
+            },
             // 相性。未課金 (完全版未購入) は鍵を出し、タップで課金カードを開く
             // (2026-11-19 指示)。権限の確認中は安全側の鍵表示。
             {
               key: "aisho",
-              label: navCopy.aisho ?? "相性",
+              label: navCopy.aisho ?? "相性診断",
               href: "/aisho",
               active: pathname.startsWith("/aisho"),
               Icon: AishoIcon,
               locked:
                 !isPaidNavigationPreview && (!hasToken || !hasPaidAccess),
-            },
-            {
-              key: "types",
-              label: navCopy.types ?? "性格タイプ",
-              href: "/types",
-              active: pathname.startsWith("/types"),
-              Icon: TypesIcon,
             },
           ],
     [
