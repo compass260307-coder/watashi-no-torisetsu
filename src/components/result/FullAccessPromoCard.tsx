@@ -758,15 +758,18 @@ export function FullAccessPromoCard({
             </div>
             )}
 
+            {/* 宝箱を開くカードでは支払い条件の文言も出さない (2026-11-20 指示)。 */}
+            {usesTreasureCta ? null : (
             <p
-              className={`body-gothic ${usesTreasureCta ? "mt-6" : "mt-2"} text-[13px] leading-[1.6] text-[#5A5A6E] ${
+              className={`body-gothic mt-2 text-[13px] leading-[1.6] text-[#5A5A6E] ${
                 hasImage ? "" : "text-center"
               }`}
             >
               {uiText("買い切り（お支払いは1回のみ）")}
             </p>
+            )}
 
-            <div className="mt-4">
+            <div className={usesTreasureCta ? "mt-6" : "mt-4"}>
               {usesTreasureCta ? (
                 <button
                   type="button"
