@@ -49,6 +49,10 @@ const readDirSafe = (dir: string): Set<string> => {
   }
 };
 const cutFiles = readDirSafe(CUT_DIR);
+// 一覧用のシンプル版 (キャラ単体・背景小物なし)。結果画面のシーン入りcutとは別に持ち、
+// 用意できたタイプから一覧だけ差し替える (2026-11-20)。
+const SIMPLE_DIR = path.join(process.cwd(), "public", "characters", "simple");
+const simpleFiles = readDirSafe(SIMPLE_DIR);
 
 function slugOf(id: ThirtyTwoTypeId): string {
   return path.basename(thirtyTwoImagePath(id), ".webp");
@@ -56,6 +60,9 @@ function slugOf(id: ThirtyTwoTypeId): string {
 
 function displayImagePath(id: ThirtyTwoTypeId): string {
   const file = `${slugOf(id)}.webp`;
+  if (simpleFiles.has(file)) {
+    return versionCharacterAssetPath(`/characters/simple/${file}`);
+  }
   return cutFiles.has(file)
     ? versionCharacterAssetPath(`/characters/cut/${file}`)
     : thirtyTwoImagePath(id);
