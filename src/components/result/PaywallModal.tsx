@@ -79,7 +79,6 @@ export function PaywallOverlay({
     return (
       <FullAccessTreasure
         ownerToken={cardProps.ownerToken}
-        characterImageSrc={cardProps.reportCharacterImageSrc ?? cardProps.imageSrc}
         ctaSource={ctaSource}
         returnTo={cardProps.returnTo}
         surface={cardProps.surface}
