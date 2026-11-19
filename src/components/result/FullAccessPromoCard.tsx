@@ -35,6 +35,7 @@ import type { AppResultLocale } from "@/i18n/result";
 import {
   accessPaywallVersionForLocale,
   accessProductPrice,
+  FULL_ACCESS_PRICE_JPY,
   SINGLE_ALL_ACCESS_PAYWALL_PRODUCT,
   THREE_COURSE_PAYWALL_VERSION,
   type AccessEntitlements,
@@ -58,6 +59,7 @@ import { trackingPageFromPathname } from "@/lib/tracking-page";
 import { useFullAccessStatus } from "@/lib/use-course-navigation-access";
 import { formatFullAccessAmount } from "@/lib/full-access-pricing";
 import { useFullAccessQuote } from "@/lib/use-full-access-quote";
+import { getLastPaywallSource, scrollToPaywall } from "@/lib/scroll-to-paywall";
 import { SelfAccessPlanCarousel } from "./SelfAccessPlanCarousel";
 
 // 値引き表記に使うロケール別価格。実課金額はサーバ側のStripe Priceで検証する。
@@ -235,6 +237,7 @@ export function FullAccessPromoCard({
   heading,
   noShadow = false,
   benefitsBeforePrice = false,
+  opensTreasure = false,
 }: {
   ownerToken?: string;
   imageSrc?: string | null;
@@ -270,6 +273,11 @@ export function FullAccessPromoCard({
   noShadow?: boolean;
   /** 自己診断結果ページ末尾では、解放内容を価格・購入導線より先に見せる。 */
   benefitsBeforePrice?: boolean;
+  /**
+   * 日本語・完全版¥499のとき、価格を出さずに「全ての結果をアンロック」で宝箱の演出を開く
+   * (ページ内の PaywallModal に treasureEntry を渡しておく)。自己診断結果ページ末尾のカード用。
+   */
+  opensTreasure?: boolean;
 }) {
   const uiText = useUiText(locale, "result.FullAccessPromoCard");
   const uiCopy = useUiCopy(locale);
@@ -427,6 +435,16 @@ export function FullAccessPromoCard({
   });
   const priceState = useFullAccessQuote(!previewMode && !usesPlanCarousel && product === "full_access", locale, ownerToken);
   const quote = priceState.quote;
+  // 宝箱を開くカード: 見積もりが¥499(日本円)以外と分かったとき・取得に失敗したときは従来の価格つきカードに戻す。
+  const usesTreasureCta =
+    opensTreasure &&
+    !previewMode &&
+    !!ownerToken &&
+    locale === "ja" &&
+    usesLegacyFullAccessCard &&
+    product === "full_access" &&
+    !priceState.failed &&
+    (!quote || (quote.market === "ja" && quote.amountMinor === FULL_ACCESS_PRICE_JPY));
   const salePrice = previewMode ? copy.price.sale
     : quote ? formatFullAccessAmount(quote.market, quote.amountMinor)
     : "—";
@@ -703,7 +721,9 @@ export function FullAccessPromoCard({
 
             {benefitsBeforePrice ? unlockBenefitsPanel : null}
 
-            {/* ページ末尾では解放内容の後、それ以外では従来どおり冒頭に価格を置く。 */}
+            {/* ページ末尾では解放内容の後、それ以外では従来どおり冒頭に価格を置く。
+                宝箱を開くカードでは価格を出さない (価格は宝箱の中で見せる・2026-11-20 指示)。 */}
+            {usesTreasureCta ? null : (
             <div
               className={`${benefitsBeforePrice ? "mt-6" : (locale === "ja" || isKorean || isEnglish || isIndonesian) && !isSelfReportProduct ? "mt-5" : "mt-3"} flex flex-wrap items-baseline gap-x-2.5 gap-y-1 ${
                 hasImage ? "" : "justify-center"
@@ -736,9 +756,10 @@ export function FullAccessPromoCard({
                 </span>
               )}
             </div>
+            )}
 
             <p
-              className={`body-gothic mt-2 text-[13px] leading-[1.6] text-[#5A5A6E] ${
+              className={`body-gothic ${usesTreasureCta ? "mt-6" : "mt-2"} text-[13px] leading-[1.6] text-[#5A5A6E] ${
                 hasImage ? "" : "text-center"
               }`}
             >
@@ -746,6 +767,19 @@ export function FullAccessPromoCard({
             </p>
 
             <div className="mt-4">
+              {usesTreasureCta ? (
+                <button
+                  type="button"
+                  onClick={() => scrollToPaywall(getLastPaywallSource(), anchorId)}
+                  style={{
+                    backgroundColor: actionTone.accent,
+                    boxShadow: `0 4px 0 ${actionTone.shadow}`,
+                  }}
+                  className="flex w-full items-center justify-center rounded-full bg-[#2E2E5C] px-6 py-3.5 text-base font-bold text-white transition-all hover:translate-y-0.5 active:translate-y-1"
+                >
+                  {uiText("全ての結果をアンロック →")}
+                </button>
+              ) : (
               <FullAccessCta
                 ownerToken={ownerToken}
                 unauthHref={isIndonesian ? "/id/diagnosis" : isEnglish ? "/en/diagnosis" : isKorean ? "/ko/diagnosis" : "/diagnosis"}
@@ -777,6 +811,7 @@ export function FullAccessPromoCard({
               >
                 {isSelfReportProduct ? copy.studentCta : uiText("全ての結果をアンロック →")}
               </FullAccessCta>
+              )}
             </div>
 
             <p
@@ -799,9 +834,12 @@ export function FullAccessPromoCard({
                 <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
                 <path d="M9 12l2 2 4-4" />
               </svg>
+              {/* 宝箱を開くカードでは返金保証の文言を出さない (2026-11-20 指示)。 */}
+              {usesTreasureCta ? null : (
               <span>
                 {uiText("30日間の返金保証・")}
               </span>
+              )}
               <span>
                 {uiText("{DIAGNOSIS_COUNT_SNAPSHOT}人以上のお客様から信頼されています", { DIAGNOSIS_COUNT_SNAPSHOT })}
               </span>

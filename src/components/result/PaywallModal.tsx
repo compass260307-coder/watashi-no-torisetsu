@@ -49,6 +49,11 @@ interface PaywallModalProps {
   /** モーダルを開いた導線に合わせた見出し。 */
   heading?: string;
   cardMode?: PaywallCardMode;
+  /**
+   * 導線(ctaSource)に関係なく宝箱の対象にする。日本語・完全版¥499の見積もりなどの条件は従来どおり。
+   * 自己診断結果ページのモーダルと、下部ナビ・ハンバーガーメニューのロック(Alice・相性・タロット)で使う。
+   */
+  treasureEntry?: boolean;
 }
 
 // オーバーレイ本体 (制御コンポーネント)。マウント中は常に表示。
@@ -58,13 +63,14 @@ export function PaywallOverlay({
   onClose,
   ctaSource,
   scrollLocked = false,
+  treasureEntry = false,
   ...cardProps
 }: PaywallModalProps & {
   onClose: () => void;
   ctaSource?: string;
   scrollLocked?: boolean;
 }) {
-  const presentation = useFullAccessTreasurePresentation(cardProps, ctaSource);
+  const presentation = useFullAccessTreasurePresentation(cardProps, ctaSource, treasureEntry);
   if (presentation.mode === "pending") {
     return createPortal(
       <div
@@ -104,7 +110,9 @@ export function PaywallOverlay({
 // 2026-11-19: 小規模テストとして、自己診断結果の本文にあるロック解除CTA（「今すぐアクセス」系）だけを対象にする。
 // 同日、自己診断結果ページ上部の固定バー（sticky_bar）も対象に加えた。友達診断ページの上部バーも
 // 同じ sticky_bar を使うため、そちらは surface="tako" で除外する。
-// ページ下部のカード・友達/相性ページ・下部ナビは従来の課金カードのまま。
+// 2026-11-20: 自己診断結果ページからの流入は導線を問わず全て宝箱にする(ページ下部のカードも含む)。
+// 下部ナビ・ハンバーガーメニューのロック(Alice・相性・タロット)も宝箱にする。どちらも treasureEntry で指定する。
+// 友達診断ページ・相性ページの課金カードは従来のまま。
 const TREASURE_CTA_SOURCES: ReadonlySet<string> = new Set([
   "love_payoff_card",
   "love_endure_card",
@@ -124,13 +132,18 @@ const TREASURE_SELF_ONLY_CTA_SOURCES: ReadonlySet<string> = new Set(["sticky_bar
 // 一度決めた表示は、見積もりがあとから届いても切り替えない。
 const TREASURE_QUOTE_WAIT_MS = 2500;
 
-function useFullAccessTreasurePresentation(cardProps: PaywallModalProps, ctaSource?: string) {
+function useFullAccessTreasurePresentation(
+  cardProps: PaywallModalProps,
+  ctaSource: string | undefined,
+  treasureEntry: boolean,
+) {
   const locale = cardProps.locale ?? "ja";
   const previewMode = cardProps.previewMode ?? false;
   const treasureSource =
-    ctaSource !== undefined &&
+    (treasureEntry && cardProps.surface !== "tako") ||
+    (ctaSource !== undefined &&
     (TREASURE_CTA_SOURCES.has(ctaSource) ||
-      (TREASURE_SELF_ONLY_CTA_SOURCES.has(ctaSource) && cardProps.surface !== "tako"));
+      (TREASURE_SELF_ONLY_CTA_SOURCES.has(ctaSource) && cardProps.surface !== "tako")));
   const eligible =
     (previewMode || treasureSource) &&
     locale === "ja" &&
