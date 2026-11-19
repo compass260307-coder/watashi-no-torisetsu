@@ -346,7 +346,8 @@ const contractChecks = [
     label: "Development result upgrade checkout uses the shared JPY 899 price",
     valid:
       devResultUpgradeCheckout.includes('from "@/lib/access-products"') &&
-      devResultUpgradeCheckout.includes("unit_amount: linePreview ? LINE_RESULT_UPGRADE_LIST_PRICE_JPY : RESULT_UPGRADE_PRICE_JPY") &&
+      devResultUpgradeCheckout.includes("unit_amount: LINE_RESULT_UPGRADE_LIST_PRICE_JPY") &&
+      devResultUpgradeCheckout.includes("if (!couponId) return NextResponse.json") &&
       devResultUpgradeCheckout.includes("amount_off: LINE_RESULT_UPGRADE_COUPON_JPY") &&
       devResultUpgradeCheckout.includes('startsWith("sk_test_")'),
   },

@@ -92,7 +92,7 @@ async function checkout({ full = true, premium = false, line = true, saved = ans
     coupons: {
       retrieve: async id => {
         if (couponMode === 'missing' || couponMode === 'unavailable') throw new Error('missing');
-        return { id, valid: true, currency: couponMode === 'wrong_currency' ? 'usd' : 'jpy', amount_off: id.includes('line-result-upgrade') ? (couponMode === 'wrong_amount' ? 498 : 499) : 791 };
+        return { id, valid: true, currency: couponMode === 'wrong_currency' ? 'usd' : 'jpy', amount_off: id.includes('result-upgrade-off499') ? (couponMode === 'wrong_amount' ? 498 : 499) : 791 };
       },
       create: async params => { if (couponMode === 'unavailable') throw new Error('unavailable'); return { ...params, valid: true }; },
     },
@@ -133,13 +133,20 @@ const webPurchase = await checkout({ sales_channel: 'web', line: false });
 assert.equal(webPurchase.status, 200);
 assert.equal(webPurchase.body.amount, 899);
 assert.equal(webPurchase.calls[0].line_items[0].price_data.unit_amount, 1398);
-assert.equal(webPurchase.calls[0].discounts[0].coupon, 'wt-line-result-upgrade-off499-jpy');
+assert.equal(webPurchase.calls[0].discounts[0].coupon, 'wt-result-upgrade-off499-jpy');
+assert.equal(webPurchase.calls[0].line_items[0].price_data.product_data.name, '結果アップグレード｜買い切り');
+assert.equal(webPurchase.calls[0].line_items[0].price_data.product_data.description, undefined);
+assert.equal(webPurchase.calls[0].custom_text.submit.message, 'お支払い終了後、すぐに5つの特典の準備が始まります。');
+assert.equal(webPurchase.calls[0].metadata.checkout_display_version, 'ja_result_upgrade_checkout_coupon_899_v1_20261119');
 for (const couponMode of ['wrong_amount', 'wrong_currency', 'unavailable']) {
   const fallback = await checkout({ sales_channel: 'web', line: false, couponMode });
   assert.equal(fallback.body.amount, 899);
   assert.equal(fallback.calls[0].line_items[0].price_data.unit_amount, 899);
   assert.equal(fallback.calls[0].discounts, undefined);
 }
+const webCreatedCoupon = await checkout({ sales_channel: 'web', line: false, couponMode: 'missing' });
+assert.equal(webCreatedCoupon.calls[0].line_items[0].price_data.unit_amount, 1398);
+assert.equal(webCreatedCoupon.calls[0].discounts[0].coupon, 'wt-result-upgrade-off499-jpy');
 assert.equal(webPurchase.calls[0].metadata.sales_channel, undefined);
 assert.match(webPurchase.calls[0].success_url, /\/me\/owner-token\?paid=1/);
 assert.match(webPurchase.calls[0].cancel_url, /\/me\/owner-token\?checkout=cancelled/);
@@ -157,6 +164,7 @@ assert.equal(purchase.calls[0].line_items[0].price_data.unit_amount, 1398);
 assert.equal(purchase.calls[0].discounts[0].coupon, 'wt-line-result-upgrade-off499-jpy');
 assert.match(purchase.calls[0].line_items[0].price_data.product_data.name, /結果アップグレード/);
 assert.match(purchase.calls[0].custom_text.submit.message, /Alice Plusの定期課金とは別購入/);
+assert.equal(purchase.calls[0].metadata.checkout_display_version, undefined);
 assert.equal(purchase.calls[0].metadata.sales_channel, 'line');
 assert.equal(purchase.calls[0].metadata.sales_channel_version, policy.LINE_RESULT_UPGRADE_OFFER_VERSION);
 assert.match(purchase.calls[0].success_url, /\/line\/result-upgrade\?paid=1/);
