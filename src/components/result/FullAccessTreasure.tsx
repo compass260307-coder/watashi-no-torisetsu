@@ -11,7 +11,6 @@ import {
   FULL_ACCESS_PRICE_JPY,
   THREE_COURSE_PAYWALL_VERSION,
 } from "@/lib/access-products";
-import { selfReportPeekImagePath } from "@/lib/report-story-images";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
 import type { FullAccessQuoteState } from "@/lib/use-full-access-quote";
@@ -42,15 +41,14 @@ function saveCouponReceived() {
 
 // 課金カード（FULL_ACCESS_SELF_UNLOCKS）と同じ7つの解放内容を、同じ順で見せる。
 // 絵は宝箱の世界観にそろえて、サイトの羊毛フェルトの絵（背景透過）を使う。
-function fullAccessBenefits(characterImageSrc?: string | null): TreasureBenefit[] {
-  // キャラクター画像と判定できたときだけ、特典①にその人のキャラクターを出す。
-  const ownCharacter = selfReportPeekImagePath(characterImageSrc, "ja") ? characterImageSrc : null;
+function fullAccessBenefits(): TreasureBenefit[] {
   return [
     {
       label: "特典①",
       title: "診断結果の続き9セクション",
       body: "恋愛・キャリアの深掘りから、周りから見た印象まで、ロック中の結果をすべて読めます",
-      image: ownCharacter ?? "/pricing/self-report-felt-transparent.png",
+      // 星の錠前が外れて9枚のカードが飛び出す絵。全員に同じ絵を出す。
+      image: "/result-upgrade/benefit-sections.webp",
     },
     {
       label: "特典②",
@@ -74,24 +72,24 @@ function fullAccessBenefits(characterImageSrc?: string | null): TreasureBenefit[
       label: "特典⑤",
       title: "相性診断をすべて解放",
       body: "恋愛・友情・仕事での相性から、すれ違いやすいポイントまで読み解けます",
-      image: "/pricing/full-access-connection-felt-transparent.png",
+      image: "/result-upgrade/benefit-aisho.webp",
     },
     {
       label: "特典⑥",
       title: "2人目以降の友達診断結果",
       body: "友達から見たキャラ・性格のギャップ・恋愛傾向まで、友達ごとの結果をすべて読めます",
-      image: "/empty-states/tako-friends-waiting-felt.png",
+      image: "/result-upgrade/benefit-friends.webp",
     },
     {
       label: "特典⑦",
       title: "みんなから見た分析レポート",
       body: "友達の回答をまとめた他己分析PDF。回答が増えるたびに何度でも更新できます",
-      image: "/pricing/self-report-felt-transparent.png",
+      image: "/result-upgrade/benefit-friends-report.webp",
     },
   ];
 }
 
-function fullAccessOffer(characterImageSrc?: string | null): TreasureOffer {
+function fullAccessOffer(): TreasureOffer {
   return {
     dialogLabel: "Aliceからのプレゼント",
     lead: ["診断してくれた", "あなたへのプレゼント"],
@@ -99,15 +97,13 @@ function fullAccessOffer(characterImageSrc?: string | null): TreasureOffer {
     couponLabel: (couponJpy) => `リリース記念 ¥${couponJpy.toLocaleString("ja-JP")} OFFクーポン（完全版に使えます）`,
     offerSummary: (priceJpy, count) =>
       `クーポンを使うと、完全版が ${priceJpy.toLocaleString("ja-JP")}円。次の${count}つがすべて解放されます。`,
-    benefits: fullAccessBenefits(characterImageSrc),
+    benefits: fullAccessBenefits(),
     benefitStyle: "stack",
   };
 }
 
 type Props = {
   ownerToken?: string;
-  /** その人のキャラクター画像。特典の見本をその人のタイプに合わせる。 */
-  characterImageSrc?: string | null;
   ctaSource?: string;
   returnTo?: "me" | "tako" | "aisho" | "unmei" | "hoshiyomi";
   surface?: "self" | "tako";
@@ -122,7 +118,6 @@ type Props = {
 
 export function FullAccessTreasure({
   ownerToken,
-  characterImageSrc,
   ctaSource,
   returnTo,
   surface,
@@ -134,7 +129,7 @@ export function FullAccessTreasure({
 }: Props) {
   // 同じタブで受け取り済みなら、宝箱を開け直させずに値札と特典から見せる。
   const [startAt] = useState<"chest" | "offer">(() => (fullAccessCouponReceived() ? "offer" : "chest"));
-  const [offer] = useState(() => fullAccessOffer(characterImageSrc));
+  const [offer] = useState(() => fullAccessOffer());
   // 課金カードと同じ dedup キーで paywall_viewed を1回だけ送る（モーダルを開いた時点＝従来と同じ時点）。
   useEffect(() => {
     if (previewMode) return;
