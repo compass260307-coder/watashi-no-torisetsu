@@ -24,7 +24,7 @@ import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { PaywallOverlay as PurchaseOverlayType } from "@/components/result/PaywallModal";
-import { useEffect, useId, useRef, useState, type ComponentProps, type ComponentType } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ComponentProps, type ComponentType } from "react";
 
 const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
@@ -69,6 +69,10 @@ export default function TopHeader({
   const [hasToken, setHasToken] = useState(true);
   const [takoLockOpen, setTakoLockOpen] = useState(false);
   const [coursePaywall, setCoursePaywall] = useState<"hoshiyomi" | "tarot" | null>(null);
+  // PaywallOverlay は onClose が変わるたびに effect を張り直し、そのたびに
+  // 開く前のフォーカス先へ focus() し直す。毎レンダー新しい関数を渡すと
+  // 開いている間もフォーカスが動くため、同じ関数を渡す。
+  const closeCoursePaywall = useCallback(() => setCoursePaywall(null), []);
   const [desktopNavVisible, setDesktopNavVisible] = useState(false);
 
   // 相性診断の権限APIは、実際に導線を見せる直前まで呼ばない。
@@ -351,11 +355,20 @@ export default function TopHeader({
       />
 
       {/* ドロワー本体。閉状態の translate-x-full が横スクロールを生まないよう
-          overflow-hidden のラッパーで包む (クリックはラッパーを素通しする)。 */}
-      <div className="pointer-events-none fixed inset-0 z-50 overflow-hidden lg:hidden">
+          overflow-hidden のラッパーで包む (クリックはラッパーを素通しする)。
+          閉じている間は inert + invisible にしてフォーカスできなくする。
+          以前は、ロック項目 → 課金カード → 閉じる、の流れで課金カードが
+          ドロワー内のロック項目へフォーカスを戻し、overflow-hidden のラッパーが
+          横スクロールして閉じたはずのドロワーが画面に出たまま × で閉じられなくなっていた。 */}
+      <div
+        className={`pointer-events-none fixed inset-0 z-50 overflow-hidden transition-[visibility] duration-300 lg:hidden ${
+          open ? "visible" : "invisible"
+        }`}
+      >
         <nav
           aria-label={content.menuTitle}
           aria-hidden={!open}
+          inert={!open}
           className={`pointer-events-auto absolute inset-y-0 right-0 flex w-[78%] max-w-[320px] flex-col bg-white shadow-[0_0_40px_rgba(42,58,92,0.2)] transition-transform duration-300 ease-out ${
             open ? "translate-x-0" : "translate-x-full"
           }`}
@@ -603,7 +616,7 @@ export default function TopHeader({
               ? undefined
               : uiText("Aliceを試す・本格相談を選ぶ")
           }
-          onClose={() => setCoursePaywall(null)}
+          onClose={closeCoursePaywall}
         />
       ) : null}
     </header>
