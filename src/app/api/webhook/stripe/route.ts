@@ -938,6 +938,34 @@ function purchaseEventId(eventName: string, checkoutSessionId: string): string {
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
 
+// 購入イベントの重複防止は、決済IDから決まる purchaseEventId を主キーにした
+// insert の一意制約 (23505) で行う。以前は挿入前に
+// metadata->>stripe_session_id で events を検索していたが、索引が無く
+// purchase_completed 全行を読むため、DBが混むと statement timeout になり
+// webhook が 500 を返していた (2026-11-19〜20 に19回。Stripe再送で全件回復)。
+// ランダムIDで記録された旧形式の行は 2026-08-28 が最後なので、それ以前に
+// 作られた Checkout を手動再送したときだけ従来の検索で重複を防ぐ。
+const LEGACY_PURCHASE_EVENT_ID_CUTOFF_SECONDS = Date.UTC(2026, 8, 1) / 1000;
+
+async function legacyPurchaseEventExists(
+  eventName: string,
+  session: Stripe.Checkout.Session,
+): Promise<boolean> {
+  if (session.created >= LEGACY_PURCHASE_EVENT_ID_CUTOFF_SECONDS) return false;
+  const { data: existing, error: selectError } = await supabaseAdmin
+    .from("events")
+    .select("id")
+    .eq("event_name", eventName)
+    .eq("metadata->>stripe_session_id", session.id)
+    .limit(1);
+  if (selectError) {
+    throw new Error(
+      `[webhook] ${eventName} dedup check failed: ${selectError.message}`,
+    );
+  }
+  return Boolean(existing && existing.length > 0);
+}
+
 /** 歓迎pushの前に決定的IDを確保し、Stripe再送での二重通知を防ぐ。 */
 async function recordLineEventOnFirstDelivery(input: {
   eventName: string;
@@ -962,7 +990,7 @@ async function recordLineEventOnFirstDelivery(input: {
 }
 
 // 課金ファネル計測: 決済完了イベントを events に記録。
-// Stripe は webhook を再送するため、stripe_session_id で冪等化 (既存があれば挿入しない)。
+// Stripe は webhook を再送するため、決済IDから決まる主キーで冪等化 (既存があれば挿入しない)。
 // 計測失敗は throw してStripeに再送させ、権限だけ付いて計測が欠ける状態を残さない。
 async function recordPurchaseCompletedEvent(
   session: Stripe.Checkout.Session,
@@ -974,18 +1002,7 @@ async function recordPurchaseCompletedEvent(
     session.metadata?.product ??
     session.metadata?.payment_kind ??
     "unknown";
-  const { data: existing, error: selectError } = await supabaseAdmin
-    .from("events")
-    .select("id")
-    .eq("event_name", "purchase_completed")
-    .eq("metadata->>stripe_session_id", session.id)
-    .limit(1);
-  if (selectError) {
-    throw new Error(
-      `[webhook] purchase_completed dedup check failed: ${selectError.message}`,
-    );
-  }
-  if (existing && existing.length > 0) return;
+  if (await legacyPurchaseEventExists("purchase_completed", session)) return;
   const { error: insertError } = await supabaseAdmin.from("events").insert({
       id: purchaseEventId("purchase_completed", session.id),
       event_name: "purchase_completed",
@@ -1054,18 +1071,7 @@ async function recordUnmeiPurchaseEventOnce(
   userId: string | null,
   paidAt: string,
 ): Promise<void> {
-  const { data: existing, error: selectError } = await supabaseAdmin
-      .from("events")
-      .select("id")
-      .eq("event_name", eventName)
-      .eq("metadata->>stripe_session_id", session.id)
-      .limit(1);
-  if (selectError) {
-    throw new Error(
-      `[webhook] ${eventName} dedup check failed: ${selectError.message}`,
-    );
-  }
-  if (existing && existing.length > 0) return;
+  if (await legacyPurchaseEventExists(eventName, session)) return;
   const ownerToken =
       typeof session.metadata?.owner_token === "string" &&
       session.metadata.owner_token
