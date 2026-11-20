@@ -96,15 +96,27 @@ async function relatedUserIds(userId: string): Promise<string[]> {
 export async function getHoshiyomiCredits(
   userId: string,
 ): Promise<StoreResult<HoshiyomiCredits>> {
-  const userIds = await relatedUserIds(userId);
+  return loadHoshiyomiCredits(await relatedUserIds(userId));
+}
 
+/**
+ * 解決済みの関連ユーザーIDで残高を読む。1回の処理の中で関連ユーザーの解決を
+ * 繰り返さないよう、呼び出し側が userIds を使い回す。
+ */
+async function loadHoshiyomiCredits(
+  userIds: string[],
+): Promise<StoreResult<HoshiyomiCredits>> {
   // 通信断で settle まで到達しなかった予約は、次の送信を待たずに返却する。
   // 残り0回のときもページ再表示だけで回復できるよう、残高取得前に掃除する。
-  for (const ownerId of userIds) {
-    const { error: releaseError } = await supabaseAdmin.rpc(
-      "release_stale_hoshiyomi_reservations",
-      { p_user_id: ownerId },
-    );
+  // 掃除はユーザーごとに独立した行だけを触るため、まとめて同時に実行する。
+  const releaseResults = await Promise.all(
+    userIds.map((ownerId) =>
+      supabaseAdmin.rpc("release_stale_hoshiyomi_reservations", {
+        p_user_id: ownerId,
+      }),
+    ),
+  );
+  for (const { error: releaseError } of releaseResults) {
     if (releaseError) {
       if (isMissingHoshiyomiStore(releaseError)) {
         return {
@@ -273,13 +285,24 @@ export async function grantHoshiyomiCreditsToTarget(args: {
   if (!current.available) {
     throw new Error("Hoshiyomi credit store is unavailable");
   }
-  const credits = Math.max(0, args.targetTotal - current.data.total);
-  if (credits === 0) return;
+  await grantHoshiyomiCreditShortfall({ ...args, currentTotal: current.data.total });
+}
+
+/** 累計が目標に届いていない分だけ付与する。付与したら true。 */
+async function grantHoshiyomiCreditShortfall(args: {
+  userId: string;
+  sourceKey: string;
+  targetTotal: number;
+  currentTotal: number;
+}): Promise<boolean> {
+  const credits = Math.max(0, args.targetTotal - args.currentTotal);
+  if (credits === 0) return false;
   await grantHoshiyomiCredits({
     userId: args.userId,
     sourceKey: args.sourceKey,
     credits,
   });
+  return true;
 }
 
 export async function revokeHoshiyomiCredits(sourceKey: string): Promise<void> {
@@ -294,21 +317,27 @@ export async function revokeHoshiyomiCredits(sourceKey: string): Promise<void> {
 export async function ensureHoshiyomiCreditsFromPurchase(
   userId: string,
 ): Promise<StoreResult<HoshiyomiCredits>> {
-  const current = await getHoshiyomiCredits(userId);
-  if (!current.available) return current;
-
+  // ページ表示のたびに呼ばれるため、DBへの往復を最小限にする。
+  // 関連ユーザーの解決は1回だけ行い、残高と購入履歴は同時に読む。
+  // 購入履歴の user_id はすべて同じ関連ユーザー群に属するので、残高の合計は
+  // 購入ごとに読み直さず、実際に付与したときだけ読み直す。
   const userIds = await relatedUserIds(userId);
-  const { data: payments, error } = await supabaseAdmin
-    .from("payment_history")
-    .select("id, user_id, stripe_session_id, payment_kind, metadata, paid_at")
-    .in("user_id", userIds)
-    .eq("status", "completed")
-    .in("payment_kind", ["full_access", "premium_bundle"])
-    .order("paid_at", { ascending: true });
+  const [initial, { data: payments, error }] = await Promise.all([
+    loadHoshiyomiCredits(userIds),
+    supabaseAdmin
+      .from("payment_history")
+      .select("id, user_id, stripe_session_id, payment_kind, metadata, paid_at")
+      .in("user_id", userIds)
+      .eq("status", "completed")
+      .in("payment_kind", ["full_access", "premium_bundle"])
+      .order("paid_at", { ascending: true }),
+  ]);
+  if (!initial.available) return initial;
   if (error) {
     throw new Error(`Failed to recover hoshiyomi credits: ${error.message}`);
   }
 
+  let current = initial;
   const validPayments = validAccessPaymentRows(
     (payments ?? []) as (AccessPaymentRow & { stripe_session_id: string })[],
   ) as (AccessPaymentRow & { stripe_session_id: string })[];
@@ -321,17 +350,24 @@ export async function ensureHoshiyomiCreditsFromPurchase(
     ) {
       continue;
     }
-    await grantHoshiyomiCreditsToTarget({
+    const granted = await grantHoshiyomiCreditShortfall({
       userId: payment.user_id as string,
       sourceKey: `stripe:${payment.stripe_session_id as string}`,
       targetTotal: hoshiyomiChatCreditTarget(
         payment.payment_kind,
         payment.metadata?.hoshiyomi_chat_policy,
       ),
+      currentTotal: current.data.total,
     });
+    if (granted) {
+      current = await loadHoshiyomiCredits(userIds);
+      if (!current.available) {
+        throw new Error("Hoshiyomi credit store is unavailable");
+      }
+    }
   }
 
-  return getHoshiyomiCredits(userId);
+  return current;
 }
 
 function conversationTitle(messages: UIMessage[]): string {
