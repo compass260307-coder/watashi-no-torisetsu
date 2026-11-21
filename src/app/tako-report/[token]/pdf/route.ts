@@ -9,6 +9,12 @@
 // - 内容は友達回答が増えたときにだけ変わるため、生成結果を Supabase Storage に
 //   キャッシュする。キーは (診断完了時刻・表示名・回答の件数と最新時刻・print 版数)。
 //   一致すれば Chromium を起動せず保存済みバイトを返す。
+// - 生成中に同じ PDF の要求が重なったら (ボタンの連打・アプリ内ブラウザの再送)、
+//   1回の生成を共有する。Chromium を要求の数だけ同時に起動すると互いに遅くなり、
+//   描画待ちの時間切れで一部が 500 になっていた (2026-11-21 本番で確認)。
+// - 応答には「応答が届いた」ことを示す短命 Cookie を付ける。添付ファイルの
+//   ダウンロードはページ側から完了を検知できないため、/tako のボタンがこの Cookie を
+//   見て「作成中...」の表示を戻す (src/lib/report-pdf-download.ts)。
 
 import { NextResponse } from "next/server";
 import { PDFDocument } from "pdf-lib";
@@ -16,6 +22,7 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { hasTakoAccess } from "@/lib/entitlements";
 import { launchPdfBrowser } from "@/lib/pdf-browser";
 import { resolveSiteUrl } from "@/lib/site-url";
+import { REPORT_PDF_DOWNLOAD_COOKIE } from "@/lib/report-pdf-download";
 import {
   getCachedReportPdf,
   putCachedReportPdf,
@@ -66,6 +73,69 @@ async function expandFirstPageToFullBleed(pdfBytes: Uint8Array) {
   }
 
   return output.save();
+}
+
+// print ページの描画完了を待つ上限。以前は 10 秒で、Chromium が混み合うと超えていた。
+const REPORT_READY_TIMEOUT_MS = 30_000;
+
+// 応答が届いたことをページ側へ知らせる Cookie。値に意味はなく、有無だけを見る。
+const DOWNLOAD_RESPONDED_COOKIE = `${REPORT_PDF_DOWNLOAD_COOKIE}=1; Path=/; Max-Age=60; SameSite=Lax`;
+
+// 生成中の PDF (キー = キャッシュのパス。プレビューは print ページの URL)。
+// Fluid Compute は1プロセスで複数リクエストを処理するため、同じキーの要求は
+// ここで合流できる。別プロセスに分かれた要求までは束ねない。
+const inFlightPdfs = new Map<string, Promise<Uint8Array>>();
+
+async function generateTakoPdf(
+  pageUrl: string,
+  cachePath: string | null,
+): Promise<Uint8Array> {
+  let browser: Awaited<ReturnType<typeof launchPdfBrowser>> | null = null;
+  try {
+    browser = await launchPdfBrowser();
+    const page = await browser.newPage();
+    const response = await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 45_000 });
+    if (!response?.ok()) {
+      throw new Error(`Friend report print request failed (${response?.status() ?? "no response"})`);
+    }
+    // Never turn a login, error, or incomplete streamed page into a cached PDF.
+    await page.waitForSelector('main article[data-tako-report-document="ready"]', {
+      timeout: REPORT_READY_TIMEOUT_MS,
+    });
+    await page.evaluate(async () => {
+      const timeout = (ms: number) =>
+        new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+      await Promise.race([document.fonts.ready.then(() => undefined), timeout(15_000)]);
+      await Promise.race([
+        Promise.all(
+          Array.from(document.images).map((image) => {
+            if (image.complete) return Promise.resolve();
+            return new Promise<void>((resolve) => {
+              image.addEventListener("load", () => resolve(), { once: true });
+              image.addEventListener("error", () => resolve(), { once: true });
+            });
+          }),
+        ).then(() => undefined),
+        timeout(15_000),
+      ]);
+    });
+    const pdf = await page.pdf({
+      format: "A4",
+      preferCSSPageSize: true,
+      printBackground: true,
+      margin: { top: "0", bottom: "0", left: "0", right: "0" },
+    });
+    const fullBleedPdf = await expandFirstPageToFullBleed(pdf);
+
+    if (cachePath) await putCachedReportPdf(cachePath, fullBleedPdf);
+    return fullBleedPdf;
+  } catch (err) {
+    // 合流した要求の数だけ同じエラーを記録しないよう、生成1回につき1度だけ残す。
+    console.error("[/tako-report/pdf] generation failed:", err);
+    throw err;
+  } finally {
+    await browser?.close().catch(() => {});
+  }
 }
 
 export async function GET(req: Request, ctx: RouteContext) {
@@ -151,6 +221,7 @@ export async function GET(req: Request, ctx: RouteContext) {
           `attachment; filename="${isKo ? "friend-personality-report-ko.pdf" : isEn ? "alice-test-friend-analysis.pdf" : isId ? "analisis-kepribadian-teman.pdf" : "watashi-no-torisetsu-friend-report.pdf"}"; ` +
           `filename*=UTF-8''${encodeURIComponent(isKo ? "앨리스 진단 - 친구 진단 완전판 리포트.pdf" : isEn ? "Alice Personalities Friend Analysis.pdf" : isId ? "Analisis Kepribadian Teman.pdf" : "友達診断 完全版レポート.pdf")}`,
         "Cache-Control": "private, no-store",
+        "Set-Cookie": DOWNLOAD_RESPONDED_COOKIE,
       },
     });
 
@@ -160,49 +231,23 @@ export async function GET(req: Request, ctx: RouteContext) {
     if (cached) return takoPdfResponse(new Uint8Array(cached));
   }
 
-  let browser: Awaited<ReturnType<typeof launchPdfBrowser>> | null = null;
-  try {
-    browser = await launchPdfBrowser();
-    const page = await browser.newPage();
-    const response = await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 45_000 });
-    if (!response?.ok()) {
-      throw new Error(`Friend report print request failed (${response?.status() ?? "no response"})`);
-    }
-    // Never turn a login, error, or incomplete streamed page into a cached PDF.
-    await page.waitForSelector('main article[data-tako-report-document="ready"]', {
-      timeout: 10_000,
+  // 同じ PDF を生成中なら、新しく Chromium を起動せずその結果を待つ。
+  const flightKey = cachePath ?? pageUrl;
+  let generation = inFlightPdfs.get(flightKey);
+  if (!generation) {
+    generation = generateTakoPdf(pageUrl, cachePath).finally(() => {
+      inFlightPdfs.delete(flightKey);
     });
-    await page.evaluate(async () => {
-      const timeout = (ms: number) =>
-        new Promise<void>((resolve) => window.setTimeout(resolve, ms));
-      await Promise.race([document.fonts.ready.then(() => undefined), timeout(15_000)]);
-      await Promise.race([
-        Promise.all(
-          Array.from(document.images).map((image) => {
-            if (image.complete) return Promise.resolve();
-            return new Promise<void>((resolve) => {
-              image.addEventListener("load", () => resolve(), { once: true });
-              image.addEventListener("error", () => resolve(), { once: true });
-            });
-          }),
-        ).then(() => undefined),
-        timeout(15_000),
-      ]);
-    });
-    const pdf = await page.pdf({
-      format: "A4",
-      preferCSSPageSize: true,
-      printBackground: true,
-      margin: { top: "0", bottom: "0", left: "0", right: "0" },
-    });
-    const fullBleedPdf = await expandFirstPageToFullBleed(pdf);
+    inFlightPdfs.set(flightKey, generation);
+  }
 
-    if (cachePath) await putCachedReportPdf(cachePath, fullBleedPdf);
-    return takoPdfResponse(fullBleedPdf);
-  } catch (err) {
-    console.error("[/tako-report/pdf] generation failed:", err);
-    return NextResponse.json({ error: "pdf_failed" }, { status: 500 });
-  } finally {
-    await browser?.close().catch(() => {});
+  try {
+    return takoPdfResponse(await generation);
+  } catch {
+    // 原因は generateTakoPdf が記録済み。
+    return NextResponse.json(
+      { error: "pdf_failed" },
+      { status: 500, headers: { "Set-Cookie": DOWNLOAD_RESPONDED_COOKIE } },
+    );
   }
 }

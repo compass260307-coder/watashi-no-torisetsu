@@ -31,6 +31,11 @@ import {
 import { createPortal } from "react-dom";
 import { preloadResultQrCode } from "@/lib/result-qr-loader";
 import { scrollToPaywall } from "@/lib/scroll-to-paywall";
+import {
+  clearReportPdfDownloadCookie,
+  hasReportPdfDownloadCookie,
+  isTakoReportPdfHref,
+} from "@/lib/report-pdf-download";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
 import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
@@ -269,6 +274,31 @@ export function MeStickyHeader({
   // モーダルを開いた設置場所 (share_clicked の metadata.source)。
   // ヘッダーのボタン=sticky_bar / 本文中の ShareModalOpenButton=イベントの detail.source。
   const [shareSource, setShareSource] = useState("sticky_bar");
+  // 友達診断レポート PDF の生成中 (10〜20秒) は、ボタンを「作成中...」にして
+  // 二度押しを止める。添付ファイルの応答はページ側で検知できないため、サーバーが
+  // 応答に付ける Cookie を待つ。Cookie が届かない環境でも戻るよう上限時間を置く。
+  const reportIsPdfDownload = isTakoReportPdfHref(reportHref);
+  const reportPendingRef = useRef(false);
+  const [reportPending, setReportPending] = useState(false);
+  // 「作成中...」は元の文言より短い。押す前の幅を保ち、隣のボタンが動かないようにする。
+  const [reportPendingWidth, setReportPendingWidth] = useState<number | null>(null);
+  useEffect(() => {
+    if (!reportPending) return;
+    const finish = () => {
+      clearReportPdfDownloadCookie();
+      reportPendingRef.current = false;
+      setReportPending(false);
+    };
+    const poll = window.setInterval(() => {
+      if (hasReportPdfDownloadCookie()) finish();
+    }, 400);
+    // PDF ルートの maxDuration (60秒) より少し長く待って必ず戻す。
+    const fallback = window.setTimeout(finish, 70_000);
+    return () => {
+      window.clearInterval(poll);
+      window.clearTimeout(fallback);
+    };
+  }, [reportPending]);
   const lastY = useRef(0);
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerH, setHeaderH] = useState(0);
@@ -822,12 +852,41 @@ export function MeStickyHeader({
                           event.preventDefault();
                           scrollToPaywall("unmei_upgrade_sticky");
                         }
-                      : undefined
+                      : reportIsPdfDownload
+                        ? (event) => {
+                            // 生成中の二度押しは無視する (同じ PDF の生成が重なるのを防ぐ)。
+                            if (reportPendingRef.current) {
+                              event.preventDefault();
+                              return;
+                            }
+                            // 遷移はリンクのまま行う (ダウンロードの挙動を変えない)。
+                            clearReportPdfDownloadCookie();
+                            reportPendingRef.current = true;
+                            setReportPendingWidth(event.currentTarget.offsetWidth);
+                            setReportPending(true);
+                          }
+                        : undefined
                   }
+                  aria-busy={reportPending || undefined}
+                  aria-disabled={reportPending || undefined}
                   className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-1.5 text-center text-[12px] font-bold leading-[1.2] text-white shadow-[0_2px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] active:scale-[0.99] sm:min-h-11 sm:px-5 sm:text-[13px]"
-                  style={primaryButtonStyle}
+                  style={
+                    reportPending
+                      ? {
+                          ...primaryButtonStyle,
+                          opacity: 0.75,
+                          cursor: "progress",
+                          minWidth: reportPendingWidth ?? undefined,
+                        }
+                      : primaryButtonStyle
+                  }
                 >
-                  {reportIcon === "upgrade" ? (
+                  {reportPending ? (
+                    <span
+                      className="h-[15px] w-[15px] shrink-0 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                      aria-hidden="true"
+                    />
+                  ) : reportIcon === "upgrade" ? (
                     <svg
                       width="15"
                       height="15"
@@ -862,8 +921,16 @@ export function MeStickyHeader({
                       <path d="m9 15 3 3 3-3" />
                     </svg>
                   )}
-                  {reportLabel ??
-                    (isEn ? "Download complete report" : isId ? "Unduh laporan lengkap" : isKo ? "완전판 리포트 생성" : "完全版レポートを生成")}
+                  {reportPending
+                    ? isEn
+                      ? "Preparing..."
+                      : isId
+                        ? "Menyiapkan..."
+                        : isKo
+                          ? "생성 중..."
+                          : "作成中..."
+                    : (reportLabel ??
+                      (isEn ? "Download complete report" : isId ? "Unduh laporan lengkap" : isKo ? "완전판 리포트 생성" : "完全版レポートを生成"))}
                 </a>
               ))}
 
