@@ -1,3 +1,4 @@
+import { AnalyzingVeilHost } from "@/components/AnalyzingVeilHost";
 import { BottomNav } from "@/components/BottomNav";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
@@ -267,6 +268,10 @@ export default function RootLayout({
               <BottomNav />
             </Suspense>
           </LocaleUiBoundary>
+        </Suspense>
+        {/* 自己診断の解析待ち画面を、結果ページへの移動をまたいで出し続ける層。 */}
+        <Suspense fallback={null}>
+          <AnalyzingVeilHost />
         </Suspense>
         <GoogleAnalytics />
         {thirdPartyMeasurementEnabled && (
