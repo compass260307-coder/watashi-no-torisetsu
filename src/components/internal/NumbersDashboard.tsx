@@ -272,7 +272,7 @@ export function NumbersDashboard() {
               数値
             </h1>
             <p
-              className="flex min-w-0 items-center gap-2 text-xs text-[var(--nb-text-2)]"
+              className="flex min-w-0 items-center gap-2 text-xs text-[var(--nb-text-2)] sm:text-[13px]"
               aria-live="polite"
             >
               {payload ? (
@@ -307,7 +307,7 @@ export function NumbersDashboard() {
               <button
                 type="button"
                 onClick={() => show(null)}
-                className="h-9 rounded-lg border border-[var(--nb-border)] px-3 text-sm font-bold transition-colors hover:border-[var(--nb-border-strong)] hover:bg-[var(--nb-surface-2)]"
+                className="h-9 rounded-lg border border-[var(--nb-border)] px-3 text-[15px] font-bold transition-colors hover:border-[var(--nb-border-strong)] hover:bg-[var(--nb-surface-2)]"
               >
                 今日
               </button>
@@ -346,7 +346,7 @@ export function NumbersDashboard() {
                   const value = event.target.value;
                   if (value) show(value >= today ? null : value);
                 }}
-                className="h-9 w-[8.6rem] rounded-lg border border-[var(--nb-border)] bg-transparent px-2 text-sm tabular-nums text-[var(--nb-text)] transition-colors hover:border-[var(--nb-border-strong)] sm:w-auto sm:px-2.5"
+                className="h-9 w-[8.3rem] rounded-lg border border-[var(--nb-border)] bg-transparent px-2 text-[15px] tabular-nums text-[var(--nb-text)] transition-colors hover:border-[var(--nb-border-strong)] sm:w-auto sm:px-2.5"
               />
             </label>
             <button
@@ -382,7 +382,7 @@ export function NumbersDashboard() {
             onClick={() => show(day)}
             disabled={busy}
             aria-busy={busy}
-            className="flex h-9 min-w-9 items-center justify-center gap-2 rounded-lg bg-[var(--nb-text)] px-2.5 text-sm font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-70 sm:min-w-[6.5rem] sm:px-4"
+            className="flex h-9 min-w-9 items-center justify-center gap-2 rounded-lg bg-[var(--nb-text)] px-2.5 text-[15px] font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-70 sm:min-w-[6.5rem] sm:px-4"
           >
             <svg
               aria-hidden
@@ -412,7 +412,7 @@ export function NumbersDashboard() {
         {status === "error" && (
           <div
             role="alert"
-            className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--nb-down)_45%,transparent)] bg-[color-mix(in_srgb,var(--nb-down)_10%,transparent)] px-4 py-3 text-sm"
+            className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--nb-down)_45%,transparent)] bg-[color-mix(in_srgb,var(--nb-down)_10%,transparent)] px-4 py-3 text-[15px]"
           >
             <span className="mr-auto">
               数字を取得できませんでした。
@@ -528,7 +528,7 @@ function Summary({
           : "少なく"
         : "";
   return (
-    <p className="text-sm leading-relaxed text-[var(--nb-text-2)]">
+    <p className="text-[17px] leading-relaxed text-[var(--nb-text)]">
       {comparison.label}と比べて、
       {parts.map((part, index) => {
         const last = index === parts.length - 1;
@@ -537,7 +537,7 @@ function Summary({
           <span key={part.item.key}>
             {part.item.label}は{" "}
             <span
-              className="font-bold tabular-nums"
+              className="whitespace-nowrap font-bold tabular-nums"
               style={{
                 color:
                   direction === "up"
@@ -613,7 +613,7 @@ function ComparisonPicker({
       aria-label="比べる相手"
       className="flex flex-wrap items-center gap-1.5"
     >
-      <span className="mr-1 text-xs font-bold text-[var(--nb-text-2)]">
+      <span className="mr-1 text-[13px] font-bold text-[var(--nb-text-2)]">
         比べる相手
       </span>
       {options.map((option) => {
@@ -626,7 +626,7 @@ function ComparisonPicker({
         return (
           <span
             key={option.id}
-            className={`inline-flex items-center rounded-full border text-xs transition-colors ${
+            className={`inline-flex items-center rounded-full border text-[13px] transition-colors ${
               on
                 ? "border-[var(--nb-border-strong)] bg-[var(--nb-surface-2)] text-[var(--nb-text)]"
                 : "border-[var(--nb-border)] text-[var(--nb-text-2)] hover:border-[var(--nb-border-strong)] hover:text-[var(--nb-text)]"
@@ -676,7 +676,7 @@ function ComparisonPicker({
           </span>
         );
       })}
-      <label className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[var(--nb-border-strong)] py-1 pl-3 pr-1.5 text-xs text-[var(--nb-text-2)]">
+      <label className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[var(--nb-border-strong)] py-1 pl-3 pr-1.5 text-[13px] text-[var(--nb-text-2)]">
         <span className="font-bold">日付を足す</span>
         <input
           type="date"
@@ -689,7 +689,7 @@ function ComparisonPicker({
               onAdd(value);
             }
           }}
-          className="h-6 w-[7.6rem] rounded-full bg-transparent px-1 text-xs tabular-nums text-[var(--nb-text)]"
+          className="h-6 w-[7.6rem] rounded-full bg-transparent px-1 text-[13px] tabular-nums text-[var(--nb-text)]"
         />
       </label>
     </div>
@@ -837,7 +837,7 @@ function Body({
           </div>
           {lastFull && (
             <div className="mt-auto border-t border-[var(--nb-border)] sm:flex sm:items-stretch">
-              <p className="px-4 pt-3 text-xs font-bold text-[var(--nb-text-2)] sm:flex sm:w-40 sm:shrink-0 sm:items-center sm:px-5 sm:pt-0">
+              <p className="whitespace-nowrap px-4 pt-3 text-[13px] font-bold text-[var(--nb-text-2)] sm:flex sm:shrink-0 sm:items-center sm:px-5 sm:pt-0">
                 直近1時間（{lastFull.h}時台）
               </p>
               <dl className="grid flex-1 grid-cols-3 sm:divide-x sm:divide-[var(--nb-border)] sm:border-l sm:border-[var(--nb-border)]">
@@ -866,13 +866,13 @@ function Body({
                   },
                 ].map((item) => (
                   <div key={item.label} className="min-w-0 px-4 py-3 sm:px-5">
-                    <dt className="text-xs text-[var(--nb-text-2)]">
+                    <dt className="text-[13px] text-[var(--nb-text-2)]">
                       {item.label}
                     </dt>
                     <dd className="mt-0.5 tabular-nums">
                       <span className="text-lg font-bold">{item.now}</span>
                       {item.before !== null && comparison && (
-                        <span className="block truncate text-xs text-[var(--nb-text-2)] sm:ml-2 sm:inline">
+                        <span className="block truncate text-[13px] text-[var(--nb-text-2)] sm:ml-2 sm:inline">
                           {comparison.shortLabel} {item.before}
                         </span>
                       )}
@@ -910,6 +910,7 @@ function Body({
         <div className={only("hours")}>
           <HoursCard
             day={day}
+            previous={buildComparison(payload, "previous", extraBlocks)}
             comparison={comparison}
             currentHour={currentHour}
             className="xl:col-span-7"

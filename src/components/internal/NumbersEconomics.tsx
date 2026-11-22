@@ -99,11 +99,10 @@ export function EconomicsCard({
   return (
     <Card
       title="採算"
-      hint="利益 ＝ 純売上 − 決済手数料 − サーバー・AI費の概算 − 広告費"
       action={
         <div className="flex flex-wrap items-center gap-2">
           <span
-            className="rounded-full border px-2.5 py-1 text-xs font-bold"
+            className="rounded-full border px-2.5 py-1 text-[13px] font-bold"
             style={{
               color: basis.tone,
               borderColor:
@@ -117,7 +116,7 @@ export function EconomicsCard({
           <button
             type="button"
             onClick={onOpenEntry}
-            className="h-8 rounded-lg border border-[var(--nb-border-strong)] px-3 text-xs font-bold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)]"
+            className="h-8 rounded-lg border border-[var(--nb-border-strong)] px-3 text-[13px] font-bold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)]"
           >
             広告費を入れる
           </button>
@@ -130,7 +129,7 @@ export function EconomicsCard({
             key={cell.label}
             className="min-w-0 bg-[var(--nb-surface)] px-4 py-4 sm:px-5"
           >
-            <dt className="text-xs font-bold text-[var(--nb-text-2)]">
+            <dt className="text-[15px] font-bold text-[var(--nb-text)]">
               {cell.label}
             </dt>
             <dd className="mt-2">
@@ -140,21 +139,28 @@ export function EconomicsCard({
               >
                 <AnimatedNumber value={cell.value} format={cell.format} />
               </span>
-              <span className="mt-1.5 block min-h-4 truncate text-xs tabular-nums text-[var(--nb-text-2)]">
-                {cell.before !== null
-                  ? `${compareNote} ${cell.before}`
-                  : now && !meta.compare_pending
-                    ? `${formatNumbersDay(meta.compare_day)}は広告費が未入力`
-                    : ""}
+              <span className="mt-2 block min-h-5 truncate text-[13px] tabular-nums text-[var(--nb-text-2)]">
+                {cell.before !== null ? (
+                  <>
+                    {compareNote}{" "}
+                    <span className="font-bold text-[var(--nb-text)]">
+                      {cell.before}
+                    </span>
+                  </>
+                ) : now && !meta.compare_pending ? (
+                  `${formatNumbersDay(meta.compare_day)}は広告費が未入力`
+                ) : (
+                  ""
+                )}
               </span>
-              <span className="mt-0.5 block min-h-4 truncate text-xs tabular-nums text-[var(--nb-text-2)]">
+              <span className="mt-0.5 block min-h-4 truncate text-[13px] tabular-nums text-[var(--nb-text-2)]">
                 {cell.extra}
               </span>
             </dd>
           </div>
         ))}
       </dl>
-      <p className="border-t border-[var(--nb-border)] px-4 py-3 text-xs leading-relaxed tabular-nums text-[var(--nb-text-2)] sm:px-5">
+      <p className="border-t border-[var(--nb-border)] px-4 py-3 text-[13px] leading-relaxed tabular-nums text-[var(--nb-text-2)] sm:px-5">
         {now && spent ? (
           <>
             純売上 {signedYen(day.until_cut.net)} − 手数料 {signedYen(now.fee)}{" "}

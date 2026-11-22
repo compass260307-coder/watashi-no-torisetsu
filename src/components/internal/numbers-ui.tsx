@@ -19,8 +19,8 @@ export const NUMBERS_THEME = {
   "--nb-border": "#1c1f23",
   "--nb-border-strong": "#2f3336",
   "--nb-text": "#e7e9ea",
-  "--nb-text-2": "#8b98a5",
-  "--nb-text-3": "#5c6670",
+  "--nb-text-2": "#a7b1bc",
+  "--nb-text-3": "#77828d",
   "--nb-accent": "#1d9bf0",
   "--nb-compare": "#8b8b85",
   "--nb-up": "#00ba7c",
@@ -54,9 +54,13 @@ export function Card({
       {title && (
         <header className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 pb-3 pt-4 sm:px-5">
           <div className="mr-auto min-w-0">
-            <h2 className="text-sm font-bold text-[var(--nb-text)]">{title}</h2>
+            <h2 className="text-[15px] font-bold text-[var(--nb-text)]">
+              {title}
+            </h2>
             {hint && (
-              <p className="mt-0.5 text-xs text-[var(--nb-text-2)]">{hint}</p>
+              <p className="mt-0.5 text-[13px] text-[var(--nb-text-2)]">
+                {hint}
+              </p>
             )}
           </div>
           {action}
@@ -91,12 +95,42 @@ export function DeltaBadge({
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full font-bold tabular-nums ${
-        size === "sm" ? "px-1.5 py-px text-[11px]" : "px-2 py-0.5 text-xs"
+        size === "sm" ? "px-1.5 py-px text-xs" : "px-2 py-0.5 text-[13px]"
       }`}
       style={{
         color,
         background: `color-mix(in srgb, ${color} 14%, transparent)`,
       }}
+    >
+      <span aria-hidden className="text-[0.75em] leading-none">
+        {delta.direction === "up"
+          ? "▲"
+          : delta.direction === "down"
+            ? "▼"
+            : "■"}
+      </span>
+      <span className="sr-only">{label}</span>
+      {delta.text}
+    </span>
+  );
+}
+
+/**
+ * 増減を、塗りつぶし無しの文字で出す。表や一覧のように数が並ぶ場所で使う
+ * (塗りつぶしのバッジが並ぶと、肝心の数字より目立ってしまうため)。
+ */
+export function DeltaText({ delta }: { delta: NumbersDelta | null }) {
+  if (!delta) return <span className="text-[var(--nb-text-3)]">–</span>;
+  const color =
+    delta.direction === "up"
+      ? "var(--nb-up)"
+      : delta.direction === "down"
+        ? "var(--nb-down)"
+        : "var(--nb-text-2)";
+  return (
+    <span
+      className="inline-flex items-center gap-1 whitespace-nowrap font-bold tabular-nums"
+      style={{ color }}
     >
       <span aria-hidden className="text-[0.7em] leading-none">
         {delta.direction === "up"
@@ -105,7 +139,13 @@ export function DeltaBadge({
             ? "▼"
             : "■"}
       </span>
-      <span className="sr-only">{label}</span>
+      <span className="sr-only">
+        {delta.direction === "up"
+          ? "増加"
+          : delta.direction === "down"
+            ? "減少"
+            : "変わらず"}
+      </span>
       {delta.text}
     </span>
   );
@@ -135,7 +175,7 @@ export function Segmented<T extends string>({
           type="button"
           aria-pressed={option.value === value}
           onClick={() => onChange(option.value)}
-          className={`rounded-md px-3 py-1 text-xs font-bold transition-colors ${
+          className={`rounded-md px-3 py-1 text-[13px] font-bold transition-colors ${
             option.value === value
               ? "bg-[var(--nb-surface-2)] text-[var(--nb-text)] shadow-[inset_0_0_0_1px_var(--nb-border-strong)]"
               : "text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
