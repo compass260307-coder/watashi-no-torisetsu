@@ -26,7 +26,7 @@ interface FirstQuestionProps {
 // この時間 (画面が見えている状態で) 押されなければ、1問目を小窓で出す。
 const SHOW_QUESTION_AFTER_MS = 5000;
 // 出た直後の押し間違い (ボタンを押そうとして○や背景に触れる) を防ぐ時間。演出が落ち着くまで。
-const TAP_GUARD_MS = 1100;
+const TAP_GUARD_MS = 1200;
 // 出す何ミリ秒前から、見えない状態で用意しておくか。
 const PREPARE_BEFORE_MS = 900;
 const ALICE_SRC = "/mascot/top-question-alice-talk.webp";
