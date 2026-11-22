@@ -554,3 +554,165 @@ export function formatNumbersClock(iso: string): string {
   const date = new Date(new Date(iso).getTime() + 9 * 3600 * 1000);
   return `${date.getUTCHours()}:${String(date.getUTCMinutes()).padStart(2, "0")}`;
 }
+
+/* ------------------------------------------------------------ 日次の推移 */
+
+/** 日次の推移で使う、1 日分の合計。 */
+export type NumbersDailyAmounts = Pick<
+  NumbersSubtotal,
+  "diagnoses" | "ad_diagnoses" | "net" | "purchases_full" | "purchases_upgrade"
+>;
+
+/** その日の広告費。actual が実績、plan が配信計画からの推定。 */
+export interface NumbersDailyCost {
+  actual: number;
+  plan: number;
+  has_actual: boolean;
+}
+
+/** /api/internal/numbers/daily が返す 1 日分。控えが無い日は totals・cohort が null。 */
+export interface NumbersDailyDay {
+  day: string;
+  counted: boolean;
+  computed_at: string | null;
+  totals: NumbersSubtotal | null;
+  cohort: NumbersDayBlock["cohort"] | null;
+  cost: NumbersDailyCost & {
+    accounts_with_actual: number;
+    accounts_recent: number;
+  };
+}
+
+export interface NumbersDailyPayload {
+  days: NumbersDailyDay[];
+  settings: NumbersSettings | null;
+  /** サーバーが見た今日 (JST)。 */
+  today: string;
+}
+
+/** 表の 1 行。数字がまだ無い項目は null。 */
+export interface NumbersDailyRow {
+  day: string;
+  amounts: NumbersDailyAmounts | null;
+  /** 買い切り ÷ 診断数。 */
+  rate: number | null;
+  /** 純売上 ÷ 診断数。 */
+  perDiagnosis: number | null;
+  /** 広告以外から来た人 ÷ 診断数。 */
+  nonAdShare: number | null;
+  friendRate: number | null;
+  shareRate: number | null;
+  /** 広告費 (実績 + 推定)。実績も配信計画も無い日は null。 */
+  cost: number | null;
+  /** 広告費のうち、配信計画からの推定の分。 */
+  costPlan: number;
+  economics: NumbersEconomics | null;
+}
+
+/** 時間別の数字を、日次の推移で使う 1 日分の合計にする。 */
+export function dailyAmounts(hours: NumbersHour[]): NumbersDailyAmounts {
+  const total: NumbersDailyAmounts = {
+    diagnoses: 0,
+    ad_diagnoses: 0,
+    net: 0,
+    purchases_full: 0,
+    purchases_upgrade: 0,
+  };
+  for (const hour of hours) {
+    total.diagnoses += hour.diagnoses;
+    total.ad_diagnoses += hour.ad_diagnoses;
+    total.net += hour.net;
+    total.purchases_full += hour.purchases_full;
+    total.purchases_upgrade += hour.purchases_upgrade;
+  }
+  return total;
+}
+
+/** 1 日分の合計と広告費から、表の 1 行を作る。 */
+export function buildDailyRow(
+  day: string,
+  amounts: NumbersDailyAmounts | null,
+  cohort: NumbersDayBlock["cohort"] | null,
+  cost: NumbersDailyCost | null,
+  settings: NumbersSettings | null,
+): NumbersDailyRow {
+  // jsonb の numeric は文字列で届くことがあるので、数に直してから使う。
+  const actual = cost ? Number(cost.actual) : 0;
+  const plan = cost ? Number(cost.plan) : 0;
+  const total = cost && (cost.has_actual || plan > 0) ? actual + plan : null;
+  return {
+    day,
+    amounts,
+    rate: amounts ? ratio(amounts.purchases_full, amounts.diagnoses) : null,
+    perDiagnosis: amounts ? ratio(amounts.net, amounts.diagnoses) : null,
+    nonAdShare: amounts
+      ? ratio(amounts.diagnoses - amounts.ad_diagnoses, amounts.diagnoses)
+      : null,
+    friendRate: cohort ? ratio(cohort.friend_owners, cohort.diagnosers) : null,
+    shareRate: cohort ? ratio(cohort.sharers, cohort.diagnosers) : null,
+    cost: total,
+    costPlan: plan,
+    economics:
+      amounts && total !== null && settings
+        ? economics(amounts, total, settings)
+        : null,
+  };
+}
+
+/** 月の合計。数字がある日だけを足す。利益と CPA は、広告費も分かる日だけで出す。 */
+export function sumDailyRows(rows: NumbersDailyRow[]): {
+  days: number;
+  amounts: NumbersDailyAmounts;
+  rate: number | null;
+  costDays: number;
+  cost: number;
+  costPlan: number;
+  profit: number;
+  cpaAd: number | null;
+} {
+  const amounts: NumbersDailyAmounts = {
+    diagnoses: 0,
+    ad_diagnoses: 0,
+    net: 0,
+    purchases_full: 0,
+    purchases_upgrade: 0,
+  };
+  let days = 0;
+  let costDays = 0;
+  let cost = 0;
+  let costPlan = 0;
+  let profit = 0;
+  let adDiagnoses = 0;
+  for (const row of rows) {
+    if (!row.amounts) continue;
+    days += 1;
+    amounts.diagnoses += row.amounts.diagnoses;
+    amounts.ad_diagnoses += row.amounts.ad_diagnoses;
+    amounts.net += row.amounts.net;
+    amounts.purchases_full += row.amounts.purchases_full;
+    amounts.purchases_upgrade += row.amounts.purchases_upgrade;
+    if (row.cost === null || !row.economics) continue;
+    costDays += 1;
+    cost += row.cost;
+    costPlan += row.costPlan;
+    profit += row.economics.profit;
+    adDiagnoses += row.amounts.ad_diagnoses;
+  }
+  return {
+    days,
+    amounts,
+    rate: ratio(amounts.purchases_full, amounts.diagnoses),
+    costDays,
+    cost,
+    costPlan,
+    profit,
+    cpaAd: adDiagnoses > 0 ? cost / adDiagnoses : null,
+  };
+}
+
+/** "2026-11" を n か月ずらす。 */
+export function shiftNumbersMonth(month: string, delta: number): string {
+  const [year, index] = month.split("-").map(Number);
+  const date = new Date(Date.UTC(year, index - 1 + delta, 1));
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`;
+}
