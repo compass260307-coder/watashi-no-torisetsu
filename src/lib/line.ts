@@ -65,13 +65,6 @@ export const LINE_ALICE_CONVERSATION_STARTERS = [
 export type LineAliceConversationStarterKey =
   (typeof LINE_ALICE_CONVERSATION_STARTERS)[number]["key"];
 
-/** 連携直後に、入力せずAliceとの会話を始められる質問候補。 */
-export function aliceConversationStarterQuickReplies(): LineQuickReply {
-  return quickReplies(
-    ...LINE_ALICE_CONVERSATION_STARTERS.map((starter) => starter.label),
-  );
-}
-
 export function matchAliceConversationStarter(
   text: string,
 ): LineAliceConversationStarterKey | null {
@@ -104,12 +97,6 @@ export interface LineWebhookEvent {
 export interface LineWebhookBody {
   destination?: string;
   events?: LineWebhookEvent[];
-}
-
-export function isLineConfigured(): boolean {
-  return Boolean(
-    process.env.LINE_CHANNEL_SECRET && process.env.LINE_CHANNEL_ACCESS_TOKEN,
-  );
 }
 
 /**

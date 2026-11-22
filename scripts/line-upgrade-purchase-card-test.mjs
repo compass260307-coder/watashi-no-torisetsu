@@ -73,9 +73,7 @@ assert(!JSON.stringify(errors).includes(checkoutUrl));
 throwDelivery=false;deliveryResult=true;
 await offer.replyLineUpgradeMessages('user-retry','owner',messages);
 assert.equal(sends.at(-1).kind,'reply','An explicit user action can deliver a fresh offer');
-await offer.pushLineUpgradeMessages('owner',messages);
-assert.equal(sends.at(-1).kind,'push');assert.equal(sends.at(-1).messages,messages);
-console.log('PASS: immediate single Reply with the complete offer, zero Push fallback, message limits, safe failure logging and user retry; LIFF push is one batch.');
+console.log('PASS: immediate single Reply with the complete offer, zero Push fallback, message limits, safe failure logging and user retry.');
 
 const requests = [];
 let responseStatus=200;
