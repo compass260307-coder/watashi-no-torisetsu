@@ -61,6 +61,8 @@ export interface NumbersSource {
 
 export interface NumbersDayBlock {
   day: string;
+  /** この 1 日分を数えた時刻。終わった日は控えから出すので、今より前のことがある。 */
+  computed_at?: string | null;
   hours: NumbersHour[];
   /** 今日なら現在時刻まで、比較日なら同じ経過時間までの小計。 */
   until_cut: NumbersSubtotal;
@@ -86,10 +88,25 @@ export interface NumbersPayload {
      */
     events_complete?: boolean;
     compare_events_complete?: boolean;
+    /** 比較日をまだ数えていない (古い日は 1 回の呼び出しで 2 日分を数え切れない)。 */
+    compare_pending?: boolean;
     duration_ms: number;
   };
   day: NumbersDayBlock;
   compare: NumbersDayBlock;
+  /** 表示日の前 7 日の、時間別の平均。控えのある日だけで平均する。 */
+  baseline?: NumbersBaseline;
+}
+
+/** 平均の 1 時間分。件数も小数になる。 */
+export type NumbersBaselineHour = Omit<NumbersHour, "events">;
+
+export interface NumbersBaseline {
+  /** 平均に入った日数 (0〜7)。 */
+  days: number;
+  from: string;
+  to: string;
+  hours: NumbersBaselineHour[];
 }
 
 const DAY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
@@ -100,7 +117,8 @@ export const NUMBERS_EARLIEST_DAY = "2026-01-01";
 export function isNumbersCatchingUp(payload: NumbersPayload): boolean {
   return (
     payload.meta.events_complete === false ||
-    payload.meta.compare_events_complete === false
+    payload.meta.compare_events_complete === false ||
+    payload.meta.compare_pending === true
   );
 }
 
@@ -159,10 +177,12 @@ export type HeadlineKey =
   | "net_per_diagnosis";
 
 /** 指標の計算に使う数字。1 時間分 (NumbersHour) にも小計 (NumbersSubtotal) にもある。 */
-type HeadlineAmounts = Pick<
+export type HeadlineAmounts = Pick<
   NumbersSubtotal,
   "diagnoses" | "net" | "purchases_full"
 >;
+/** グラフに並べる 1 時間分。表示日・比較日・平均のどれでも同じ形で扱う。 */
+export type HeadlineHour = HeadlineAmounts & { h: number };
 
 export interface HeadlineDefinition {
   key: HeadlineKey;
@@ -233,7 +253,7 @@ export type HeadlineSeriesMode = "hourly" | "cumulative";
  */
 export function headlineSeries(
   definition: HeadlineDefinition,
-  hours: NumbersHour[],
+  hours: HeadlineHour[],
   mode: HeadlineSeriesMode,
   lastHour: number,
 ): (number | null)[] {
@@ -249,6 +269,147 @@ export function headlineSeries(
   });
 }
 
+/**
+ * 何と比べるか。
+ *   average   直近 7 日の平均
+ *   previous  前日
+ *   week      1 週間前 (同じ曜日)
+ *   date:...  好きな日付
+ */
+export type ComparisonId = "average" | "previous" | "week" | `date:${string}`;
+
+/** 同時に重ねられる比較相手の数。3 つ以上重ねると、線の色を見分けにくくなる。 */
+export const MAX_COMPARISONS = 2;
+
+export interface NumbersComparison {
+  id: ComparisonId;
+  /** "直近7日平均" や "11/21(土)"。 */
+  label: string;
+  /** 幅の狭い場所で使う短い名前。"7日平均" や "前日"。 */
+  shortLabel: string;
+  hours: HeadlineHour[];
+  /** 表示日と同じ時刻までの小計 (今日でなければ 1 日分)。 */
+  untilCut: HeadlineAmounts;
+  fullDay: HeadlineAmounts;
+  /** 相手が 1 日のとき、その 1 日分 (ファネルや口コミの比較に使う)。平均には無い。 */
+  block?: NumbersDayBlock;
+}
+
+function sumAmounts(
+  hours: HeadlineHour[],
+  untilHours: number,
+): HeadlineAmounts {
+  const total = { diagnoses: 0, net: 0, purchases_full: 0 };
+  for (const hour of hours) {
+    // 途中の時間帯は、その時間帯の数字を経過した割合だけ足す。
+    const share = Math.max(0, Math.min(1, untilHours - hour.h));
+    total.diagnoses += hour.diagnoses * share;
+    total.net += hour.net * share;
+    total.purchases_full += hour.purchases_full * share;
+  }
+  return total;
+}
+
+/** 比較相手が指す日付。平均のように 1 日ではないものは null。 */
+export function comparisonDay(
+  payload: NumbersPayload,
+  id: ComparisonId,
+): string | null {
+  if (id === "average") return null;
+  if (id === "previous") return shiftNumbersDay(payload.meta.day, -1);
+  if (id === "week") return shiftNumbersDay(payload.meta.day, -7);
+  return id.slice("date:".length);
+}
+
+/**
+ * 比較相手を 1 つの形にそろえる。まだ使えないとき (平均の元になる日が無い、その日の
+ * 数字をまだ取っていない) は null。extraBlocks は、あとから取った日付ごとの 1 日分。
+ */
+export function buildComparison(
+  payload: NumbersPayload,
+  id: ComparisonId,
+  extraBlocks: Record<string, NumbersDayBlock | undefined> = {},
+): NumbersComparison | null {
+  const { meta, compare, baseline } = payload;
+  const untilHours = meta.is_today ? meta.elapsed_seconds / 3600 : 24;
+
+  if (id === "average") {
+    if (!baseline || baseline.days < 1 || baseline.hours.length !== 24)
+      return null;
+    return {
+      id,
+      label: `直近${baseline.days}日平均`,
+      shortLabel: `${baseline.days}日平均`,
+      hours: baseline.hours,
+      untilCut: sumAmounts(baseline.hours, untilHours),
+      fullDay: sumAmounts(baseline.hours, 24),
+    };
+  }
+
+  const day = comparisonDay(payload, id);
+  if (!day) return null;
+  const dayLabel = formatNumbersDay(day);
+  const names =
+    id === "previous"
+      ? { label: `前日 ${dayLabel}`, shortLabel: "前日" }
+      : id === "week"
+        ? { label: `1週間前 ${dayLabel}`, shortLabel: "1週間前" }
+        : { label: dayLabel, shortLabel: dayLabel };
+
+  // 最初の応答に入っている比較日は、同じ時刻までの小計が分単位で正確。
+  if (day === meta.compare_day && !meta.compare_pending) {
+    return {
+      id,
+      ...names,
+      hours: compare.hours,
+      untilCut: compare.until_cut,
+      fullDay: sumAmounts(compare.hours, 24),
+      block: compare,
+    };
+  }
+  // あとから取った日は 1 日分で届く。同じ時刻までの小計は、時間別の数字から出す。
+  const block = extraBlocks[day];
+  if (!block) return null;
+  return {
+    id,
+    ...names,
+    hours: block.hours,
+    untilCut: sumAmounts(block.hours, untilHours),
+    fullDay: sumAmounts(block.hours, 24),
+    block,
+  };
+}
+
+/** 平均は、元になる日が 3 日以上そろってから既定にする (1〜2 日では前日比と変わらない)。 */
+export function defaultComparisonId(payload: NumbersPayload): ComparisonId {
+  return (payload.baseline?.days ?? 0) >= 3 ? "average" : "previous";
+}
+
+/** 画面に並べる順。選んだ相手のうち、いちばん左のものを増減の基準にする。 */
+export function sortComparisonIds(ids: ComparisonId[]): ComparisonId[] {
+  const rank = (id: ComparisonId) =>
+    id === "average" ? 0 : id === "previous" ? 1 : id === "week" ? 2 : 3;
+  return [...new Set(ids)].sort(
+    (x, y) => rank(x) - rank(y) || (x < y ? 1 : x > y ? -1 : 0),
+  );
+}
+
+/**
+ * 今日の着地見込み。「今までの実績 × (比較相手の 1 日分 ÷ 比較相手の同じ時刻まで)」。
+ * 1 日の中の時間帯の偏りが、比較相手と同じだと仮定した概算。率と単価には出さない。
+ */
+export function forecastHeadline(
+  definition: HeadlineDefinition,
+  current: number | null,
+  basis: NumbersComparison | null,
+): number | null {
+  if (definition.denominator || current === null || !basis) return null;
+  const soFar = definition.numerator(basis.untilCut);
+  const full = definition.numerator(basis.fullDay);
+  if (soFar <= 0 || full <= 0) return null;
+  return current * (full / soFar);
+}
+
 const countFormat = new Intl.NumberFormat("ja-JP");
 
 export function formatNumbersValue(
@@ -256,7 +417,14 @@ export function formatNumbersValue(
   kind: HeadlineDefinition["kind"],
 ): string {
   if (value === null || !Number.isFinite(value)) return "–";
-  if (kind === "count") return countFormat.format(value);
+  if (kind === "count") {
+    // 平均や見込みは小数になる。10 未満だけ小数 1 桁を残し、それ以上は整数に丸める。
+    const rounded =
+      Number.isInteger(value) || Math.abs(value) >= 10
+        ? Math.round(value)
+        : Math.round(value * 10) / 10;
+    return countFormat.format(rounded);
+  }
   if (kind === "yen") return `¥${countFormat.format(Math.round(value))}`;
   if (kind === "yen_decimal") return `¥${value.toFixed(2)}`;
   return `${(value * 100).toFixed(2)}%`;

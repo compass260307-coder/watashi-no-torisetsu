@@ -3,6 +3,7 @@
 // 社内向け数値画面の各ブロック。受け取った数字を並べるだけで、取得や状態は持たない。
 import {
   HEADLINES,
+  forecastHeadline,
   formatNumbersValue,
   headlineValue,
   numbersDelta,
@@ -10,37 +11,47 @@ import {
   sumEvents,
   sumHours,
   type HeadlineKey,
+  type NumbersComparison,
   type NumbersDayBlock,
   type NumbersHourEvents,
 } from "@/lib/internal-numbers";
 
 import { NumbersSparkline } from "./NumbersHourlyChart";
 import {
+  AnimatedNumber,
   Card,
   DataBar,
   DeltaBadge,
+  RingGauge,
   numberFormat,
   percent,
   yen,
 } from "./numbers-ui";
 
+// 率の増減に色を付けるのは、分母がこの数以上あるときだけ。
+// 分母が小さい率は 1〜2 件の差で大きく動き、偶然の揺れを変化に見せてしまう。
+const MIN_BASE_FOR_DELTA = 100;
+
 /* ------------------------------------------------------------------ 指標 */
 
 export function KpiRow({
   day,
-  compare,
+  comparison,
+  forecastBasis,
   selected,
   onSelect,
-  compareNote,
+  isToday,
   currentHour,
   nowHours,
 }: {
   day: NumbersDayBlock;
-  compare: NumbersDayBlock;
+  /** 比べる相手。まだ用意できていないときは null (増減を出さない)。 */
+  comparison: NumbersComparison | null;
+  /** 着地見込みの元にする相手。今日の表示で、1 時間以上たってから渡す。 */
+  forecastBasis: NumbersComparison | null;
   selected: HeadlineKey;
   onSelect: (key: HeadlineKey) => void;
-  /** 比較相手の説明。「昨日の同時刻」など。 */
-  compareNote: string;
+  isToday: boolean;
   currentHour: number | null;
   nowHours: number | null;
 }) {
@@ -52,7 +63,10 @@ export function KpiRow({
     >
       {HEADLINES.map((item, index) => {
         const value = headlineValue(item, day.until_cut);
-        const previous = headlineValue(item, compare.until_cut);
+        const previous = comparison
+          ? headlineValue(item, comparison.untilCut)
+          : null;
+        const forecast = forecastHeadline(item, value, forecastBasis);
         const active = item.key === selected;
         return (
           <button
@@ -93,18 +107,34 @@ export function KpiRow({
             </span>
             <span className="relative mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <span className="text-[1.7rem] font-bold leading-none tracking-tight tabular-nums text-[var(--nb-text)] xl:text-[2.1rem]">
-                {formatNumbersValue(value, item.kind)}
+                <AnimatedNumber
+                  value={value}
+                  format={(shown) => formatNumbersValue(shown, item.kind)}
+                />
               </span>
               <DeltaBadge delta={numbersDelta(value, previous, item.kind)} />
             </span>
             <span className="relative mt-1.5 truncate text-xs tabular-nums text-[var(--nb-text-2)]">
-              {compareNote} {formatNumbersValue(previous, item.kind)}
+              {comparison
+                ? `${comparison.shortLabel}${isToday ? "の同時刻" : ""} ${formatNumbersValue(previous, item.kind)}`
+                : "比較する数字を用意しています..."}
             </span>
-            <span className="relative mt-3 block">
+            {/* 見込みの行は、出ない指標でも高さを取っておく (カードの高さをそろえる)。 */}
+            <span className="relative mt-0.5 min-h-4 truncate text-xs tabular-nums text-[var(--nb-text-2)]">
+              {forecast !== null && (
+                <>
+                  着地見込み{" "}
+                  <span className="font-bold text-[var(--nb-text)]">
+                    {formatNumbersValue(forecast, item.kind)}
+                  </span>
+                </>
+              )}
+            </span>
+            <span className="relative mt-2.5 block">
               <NumbersSparkline
                 metric={item}
                 hours={day.hours}
-                compareHours={compare.hours}
+                compareHours={comparison?.hours ?? null}
                 currentHour={currentHour}
                 nowHours={nowHours}
               />
@@ -118,65 +148,139 @@ export function KpiRow({
 
 /* -------------------------------------------------------------- ファネル */
 
+type Count = (block: NumbersDayBlock) => number;
+
 interface FlowStep {
   label: string;
-  value: (block: NumbersDayBlock) => number;
-  /** 前の段階からの率を出すかどうか。流れの先頭や、別の流れの始まりでは出さない。 */
-  fromPrevious?: boolean;
-  session?: string;
+  /** この段階の数 (セッション数かイベントの回数)。率の分子で、母数として小さく添える。 */
+  value: Count;
+  /** 数の単位。"セッション" か "回"。 */
+  unit: string;
+  /**
+   * 主役として出す率の分母。件数は診断数が増えれば一緒に増えて良し悪しが読めないので、
+   * どの段階も「何に対する割合か」で見せる。流れの起点 (母数そのもの) には無い。
+   */
+  base?: { label: string; value: Count };
+  /** 補足として出す、流れ全体での割合 (例: 診断完了のうち何 % が購入まで来たか)。 */
+  overall?: { label: string; value: Count };
 }
 
-const event = (key: keyof NumbersHourEvents) => (block: NumbersDayBlock) =>
-  sumEvents(block.hours, key);
+const event =
+  (key: keyof NumbersHourEvents): Count =>
+  (block) =>
+    sumEvents(block.hours, key);
+const sessions =
+  (name: string): Count =>
+  (block) =>
+    block.sessions[name] ?? 0;
+
+// 課金ファネルはセッション数 (その日の同じ訪問は 1 回) で数える。イベントの回数だと、
+// 同じ人が課金表示を何度も見るため「診断完了から 104%」のように 100% を超えてしまう
+// (2026-11-22 の実データで確認)。
+const started = sessions("diagnosis_started");
+const completed = sessions("diagnosis_completed");
+const paywall = sessions("paywall_viewed");
+const cta = sessions("purchase_cta_clicked");
+const checkout = sessions("checkout_session_created");
+const fromCompleted = { label: "診断完了の", value: completed };
 
 const PURCHASE_FLOW: FlowStep[] = [
-  { label: "診断開始", value: event("started"), session: "diagnosis_started" },
+  { label: "診断開始", value: started, unit: "セッション" },
   {
     label: "診断完了",
-    value: event("completed"),
-    fromPrevious: true,
-    session: "diagnosis_completed",
+    value: completed,
+    unit: "セッション",
+    base: { label: "診断開始から", value: started },
   },
   {
     label: "課金表示",
-    value: (block) =>
-      event("paywall_card")(block) + event("paywall_modal")(block),
-    fromPrevious: true,
-    session: "paywall_viewed",
+    value: paywall,
+    unit: "セッション",
+    base: { label: "診断完了から", value: completed },
   },
   {
     label: "購入ボタン",
-    value: event("cta"),
-    fromPrevious: true,
-    session: "purchase_cta_clicked",
+    value: cta,
+    unit: "セッション",
+    base: { label: "課金表示から", value: paywall },
+    overall: fromCompleted,
   },
   {
     label: "決済画面",
-    value: event("checkout"),
-    fromPrevious: true,
-    session: "checkout_session_created",
+    value: checkout,
+    unit: "セッション",
+    base: { label: "購入ボタンから", value: cta },
+    overall: fromCompleted,
   },
   {
     label: "購入完了",
-    value: event("paid"),
-    fromPrevious: true,
-    session: "purchase_completed",
+    value: sessions("purchase_completed"),
+    unit: "セッション",
+    base: { label: "決済画面から", value: checkout },
+    overall: fromCompleted,
   },
 ];
 
 // 友達診断は、招待する本人の流れと、招待された友達の流れに分かれる (別々の人の行動)。
+// こちらはイベントの回数。起点の段階は、その日の診断完了の回数に対する割合で見せる。
+const completedEvents = event("completed");
+const takoViewed = event("tako_viewed");
+const takoPaywall = event("tako_paywall");
+const friendLanding = event("friend_landing");
+const friendCompleted = event("friend_completed");
+
 const INVITER_FLOW: FlowStep[] = [
-  { label: "友達診断ページ表示", value: event("tako_viewed") },
-  { label: "招待クリック", value: event("invite_clicked"), fromPrevious: true },
-  { label: "課金表示", value: event("tako_paywall"), fromPrevious: false },
-  { label: "購入", value: event("tako_paid"), fromPrevious: true },
+  {
+    label: "友達診断ページ表示",
+    value: takoViewed,
+    unit: "回",
+    base: { label: "診断完了に対して", value: completedEvents },
+  },
+  {
+    label: "招待クリック",
+    value: event("invite_clicked"),
+    unit: "回",
+    base: { label: "ページ表示から", value: takoViewed },
+  },
+  {
+    label: "課金表示",
+    value: takoPaywall,
+    unit: "回",
+    base: { label: "ページ表示から", value: takoViewed },
+  },
+  {
+    label: "購入",
+    value: event("tako_paid"),
+    unit: "回",
+    base: { label: "課金表示から", value: takoPaywall },
+    overall: { label: "ページ表示の", value: takoViewed },
+  },
 ];
 const FRIEND_FLOW: FlowStep[] = [
-  { label: "リンクを開いた", value: event("friend_landing") },
-  { label: "回答完了", value: event("friend_completed"), fromPrevious: true },
-  { label: "自己診断へ", value: event("friend_to_self"), fromPrevious: true },
+  {
+    label: "リンクを開いた",
+    value: friendLanding,
+    unit: "回",
+    base: { label: "診断完了に対して", value: completedEvents },
+  },
+  {
+    label: "回答完了",
+    value: friendCompleted,
+    unit: "回",
+    base: { label: "リンクを開いたから", value: friendLanding },
+  },
+  {
+    label: "自己診断へ",
+    value: event("friend_to_self"),
+    unit: "回",
+    base: { label: "回答完了から", value: friendCompleted },
+  },
 ];
 
+/**
+ * 段階の並び。主役は率 (大きな数字と棒)。件数は母数として下に小さく添える。
+ * 白い線は比較日の率。
+ */
 function Flow({
   steps,
   day,
@@ -188,73 +292,106 @@ function Flow({
   compare: NumbersDayBlock;
   compareLabel: string;
 }) {
-  const top = Math.max(1, ...steps.map((step) => step.value(day)));
   return (
     <ol className="flex flex-col px-4 pb-4 sm:px-5">
-      {steps.map((step, index) => {
+      {steps.map((step) => {
         const value = step.value(day);
-        const before = index > 0 ? steps[index - 1] : null;
-        const rate =
-          step.fromPrevious && before ? ratio(value, before.value(day)) : null;
-        const compareRate =
-          step.fromPrevious && before
-            ? ratio(step.value(compare), before.value(compare))
-            : null;
-        const sessions = step.session ? day.sessions[step.session] : undefined;
-        return (
-          <li key={step.label} className="mt-3 first:mt-0">
-            <div className="flex items-baseline gap-3">
+        if (!step.base) {
+          // 流れの起点。率の母数になる数なので、件数のまま控えめに出す。
+          return (
+            <li
+              key={step.label}
+              className="flex items-baseline gap-3 border-b border-[var(--nb-border)] pb-3"
+            >
               <span className="mr-auto truncate text-sm text-[var(--nb-text)]">
                 {step.label}
-              </span>
-              {sessions !== undefined && (
-                <span className="shrink-0 text-xs tabular-nums text-[var(--nb-text-2)]">
-                  {numberFormat.format(sessions)} セッション
+                <span className="ml-2 text-xs text-[var(--nb-text-2)]">
+                  母数
                 </span>
+              </span>
+              <span className="shrink-0 text-sm tabular-nums text-[var(--nb-text-2)]">
+                <span className="font-bold text-[var(--nb-text)]">
+                  {numberFormat.format(value)}
+                </span>{" "}
+                {step.unit}
+                <span className="ml-2">
+                  {compareLabel} {numberFormat.format(step.value(compare))}
+                </span>
+              </span>
+            </li>
+          );
+        }
+        const base = step.base.value(day);
+        const compareBase = step.base.value(compare);
+        const rate = ratio(value, base);
+        const compareRate = ratio(step.value(compare), compareBase);
+        const steady =
+          base >= MIN_BASE_FOR_DELTA && compareBase >= MIN_BASE_FOR_DELTA;
+        const overall = step.overall
+          ? ratio(value, step.overall.value(day))
+          : null;
+        // 率が小さい段階 (数 %) は 2 桁まで出す。
+        const digits = rate !== null && rate < 0.1 ? 2 : 1;
+        return (
+          <li key={step.label} className="mt-3.5">
+            <div className="flex items-baseline gap-2">
+              <span className="mr-auto min-w-0 truncate text-sm text-[var(--nb-text)]">
+                {step.label}
+                <span className="ml-2 text-xs text-[var(--nb-text-2)]">
+                  {step.base.label}
+                </span>
+              </span>
+              {steady && (
+                <DeltaBadge
+                  delta={numbersDelta(rate, compareRate, "rate")}
+                  size="sm"
+                />
               )}
-              <span className="min-w-[3.5rem] shrink-0 text-right text-base font-bold tabular-nums text-[var(--nb-text)]">
-                {numberFormat.format(value)}
+              <span className="min-w-[4.25rem] shrink-0 text-right text-lg font-bold leading-none tabular-nums text-[var(--nb-text)]">
+                <AnimatedNumber
+                  value={rate}
+                  format={(shown) => percent(shown, digits)}
+                />
               </span>
             </div>
-            {/* 棒の長さは、この流れの最大の段階を 100% とした割合。 */}
-            <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[var(--nb-surface-2)]">
+            <div className="relative mt-2 h-2 rounded-full bg-[var(--nb-surface-2)]">
               <div
-                className="h-full rounded-full bg-[var(--nb-accent)]"
+                className="h-full rounded-full bg-[var(--nb-accent)] transition-[width] duration-500 ease-out"
                 style={{
-                  width: `${Math.max(value > 0 ? 1 : 0, (value / top) * 100)}%`,
+                  width: `${Math.max(rate && rate > 0 ? 1 : 0, Math.min(1, rate ?? 0) * 100)}%`,
                 }}
               />
-            </div>
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs tabular-nums text-[var(--nb-text-2)]">
-              {step.fromPrevious && before ? (
-                <>
-                  <span>
-                    {before.label}から{" "}
-                    <span className="font-bold text-[var(--nb-text)]">
-                      {percent(rate, 1)}
-                    </span>
-                  </span>
-                  <DeltaBadge
-                    delta={numbersDelta(rate, compareRate, "rate")}
-                    size="sm"
-                  />
-                  <span>
-                    {compareLabel} {percent(compareRate, 1)}
-                  </span>
-                </>
-              ) : (
-                <span>
-                  {compareLabel} {numberFormat.format(step.value(compare))}
-                  （1日分）
-                </span>
+              {compareRate !== null && (
+                <span
+                  aria-hidden
+                  className="absolute top-[-3px] h-[14px] w-0.5 rounded-full bg-[var(--nb-text)]"
+                  style={{
+                    left: `calc(${Math.min(1, compareRate) * 100}% - 1px)`,
+                  }}
+                />
               )}
             </div>
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs tabular-nums text-[var(--nb-text-2)]">
+              <span>
+                {compareLabel} {percent(compareRate, digits)}
+              </span>
+              {step.overall && (
+                <span>
+                  {step.overall.label} {percent(overall, 2)}
+                </span>
+              )}
+              <span className="ml-auto">
+                {numberFormat.format(value)} {step.unit}
+              </span>
+            </p>
           </li>
         );
       })}
     </ol>
   );
 }
+
+const FLOW_HINT = "大きな数字と棒は割合、白い線は比較日の割合";
 
 export function FunnelCard({
   day,
@@ -272,11 +409,7 @@ export function FunnelCard({
   return (
     <Card
       title="課金ファネル"
-      hint={
-        partial
-          ? "集計の途中です。数え終わるまで少なく出ます"
-          : "イベントの回数。率は1つ前の段階から"
-      }
+      hint={partial ? "集計の途中です。数え終わるまで少なく出ます" : FLOW_HINT}
       className={className}
     >
       <Flow
@@ -285,6 +418,9 @@ export function FunnelCard({
         compare={compare}
         compareLabel={compareLabel}
       />
+      <p className="mt-auto border-t border-[var(--nb-border)] px-4 py-3 text-xs leading-relaxed text-[var(--nb-text-2)] sm:px-5">
+        セッション数で数えています（その日の同じ訪問は1回）。上の「課金率」は診断した人数で割るので、ここの率とは一致しません。
+      </p>
     </Card>
   );
 }
@@ -303,7 +439,7 @@ export function FriendFlowCard({
   return (
     <Card
       title="友達診断の流れ"
-      hint="イベントの回数。率は1つ前の段階から"
+      hint={`${FLOW_HINT}。イベントの回数で数えています`}
       className={className}
     >
       <div className="grid flex-1 gap-px bg-[var(--nb-border)] md:grid-cols-2">
@@ -312,7 +448,7 @@ export function FriendFlowCard({
           { title: "招待された友達", steps: FRIEND_FLOW },
         ].map((flow) => (
           <div key={flow.title} className="bg-[var(--nb-surface)] pt-3">
-            <h3 className="px-4 pb-3 text-xs font-bold text-[var(--nb-text-2)] sm:px-5">
+            <h3 className="px-4 text-xs font-bold text-[var(--nb-text-2)] sm:px-5">
               {flow.title}
             </h3>
             <Flow
@@ -332,15 +468,13 @@ export function FriendFlowCard({
 
 export function HoursCard({
   day,
-  compare,
+  comparison,
   currentHour,
-  compareLabel,
   className,
 }: {
   day: NumbersDayBlock;
-  compare: NumbersDayBlock;
+  comparison: NumbersComparison | null;
   currentHour: number | null;
-  compareLabel: string;
   className?: string;
 }) {
   const last = currentHour ?? 23;
@@ -350,7 +484,7 @@ export function HoursCard({
   const head = [
     "時",
     "診断数",
-    `${compareLabel}比`,
+    comparison ? `${comparison.label}比` : "比較",
     "広告",
     "非広告",
     "純売上",
@@ -358,6 +492,8 @@ export function HoursCard({
     "課金率",
     "アップグレード",
   ];
+  const cell =
+    "whitespace-nowrap border-b border-[var(--nb-border)] px-4 py-2.5 text-right tabular-nums";
   return (
     <Card
       title="時間別"
@@ -382,12 +518,11 @@ export function HoursCard({
                 ))}
               </tr>
             </thead>
+            {/* PC では最後の行が下端のぼかしに隠れないよう、下に余白を取る。 */}
             <tbody className="xl:[&>tr:last-child>*]:pb-9">
               {rows.map((hour) => {
-                const before = compare.hours[hour.h];
+                const before = comparison?.hours[hour.h];
                 const live = hour.h === currentHour;
-                const cell =
-                  "whitespace-nowrap border-b border-[var(--nb-border)] px-4 py-2.5 text-right tabular-nums";
                 return (
                   <tr key={hour.h} className="hover:bg-[var(--nb-surface-2)]">
                     <th
@@ -408,7 +543,7 @@ export function HoursCard({
                       </DataBar>
                     </td>
                     <td className={cell}>
-                      {live ? (
+                      {live || !before ? (
                         <span className="text-[var(--nb-text-3)]">–</span>
                       ) : (
                         <DeltaBadge
@@ -502,7 +637,7 @@ export function SourcesCard({
       <div className="px-4 pb-4 sm:px-5">
         <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full">
           <div
-            className="bg-[var(--nb-accent)]"
+            className="bg-[var(--nb-accent)] transition-[width] duration-500 ease-out"
             style={{ width: `${(adShare ?? 0) * 100}%` }}
           />
           <div className="flex-1 bg-[var(--nb-compare)] opacity-60" />
@@ -547,8 +682,8 @@ export function SourcesCard({
                 <th
                   key={index}
                   scope="col"
-                  className={`sticky top-0 z-[1] whitespace-nowrap border-y border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-4 py-2.5 text-xs font-normal text-[var(--nb-text-2)] ${
-                    index === 0 ? "left-0 z-[2] text-left" : "text-right"
+                  className={`whitespace-nowrap border-y border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-4 py-2.5 text-xs font-normal text-[var(--nb-text-2)] ${
+                    index === 0 ? "sticky left-0 z-[1] text-left" : "text-right"
                   }`}
                 >
                   {label}
@@ -626,54 +761,75 @@ export function SocialCards({
       whole: block.cohort.diagnosers,
     });
   const items = [
-    { label: "非広告流入比率", note: "X・TikTok 以外から来た人", pick: nonAd },
+    {
+      label: "非広告流入比率",
+      note: "X・TikTok 以外から来た人",
+      pick: nonAd,
+      // その日のうちに決まる数字なので、比較日とそのまま比べられる。
+      comparable: true,
+    },
     {
       label: "友達診断率",
       note: "友達の回答をもらった人",
       pick: cohort("friend_owners"),
+      // 診断のあと日がたつほど増える数字。比較日は 1 日多くたっているので、増減は出さない。
+      comparable: false,
     },
-    { label: "シェア率", note: "シェア操作をした人", pick: cohort("sharers") },
+    {
+      label: "シェア率",
+      note: "シェア操作をした人",
+      pick: cohort("sharers"),
+      comparable: false,
+    },
   ];
   return (
     <Card
       title="口コミ"
-      hint="友達診断率とシェア率は、日がたつと増えます（新しい日ほど低く出ます）"
+      hint="友達診断率とシェア率は、診断のあと日がたつほど増えます"
       className={className}
     >
-      <div className="grid flex-1 gap-px bg-[var(--nb-border)] sm:grid-cols-3 xl:grid-cols-1">
+      <div className="grid flex-1 gap-px bg-[var(--nb-border)] sm:grid-cols-3">
         {items.map((item) => {
           const now = item.pick(day);
           const before = item.pick(compare);
-          const share = Math.max(0, Math.min(1, now.value ?? 0));
           return (
             <div
               key={item.label}
-              className="bg-[var(--nb-surface)] px-4 py-4 sm:px-5"
+              className="flex flex-col items-center bg-[var(--nb-surface)] px-4 py-5 text-center"
             >
               <p className="text-xs font-bold text-[var(--nb-text-2)]">
                 {item.label}
               </p>
-              <p className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                <span className="text-2xl font-bold leading-none tabular-nums text-[var(--nb-text)]">
-                  {percent(now.value)}
-                </span>
-                <DeltaBadge
-                  delta={numbersDelta(now.value, before.value, "rate")}
-                  size="sm"
-                />
-              </p>
-              <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[var(--nb-surface-2)]">
-                <div
-                  className="h-full rounded-full bg-[var(--nb-accent)]"
-                  style={{ width: `${share * 100}%` }}
-                />
-              </div>
-              <p className="mt-2 text-xs tabular-nums text-[var(--nb-text-2)]">
-                {item.note} {numberFormat.format(now.part)} ÷{" "}
+              <span className="mt-3">
+                <RingGauge share={now.value} size={104}>
+                  <span className="text-xl font-bold tabular-nums text-[var(--nb-text)]">
+                    {percent(now.value)}
+                  </span>
+                </RingGauge>
+              </span>
+              <p className="mt-3 text-xs tabular-nums text-[var(--nb-text-2)]">
+                {item.note}
+                <br />
+                {numberFormat.format(now.part)} ÷{" "}
                 {numberFormat.format(now.whole)}
               </p>
-              <p className="mt-0.5 text-xs tabular-nums text-[var(--nb-text-2)]">
-                {compareLabel} {percent(before.value)}
+              <p className="mt-2 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-xs tabular-nums text-[var(--nb-text-2)]">
+                {item.comparable ? (
+                  <>
+                    {compareLabel} {percent(before.value)}
+                    <DeltaBadge
+                      delta={numbersDelta(now.value, before.value, "rate")}
+                      size="sm"
+                    />
+                  </>
+                ) : (
+                  <>
+                    {compareLabel}に診断した人は {percent(before.value)}
+                    <span className="basis-full text-[var(--nb-text-3)]">
+                      ※日数が違うため参考
+                    </span>
+                  </>
+                )}
               </p>
             </div>
           );

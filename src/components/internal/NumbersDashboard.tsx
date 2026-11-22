@@ -4,18 +4,34 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   HEADLINES,
+  MAX_COMPARISONS,
   NUMBERS_EARLIEST_DAY,
+  buildComparison,
+  comparisonDay,
+  defaultComparisonId,
+  forecastHeadline,
   formatNumbersClock,
   formatNumbersDay,
+  formatNumbersValue,
+  headlineValue,
   isNumbersCatchingUp,
+  numbersDelta,
   shiftNumbersDay,
+  sortComparisonIds,
   todayInJst,
+  type ComparisonId,
   type HeadlineKey,
   type HeadlineSeriesMode,
+  type NumbersComparison,
+  type NumbersDayBlock,
   type NumbersPayload,
 } from "@/lib/internal-numbers";
 
-import { NumbersHourlyChart } from "./NumbersHourlyChart";
+import {
+  COMPARISON_STYLES,
+  NumbersHourlyChart,
+  type NumbersChartType,
+} from "./NumbersHourlyChart";
 import {
   FriendFlowCard,
   FunnelCard,
@@ -79,6 +95,23 @@ async function fetchNumbers(day: string | null): Promise<NumbersPayload> {
   return (await response.json()) as NumbersPayload;
 }
 
+// 比べる相手として選んだ日の 1 日分。イベントの集計が途中なら、数え終わるまで呼び直す。
+async function fetchDayBlock(day: string): Promise<NumbersDayBlock> {
+  for (let round = 0; ; round += 1) {
+    const response = await fetch(`/api/internal/numbers?block=${day}`, {
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+    if (!response.ok) throw new Error(`numbers block ${response.status}`);
+    const body = (await response.json()) as {
+      block: NumbersDayBlock;
+      events_complete: boolean;
+    };
+    if (body.events_complete || round >= CATCH_UP_LIMIT) return body.block;
+    await pause(CATCH_UP_PAUSE_MS);
+  }
+}
+
 export function NumbersDashboard() {
   // null は「今日」。日付を固定すると、日をまたいだあとも前日を見続けてしまうため。
   const [day, setDay] = useState<string | null>(null);
@@ -86,6 +119,19 @@ export function NumbersDashboard() {
   const [status, setStatus] = useState<Status>("loading");
   const [metricKey, setMetricKey] = useState<HeadlineKey>("diagnoses");
   const [mode, setMode] = useState<HeadlineSeriesMode>("hourly");
+  const [chartType, setChartType] = useState<NumbersChartType>("line");
+  // 何と比べるか (最大 2 つ)。選ぶまでは、平均の元がそろっていれば平均、なければ前日。
+  const [selection, setSelection] = useState<ComparisonId[] | null>(null);
+  // 「日付を足す」で足した日付。選択から外しても、候補としては残す。
+  const [customDays, setCustomDays] = useState<string[]>([]);
+  // 比べる相手として、あとから取った日付ごとの 1 日分。
+  const [extraBlocks, setExtraBlocks] = useState<
+    Record<string, NumbersDayBlock>
+  >({});
+  const [failedDays, setFailedDays] = useState<Record<string, true>>({});
+  const requestedDays = useRef(new Set<string>());
+  // スマホでは下の内訳を 1 つずつ切り替えて見る (全部並べると縦に長すぎる)。
+  const [section, setSection] = useState<SectionKey>("funnel");
   const latestRequest = useRef(0);
 
   const load = useCallback(async (target: string | null) => {
@@ -130,6 +176,70 @@ export function NumbersDashboard() {
       cancelled = true;
     };
   }, [load]);
+
+  // 選んだ相手のうち、まだ数字を取っていない日を取りに行く。
+  const selected = payload ? (selection ?? [defaultComparisonId(payload)]) : [];
+  const missingDays = payload
+    ? selected
+        .map((id) => comparisonDay(payload, id))
+        .filter(
+          (target): target is string =>
+            target !== null &&
+            target !== payload.meta.compare_day &&
+            !extraBlocks[target] &&
+            !failedDays[target],
+        )
+    : [];
+  const missingKey = missingDays.join(",");
+  useEffect(() => {
+    for (const target of missingKey ? missingKey.split(",") : []) {
+      if (requestedDays.current.has(target)) continue;
+      requestedDays.current.add(target);
+      void fetchDayBlock(target).then(
+        (block) =>
+          setExtraBlocks((current) => ({ ...current, [target]: block })),
+        () => {
+          requestedDays.current.delete(target);
+          setFailedDays((current) => ({ ...current, [target]: true }));
+        },
+      );
+    }
+  }, [missingKey]);
+
+  const toggleComparison = (id: ComparisonId) => {
+    if (!payload) return;
+    const current = selection ?? [defaultComparisonId(payload)];
+    if (current.includes(id)) {
+      setSelection(current.filter((item) => item !== id));
+      return;
+    }
+    if (current.length >= MAX_COMPARISONS) return;
+    // 一度失敗した日も、選び直したらもう一度取りに行く。
+    const target = comparisonDay(payload, id);
+    if (target && failedDays[target]) {
+      setFailedDays((current) => {
+        const next = { ...current };
+        delete next[target];
+        return next;
+      });
+    }
+    setSelection(sortComparisonIds([...current, id]));
+  };
+  const addCustomDay = (target: string) => {
+    if (!payload) return;
+    setCustomDays((days) => (days.includes(target) ? days : [...days, target]));
+    const current = selection ?? [defaultComparisonId(payload)];
+    const id: ComparisonId = `date:${target}`;
+    if (!current.includes(id) && current.length < MAX_COMPARISONS) {
+      setSelection(sortComparisonIds([...current, id]));
+    }
+  };
+  const removeCustomDay = (target: string) => {
+    setCustomDays((days) => days.filter((item) => item !== target));
+    setSelection((current) =>
+      current ? current.filter((item) => item !== `date:${target}`) : current,
+    );
+  };
 
   const show = (target: string | null) => {
     setDay(target);
@@ -180,7 +290,7 @@ export function NumbersDashboard() {
                       : `${formatNumbersDay(payload.meta.day)} の1日分`}
                     {stale ? " ・ 取り直しています..." : ""}
                     {status === "catching_up"
-                      ? " ・ ファネルを集計しています..."
+                      ? " ・ 続きを集計しています..."
                       : ""}
                   </span>
                 </>
@@ -323,6 +433,17 @@ export function NumbersDashboard() {
             onMetric={setMetricKey}
             mode={mode}
             onMode={setMode}
+            chartType={chartType}
+            onChartType={setChartType}
+            selected={selected}
+            customDays={customDays}
+            extraBlocks={extraBlocks}
+            failedDays={failedDays}
+            onToggleComparison={toggleComparison}
+            onAddCustomDay={addCustomDay}
+            onRemoveCustomDay={removeCustomDay}
+            section={section}
+            onSection={setSection}
             dimmed={stale}
           />
         ) : loading ? (
@@ -354,12 +475,258 @@ function Skeleton() {
   );
 }
 
+type SectionKey = "funnel" | "hours" | "sources" | "social";
+
+const SECTIONS: { value: SectionKey; label: string }[] = [
+  { value: "funnel", label: "ファネル" },
+  { value: "hours", label: "時間別" },
+  { value: "sources", label: "流入元" },
+  { value: "social", label: "友達・口コミ" },
+];
+
+/** 今日 (または表示日) の状況を、比べる相手に対して 1〜2 文で言う。 */
+function Summary({
+  payload,
+  comparison,
+  forecastBasis,
+}: {
+  payload: NumbersPayload;
+  comparison: NumbersComparison | null;
+  forecastBasis: NumbersComparison | null;
+}) {
+  const { meta, day } = payload;
+  if (!comparison) return null;
+  const parts = HEADLINES.filter(
+    (item) => item.key === "diagnoses" || item.key === "net",
+  ).map((item) => {
+    const value = headlineValue(item, day.until_cut);
+    const delta = numbersDelta(
+      value,
+      headlineValue(item, comparison.untilCut),
+      item.kind,
+    );
+    return { item, value, delta };
+  });
+  if (parts.some((part) => part.delta === null)) return null;
+  // 文の途中は「多く」、文末は「多い」。
+  const word = (direction: "up" | "down" | "flat", last: boolean) =>
+    direction === "up"
+      ? last
+        ? "多い"
+        : "多く"
+      : direction === "down"
+        ? last
+          ? "少ない"
+          : "少なく"
+        : "";
+  return (
+    <p className="text-sm leading-relaxed text-[var(--nb-text-2)]">
+      {comparison.label}と比べて、
+      {parts.map((part, index) => {
+        const last = index === parts.length - 1;
+        const direction = part.delta?.direction ?? "flat";
+        return (
+          <span key={part.item.key}>
+            {part.item.label}は{" "}
+            <span
+              className="font-bold tabular-nums"
+              style={{
+                color:
+                  direction === "up"
+                    ? "var(--nb-up)"
+                    : direction === "down"
+                      ? "var(--nb-down)"
+                      : "var(--nb-text)",
+              }}
+            >
+              {direction === "flat"
+                ? "ほぼ同じ"
+                : `${part.delta?.text} ${word(direction, last)}`}
+            </span>
+            {last ? "" : direction === "flat" ? "で、" : "、"}
+          </span>
+        );
+      })}
+      {meta.is_today ? "ペースです。" : "結果でした。"}
+      {forecastBasis && (
+        <>
+          {" このままなら、今日は"}
+          {parts.map((part, index) => {
+            const forecast = forecastHeadline(
+              part.item,
+              part.value,
+              forecastBasis,
+            );
+            return forecast === null ? null : (
+              <span key={part.item.key}>
+                {index > 0 ? "・" : ""}
+                {part.item.label}{" "}
+                <span className="font-bold tabular-nums text-[var(--nb-text)]">
+                  約{formatNumbersValue(forecast, part.item.kind)}
+                </span>
+              </span>
+            );
+          })}
+          {" で終わる見込みです。"}
+        </>
+      )}
+    </p>
+  );
+}
+
+/** 比べる相手を選ぶ。最大 2 つ。いちばん左で選んでいるものが、増減と要約の基準になる。 */
+function ComparisonPicker({
+  payload,
+  selected,
+  customDays,
+  comparisons,
+  failedDays,
+  onToggle,
+  onAdd,
+  onRemove,
+}: {
+  payload: NumbersPayload;
+  selected: ComparisonId[];
+  customDays: string[];
+  /** 選んだ相手のうち、数字が用意できたもの (グラフの色の順)。 */
+  comparisons: NumbersComparison[];
+  failedDays: Record<string, true>;
+  onToggle: (id: ComparisonId) => void;
+  onAdd: (day: string) => void;
+  onRemove: (day: string) => void;
+}) {
+  const { meta, baseline } = payload;
+  const options: { id: ComparisonId; label: string; removable?: string }[] = [];
+  if ((baseline?.days ?? 0) >= 1) {
+    options.push({ id: "average", label: `直近${baseline?.days}日平均` });
+  }
+  options.push({
+    id: "previous",
+    label: `前日 ${formatNumbersDay(shiftNumbersDay(meta.day, -1))}`,
+  });
+  const weekAgo = shiftNumbersDay(meta.day, -7);
+  if (weekAgo >= NUMBERS_EARLIEST_DAY) {
+    options.push({
+      id: "week",
+      label: `1週間前 ${formatNumbersDay(weekAgo)}`,
+    });
+  }
+  for (const target of customDays) {
+    options.push({
+      id: `date:${target}`,
+      label: formatNumbersDay(target),
+      removable: target,
+    });
+  }
+  const full = selected.length >= MAX_COMPARISONS;
+  const lastDay = shiftNumbersDay(meta.day, -1);
+
+  return (
+    <div
+      role="group"
+      aria-label="比べる相手"
+      className="flex flex-wrap items-center gap-1.5"
+    >
+      <span className="mr-1 text-xs font-bold text-[var(--nb-text-2)]">
+        比べる相手
+      </span>
+      {options.map((option) => {
+        const on = selected.includes(option.id);
+        const ready = comparisons.findIndex((item) => item.id === option.id);
+        const target = comparisonDay(payload, option.id);
+        const failed = on && target !== null && failedDays[target];
+        const loading = on && ready < 0 && !failed;
+        const color = ready >= 0 ? COMPARISON_STYLES[ready]?.color : undefined;
+        return (
+          <span
+            key={option.id}
+            className={`inline-flex items-center rounded-full border text-xs transition-colors ${
+              on
+                ? "border-[var(--nb-border-strong)] bg-[var(--nb-surface-2)] text-[var(--nb-text)]"
+                : "border-[var(--nb-border)] text-[var(--nb-text-2)] hover:border-[var(--nb-border-strong)] hover:text-[var(--nb-text)]"
+            } ${!on && full ? "opacity-40" : ""}`}
+          >
+            <button
+              type="button"
+              aria-pressed={on}
+              disabled={!on && full}
+              title={
+                !on && full
+                  ? `同時に比べられるのは${MAX_COMPARISONS}つまでです`
+                  : undefined
+              }
+              onClick={() => onToggle(option.id)}
+              className="flex items-center gap-1.5 py-1.5 pl-3 pr-3 font-bold disabled:cursor-not-allowed"
+            >
+              {on && (
+                <span
+                  aria-hidden
+                  className={`h-2 w-2 rounded-full ${loading ? "animate-pulse" : ""}`}
+                  style={{
+                    background: failed
+                      ? "var(--nb-down)"
+                      : (color ?? "var(--nb-border-strong)"),
+                  }}
+                />
+              )}
+              {option.label}
+              {loading && <span className="sr-only">（取得中）</span>}
+              {failed && (
+                <span className="font-normal text-[var(--nb-down)]">
+                  取得できません
+                </span>
+              )}
+            </button>
+            {option.removable && (
+              <button
+                type="button"
+                aria-label={`${option.label} を候補から外す`}
+                onClick={() => onRemove(option.removable as string)}
+                className="-ml-2 py-1.5 pl-1 pr-2.5 text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
+              >
+                ×
+              </button>
+            )}
+          </span>
+        );
+      })}
+      <label className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[var(--nb-border-strong)] py-1 pl-3 pr-1.5 text-xs text-[var(--nb-text-2)]">
+        <span className="font-bold">日付を足す</span>
+        <input
+          type="date"
+          value=""
+          min={NUMBERS_EARLIEST_DAY}
+          max={lastDay}
+          onChange={(event) => {
+            const value = event.target.value;
+            if (value && value <= lastDay && value >= NUMBERS_EARLIEST_DAY) {
+              onAdd(value);
+            }
+          }}
+          className="h-6 w-[7.6rem] rounded-full bg-transparent px-1 text-xs tabular-nums text-[var(--nb-text)]"
+        />
+      </label>
+    </div>
+  );
+}
+
 function Body({
   payload,
   metricKey,
   onMetric,
   mode,
   onMode,
+  chartType,
+  onChartType,
+  selected,
+  customDays,
+  extraBlocks,
+  failedDays,
+  onToggleComparison,
+  onAddCustomDay,
+  onRemoveCustomDay,
+  section,
+  onSection,
   dimmed,
 }: {
   payload: NumbersPayload;
@@ -367,6 +734,17 @@ function Body({
   onMetric: (key: HeadlineKey) => void;
   mode: HeadlineSeriesMode;
   onMode: (mode: HeadlineSeriesMode) => void;
+  chartType: NumbersChartType;
+  onChartType: (type: NumbersChartType) => void;
+  selected: ComparisonId[];
+  customDays: string[];
+  extraBlocks: Record<string, NumbersDayBlock>;
+  failedDays: Record<string, true>;
+  onToggleComparison: (id: ComparisonId) => void;
+  onAddCustomDay: (day: string) => void;
+  onRemoveCustomDay: (day: string) => void;
+  section: SectionKey;
+  onSection: (key: SectionKey) => void;
   dimmed: boolean;
 }) {
   const { meta, day, compare } = payload;
@@ -378,22 +756,61 @@ function Body({
   const currentHour =
     nowHours === null ? null : Math.min(23, Math.floor(nowHours));
   const dayLabel = formatNumbersDay(meta.day);
-  const compareLabel = formatNumbersDay(meta.compare_day);
+
+  // 選んだ相手のうち、数字が用意できたもの。先頭が増減・要約・表の基準。
+  const comparisons = selected
+    .map((id) => buildComparison(payload, id, extraBlocks))
+    .filter((item): item is NumbersComparison => item !== null);
+  const comparison = comparisons[0] ?? null;
+  // 着地見込みは、1 日の時間帯の形がいちばん安定している平均を元にする (無ければ前日)。
+  // 0 時台は実績が少なすぎて大きくぶれるので、1 時間たってから出す。
+  const forecastBasis =
+    meta.is_today && meta.elapsed_seconds >= 3600
+      ? (buildComparison(payload, "average") ??
+        buildComparison(payload, "previous"))
+      : null;
+  // ファネルや口コミは 1 日分どうしで比べる。基準が平均のときは、最初の応答の比較日を使う。
+  const flowCompare = comparison?.block ?? compare;
+  const flowLabel = formatNumbersDay(flowCompare.day);
+
   const lastFullHour = currentHour === null ? null : currentHour - 1;
   const lastFull =
     lastFullHour !== null && lastFullHour >= 0 ? day.hours[lastFullHour] : null;
-  const lastFullBefore = lastFull ? compare.hours[lastFull.h] : null;
+  const lastFullBefore =
+    lastFull && comparison ? comparison.hours[lastFull.h] : null;
+  // スマホでは選んだ内訳だけ、PC では全部を出す。
+  const only = (key: SectionKey) =>
+    section === key ? "contents" : "hidden xl:contents";
 
   return (
     <div
       className={`grid gap-3 transition-opacity duration-200 xl:gap-4 ${dimmed ? "opacity-50" : ""}`}
     >
+      <div className="grid gap-3">
+        <Summary
+          payload={payload}
+          comparison={comparison}
+          forecastBasis={forecastBasis}
+        />
+        <ComparisonPicker
+          payload={payload}
+          selected={selected}
+          customDays={customDays}
+          comparisons={comparisons}
+          failedDays={failedDays}
+          onToggle={onToggleComparison}
+          onAdd={onAddCustomDay}
+          onRemove={onRemoveCustomDay}
+        />
+      </div>
+
       <KpiRow
         day={day}
-        compare={compare}
+        comparison={comparison}
+        forecastBasis={forecastBasis}
         selected={metric.key}
         onSelect={onMetric}
-        compareNote={meta.is_today ? `${compareLabel} 同時刻` : compareLabel}
+        isToday={meta.is_today}
         currentHour={currentHour}
         nowHours={nowHours}
       />
@@ -404,30 +821,43 @@ function Body({
           hint={metric.hint}
           className="xl:col-span-8"
           action={
-            <Segmented
-              label="グラフの見方"
-              value={mode}
-              onChange={onMode}
-              options={[
-                { value: "hourly", label: "時間別" },
-                { value: "cumulative", label: "累計" },
-              ]}
-            />
+            <div className="flex flex-wrap items-center gap-2">
+              {mode === "hourly" && (
+                <Segmented
+                  label="グラフの形"
+                  value={chartType}
+                  onChange={onChartType}
+                  options={[
+                    { value: "line", label: "線" },
+                    { value: "bar", label: "棒" },
+                  ]}
+                />
+              )}
+              <Segmented
+                label="グラフの見方"
+                value={mode}
+                onChange={onMode}
+                options={[
+                  { value: "hourly", label: "時間別" },
+                  { value: "cumulative", label: "累計" },
+                ]}
+              />
+            </div>
           }
         >
           <div className="px-3 pb-2 sm:px-4">
             <NumbersHourlyChart
               metric={metric}
               mode={mode}
+              type={chartType}
               hours={day.hours}
-              compareHours={compare.hours}
+              comparisons={comparisons}
               dayLabel={dayLabel}
-              compareLabel={compareLabel}
               currentHour={currentHour}
               nowHours={nowHours}
             />
           </div>
-          {lastFull && lastFullBefore && (
+          {lastFull && (
             <div className="mt-auto border-t border-[var(--nb-border)] sm:flex sm:items-stretch">
               <p className="px-4 pt-3 text-xs font-bold text-[var(--nb-text-2)] sm:flex sm:w-40 sm:shrink-0 sm:items-center sm:px-5 sm:pt-0">
                 直近1時間（{lastFull.h}時台）
@@ -437,17 +867,24 @@ function Body({
                   {
                     label: "診断数",
                     now: numberFormat.format(lastFull.diagnoses),
-                    before: numberFormat.format(lastFullBefore.diagnoses),
+                    before: lastFullBefore
+                      ? formatNumbersValue(lastFullBefore.diagnoses, "count")
+                      : null,
                   },
                   {
                     label: "純売上",
                     now: yen(lastFull.net),
-                    before: yen(lastFullBefore.net),
+                    before: lastFullBefore ? yen(lastFullBefore.net) : null,
                   },
                   {
                     label: "買い切り",
                     now: numberFormat.format(lastFull.purchases_full),
-                    before: numberFormat.format(lastFullBefore.purchases_full),
+                    before: lastFullBefore
+                      ? formatNumbersValue(
+                          lastFullBefore.purchases_full,
+                          "count",
+                        )
+                      : null,
                   },
                 ].map((item) => (
                   <div key={item.label} className="min-w-0 px-4 py-3 sm:px-5">
@@ -456,9 +893,11 @@ function Body({
                     </dt>
                     <dd className="mt-0.5 tabular-nums">
                       <span className="text-lg font-bold">{item.now}</span>
-                      <span className="block truncate text-xs text-[var(--nb-text-2)] sm:ml-2 sm:inline">
-                        {compareLabel} {item.before}
-                      </span>
+                      {item.before !== null && comparison && (
+                        <span className="block truncate text-xs text-[var(--nb-text-2)] sm:ml-2 sm:inline">
+                          {comparison.shortLabel} {item.before}
+                        </span>
+                      )}
                     </dd>
                   </div>
                 ))}
@@ -467,39 +906,57 @@ function Body({
           )}
         </Card>
 
-        <FunnelCard
-          day={day}
-          compare={compare}
-          compareLabel={compareLabel}
-          partial={isNumbersCatchingUp(payload)}
-          className="xl:col-span-4"
-        />
+        <div className="xl:hidden">
+          <div className="overflow-x-auto">
+            <Segmented
+              label="内訳"
+              value={section}
+              onChange={onSection}
+              options={SECTIONS}
+            />
+          </div>
+        </div>
+
+        <div className={only("funnel")}>
+          <FunnelCard
+            day={day}
+            compare={flowCompare}
+            compareLabel={flowLabel}
+            partial={isNumbersCatchingUp(payload)}
+            className="xl:col-span-4"
+          />
+        </div>
       </div>
 
       <div className="grid gap-3 xl:grid-cols-12 xl:gap-4">
-        <HoursCard
-          day={day}
-          compare={compare}
-          currentHour={currentHour}
-          compareLabel={compareLabel}
-          className="xl:col-span-7"
-        />
-        <SourcesCard day={day} className="xl:col-span-5" />
+        <div className={only("hours")}>
+          <HoursCard
+            day={day}
+            comparison={comparison}
+            currentHour={currentHour}
+            className="xl:col-span-7"
+          />
+        </div>
+        <div className={only("sources")}>
+          <SourcesCard day={day} className="xl:col-span-5" />
+        </div>
       </div>
 
-      <div className="grid gap-3 xl:grid-cols-12 xl:gap-4">
-        <FriendFlowCard
-          day={day}
-          compare={compare}
-          compareLabel={compareLabel}
-          className="xl:col-span-8"
-        />
-        <SocialCards
-          day={day}
-          compare={compare}
-          compareLabel={compareLabel}
-          className="xl:col-span-4"
-        />
+      <div className={only("social")}>
+        <div className="grid gap-3 xl:grid-cols-12 xl:gap-4">
+          <FriendFlowCard
+            day={day}
+            compare={flowCompare}
+            compareLabel={flowLabel}
+            className="xl:col-span-7"
+          />
+          <SocialCards
+            day={day}
+            compare={flowCompare}
+            compareLabel={flowLabel}
+            className="xl:col-span-5"
+          />
+        </div>
       </div>
     </div>
   );
