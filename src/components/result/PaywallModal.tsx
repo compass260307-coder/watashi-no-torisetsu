@@ -91,7 +91,6 @@ export function PaywallOverlay({
         variant={cardProps.variant}
         previewMode={cardProps.previewMode}
         priceState={presentation.priceState}
-        onShowCard={presentation.showCard}
         onClose={onClose}
       />
     );
@@ -176,7 +175,6 @@ function useFullAccessTreasurePresentation(
   return {
     mode: decision ?? "pending",
     priceState,
-    showCard: () => setDecision("card"),
   } as const;
 }
 
