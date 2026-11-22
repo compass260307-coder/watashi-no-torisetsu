@@ -104,12 +104,12 @@ export function NumbersHourlyChart({
   const gradientId = useId();
 
   const narrow = width > 0 && width < 560;
-  const height = narrow ? 230 : 340;
+  const height = narrow ? 240 : 420;
   const pad = {
     top: 22,
     right: narrow ? 6 : 16,
     bottom: 30,
-    left: narrow ? 40 : 54,
+    left: narrow ? 46 : 60,
   };
   const plotW = Math.max(0, width - pad.left - pad.right);
   const plotH = height - pad.top - pad.bottom;
@@ -200,7 +200,7 @@ export function NumbersHourlyChart({
 
   return (
     <div className="relative">
-      <div className="mb-1 flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-xs text-[var(--nb-text-2)]">
+      <div className="mb-1 flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-[13px] text-[var(--nb-text-2)]">
         <span className="flex items-center gap-1.5">
           <LegendMark color={ACCENT} bar={bars} />
           {dayLabel}
@@ -264,7 +264,7 @@ export function NumbersHourlyChart({
                     x={pad.left - 8}
                     y={y(max * t) + 4}
                     textAnchor="end"
-                    fontSize={11}
+                    fontSize={13}
                     fill="var(--nb-text-2)"
                   >
                     {axisLabel(max * t, metric.kind)}
@@ -423,7 +423,7 @@ export function NumbersHourlyChart({
                   textAnchor={
                     nowHours > 21 ? "end" : nowHours < 2 ? "start" : "middle"
                   }
-                  fontSize={10}
+                  fontSize={12}
                   fill="var(--nb-text-2)"
                 >
                   現在
@@ -487,7 +487,7 @@ export function NumbersHourlyChart({
                 x={pad.left + slot * (cumulative ? h : h + 0.5)}
                 y={height - 9}
                 textAnchor={cumulative && h === 0 ? "start" : "middle"}
-                fontSize={11}
+                fontSize={13}
                 fill="var(--nb-text-2)"
               >
                 {h}時
@@ -516,7 +516,7 @@ export function NumbersHourlyChart({
         )}
 
         {width > 0 && !hasData && (
-          <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-sm text-[var(--nb-text-2)]">
+          <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-[15px] text-[var(--nb-text-2)]">
             この日のデータはまだありません
           </p>
         )}
@@ -524,7 +524,7 @@ export function NumbersHourlyChart({
         {active !== null && width > 0 && (
           <div
             role="status"
-            className="pointer-events-none absolute top-3 z-10 min-w-[12rem] rounded-xl border border-[var(--nb-border-strong)] bg-[var(--nb-surface-2)] px-3 py-2.5 text-xs shadow-[0_8px_30px_rgba(0,0,0,0.6)]"
+            className="pointer-events-none absolute top-3 z-10 min-w-[12rem] rounded-xl border border-[var(--nb-border-strong)] bg-[var(--nb-surface-2)] px-3 py-2.5 text-[13px] shadow-[0_8px_30px_rgba(0,0,0,0.6)]"
             style={
               active < 12
                 ? {
@@ -567,7 +567,7 @@ export function NumbersHourlyChart({
                 <LegendMark color={ACCENT} bar={bars} small />
                 {dayLabel}
               </span>
-              <span className="text-sm font-bold tabular-nums">
+              <span className="text-[15px] font-bold tabular-nums">
                 {active > lastHour
                   ? "–"
                   : formatNumbersValue(activeValue, metric.kind)}
