@@ -22,7 +22,6 @@ import {
   DataBar,
   DeltaBadge,
   DeltaText,
-  RingGauge,
   numberFormat,
   percent,
   yen,
@@ -56,7 +55,7 @@ export function KpiRow({
     <div
       role="tablist"
       aria-label="グラフに出す指標"
-      className="grid grid-cols-2 gap-3 md:grid-cols-5 xl:gap-4"
+      className="grid grid-cols-2 gap-3 md:grid-cols-5 xl:gap-5"
     >
       {HEADLINES.map((item, index) => {
         const value = headlineValue(item, day.until_cut);
@@ -71,7 +70,7 @@ export function KpiRow({
             role="tab"
             aria-selected={active}
             onClick={() => onSelect(item.key)}
-            className={`group relative flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-[var(--nb-surface)] px-4 pb-3 pt-4 text-left transition-colors xl:px-5 xl:pt-5 ${
+            className={`group relative flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-[var(--nb-surface)] px-4 pb-3.5 pt-4 text-left transition-colors xl:px-6 xl:pt-5 ${
               index === 0 ? "col-span-2 md:col-span-1" : ""
             } ${
               active
@@ -89,7 +88,7 @@ export function KpiRow({
                 }}
               />
             )}
-            <span className="relative flex items-center gap-2 text-[15px] font-bold text-[var(--nb-text)]">
+            <span className="relative flex items-center gap-2 text-base font-bold text-[var(--nb-text)]">
               <span
                 aria-hidden
                 className="h-1.5 w-1.5 rounded-full"
@@ -101,8 +100,8 @@ export function KpiRow({
               />
               {item.label}
             </span>
-            <span className="relative mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span className="text-[1.7rem] font-bold leading-none tracking-tight tabular-nums text-[var(--nb-text)] xl:text-[2.1rem]">
+            <span className="relative mt-3 flex flex-wrap items-baseline gap-x-2.5 gap-y-1.5">
+              <span className="text-[2rem] font-bold leading-none tracking-tight tabular-nums text-[var(--nb-text)] xl:text-[2.5rem]">
                 <AnimatedNumber
                   value={value}
                   format={(shown) => formatNumbersValue(shown, item.kind)}
@@ -110,7 +109,7 @@ export function KpiRow({
               </span>
               <DeltaBadge delta={numbersDelta(value, previous, item.kind)} />
             </span>
-            <span className="relative mt-2 flex flex-wrap gap-x-1.5 text-[13px] tabular-nums text-[var(--nb-text-2)]">
+            <span className="relative mt-2 flex flex-wrap gap-x-1.5 text-sm tabular-nums text-[var(--nb-text-2)]">
               {comparison ? (
                 <>
                   {comparison.shortLabel}
@@ -270,9 +269,17 @@ const FRIEND_FLOW: FlowStep[] = [
   },
 ];
 
+// 段階の数ごとの、広い画面での列数。
+const FLOW_COLUMNS: Record<number, string> = {
+  3: "lg:grid-cols-3",
+  4: "lg:grid-cols-4",
+  6: "lg:grid-cols-6",
+};
+
 /**
- * 段階の並び。主役は率 (大きな数字と棒)。件数は母数として下に小さく添える。
- * 白い線は比較日の率。
+ * 段階を左から右へ並べる (狭い画面では 2 列)。1 つの段階が 1 つの箱で、主役は率の大きな数字。
+ * 率は「その段階の数 ÷ 基準の段階の数」。棒は率の長さ、棒の上の線は比較日の率。
+ * 件数は診断数が増えれば一緒に増えて良し悪しが読めないので、小さく添えるだけにする。
  */
 function Flow({
   steps,
@@ -286,105 +293,127 @@ function Flow({
   compareLabel: string;
 }) {
   return (
-    <ol className="flex flex-col px-4 pb-4 sm:px-5">
-      {steps.map((step) => {
+    <ol
+      className={`grid grid-cols-2 gap-px bg-[var(--nb-border)] ${FLOW_COLUMNS[steps.length] ?? "lg:grid-cols-4"}`}
+    >
+      {steps.map((step, index) => {
         const value = step.value(day);
-        if (!step.base) {
-          // 流れの起点。率の母数になる数なので、件数のまま控えめに出す。
-          return (
-            <li
-              key={step.label}
-              className="flex items-baseline gap-3 border-b border-[var(--nb-border)] pb-3"
-            >
-              <span className="mr-auto truncate text-[15px] font-bold text-[var(--nb-text)]">
-                {step.label}
-              </span>
-              <span className="shrink-0 text-[13px] tabular-nums text-[var(--nb-text-2)]">
-                <span className="text-[15px] font-bold text-[var(--nb-text)]">
-                  {numberFormat.format(value)}
-                </span>{" "}
-                {step.unit}
-                <span className="ml-3">
-                  {compareLabel}{" "}
-                  <span className="text-[var(--nb-text)]">
-                    {numberFormat.format(step.value(compare))}
-                  </span>
-                </span>
-              </span>
-            </li>
-          );
-        }
-        const base = step.base.value(day);
-        const compareBase = step.base.value(compare);
-        const rate = ratio(value, base);
-        const compareRate = ratio(step.value(compare), compareBase);
+        const compareValue = step.value(compare);
+        const base = step.base ? step.base.value(day) : null;
+        const compareBase = step.base ? step.base.value(compare) : null;
+        const rate = base === null ? null : ratio(value, base);
+        const compareRate =
+          compareBase === null ? null : ratio(compareValue, compareBase);
+        // 分母が小さい率は 1〜2 件の差で大きく動くので、増減を出さない。
         const steady =
-          base >= MIN_BASE_FOR_DELTA && compareBase >= MIN_BASE_FOR_DELTA;
+          base !== null &&
+          compareBase !== null &&
+          base >= MIN_BASE_FOR_DELTA &&
+          compareBase >= MIN_BASE_FOR_DELTA;
         const overall = step.overall
           ? ratio(value, step.overall.value(day))
           : null;
         // 率が小さい段階 (数 %) は 2 桁まで出す。
         const digits = rate !== null && rate < 0.1 ? 2 : 1;
         return (
-          <li key={step.label} className="mt-4">
-            <div className="flex items-baseline gap-3">
-              <span className="mr-auto min-w-0 truncate text-[15px] font-bold text-[var(--nb-text)]">
-                {step.label}
-                <span className="ml-2 text-[13px] font-normal text-[var(--nb-text-2)]">
-                  {step.base.label}
-                </span>
+          <li
+            key={step.label}
+            className={`relative flex min-w-0 flex-col bg-[var(--nb-surface)] px-4 py-5 2xl:px-6 ${
+              steps.length % 2 === 1 && index === steps.length - 1
+                ? "col-span-2 lg:col-span-1"
+                : ""
+            }`}
+          >
+            {index > 0 && (
+              <span
+                aria-hidden
+                className="absolute -left-3 top-5 z-[1] hidden h-6 w-6 place-items-center rounded-full border border-[var(--nb-border-strong)] bg-[var(--nb-surface)] text-sm leading-none text-[var(--nb-text-2)] lg:grid"
+              >
+                ›
               </span>
-              {steady && (
-                <span className="text-[13px]">
-                  <DeltaText delta={numbersDelta(rate, compareRate, "rate")} />
-                </span>
-              )}
-              <span className="min-w-[4.75rem] shrink-0 text-right text-[1.375rem] font-bold leading-none tabular-nums text-[var(--nb-text)]">
+            )}
+            <p className="truncate text-base font-bold text-[var(--nb-text)]">
+              {step.label}
+            </p>
+            <p className="mt-0.5 truncate text-sm text-[var(--nb-text-2)]">
+              {step.base ? step.base.label : "ここが起点"}
+            </p>
+            <p className="mt-3 flex items-baseline gap-1.5 text-[2rem] font-bold leading-none tracking-tight tabular-nums text-[var(--nb-text)] xl:text-[2.25rem]">
+              {step.base ? (
                 <AnimatedNumber
                   value={rate}
                   format={(shown) => percent(shown, digits)}
                 />
-              </span>
-            </div>
-            <div className="relative mt-2 h-2 rounded-full bg-[var(--nb-surface-2)]">
-              <div
-                className="h-full rounded-full bg-[var(--nb-accent)] transition-[width] duration-500 ease-out"
-                style={{
-                  width: `${Math.max(rate && rate > 0 ? 1 : 0, Math.min(1, rate ?? 0) * 100)}%`,
-                }}
-              />
-              {compareRate !== null && (
+              ) : (
+                <>
+                  <AnimatedNumber
+                    value={value}
+                    format={(shown) =>
+                      shown === null
+                        ? "–"
+                        : numberFormat.format(Math.round(shown))
+                    }
+                  />
+                  <span className="text-sm font-medium tracking-normal text-[var(--nb-text-2)]">
+                    {step.unit}
+                  </span>
+                </>
+              )}
+            </p>
+            {/* 起点には率が無い。ほかの箱と高さをそろえるため、棒の場所だけ空けておく。 */}
+            <div
+              className="relative mt-3.5 h-2 rounded-full"
+              style={{
+                background: step.base ? "var(--nb-surface-2)" : "transparent",
+              }}
+            >
+              {step.base && (
+                <div
+                  className="h-full rounded-full bg-[var(--nb-accent)] transition-[width] duration-500 ease-out"
+                  style={{
+                    width: `${Math.max(rate && rate > 0 ? 1.5 : 0, Math.min(1, rate ?? 0) * 100)}%`,
+                  }}
+                />
+              )}
+              {step.base && compareRate !== null && (
                 <span
                   aria-hidden
-                  className="absolute top-[-3px] h-[14px] w-0.5 rounded-full bg-[var(--nb-text)]"
+                  className="absolute top-[-4px] h-4 w-0.5 rounded-full bg-[var(--nb-text)]"
                   style={{
                     left: `calc(${Math.min(1, compareRate) * 100}% - 1px)`,
                   }}
                 />
               )}
             </div>
-            <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-0.5 text-[13px] tabular-nums text-[var(--nb-text-2)]">
-              <span>
-                {compareLabel}{" "}
-                <span className="text-[var(--nb-text)]">
-                  {percent(compareRate, digits)}
+            <div className="mt-3.5 grid gap-1 text-sm tabular-nums text-[var(--nb-text-2)]">
+              <p className="flex flex-wrap items-baseline gap-x-2">
+                <span>{compareLabel}</span>
+                <span className="font-bold text-[var(--nb-text)]">
+                  {step.base
+                    ? percent(compareRate, digits)
+                    : numberFormat.format(compareValue)}
                 </span>
-              </span>
+                {step.base && steady && (
+                  <DeltaText delta={numbersDelta(rate, compareRate, "rate")} />
+                )}
+              </p>
+              {step.base && (
+                <p>
+                  <span className="font-bold text-[var(--nb-text)]">
+                    {numberFormat.format(value)}
+                  </span>{" "}
+                  {step.unit}
+                </p>
+              )}
               {step.overall && (
-                <span>
+                <p>
                   {step.overall.label}{" "}
-                  <span className="text-[var(--nb-text)]">
+                  <span className="font-bold text-[var(--nb-text)]">
                     {percent(overall, 2)}
                   </span>
-                </span>
+                </p>
               )}
-              <span className="ml-auto">
-                <span className="text-[var(--nb-text)]">
-                  {numberFormat.format(value)}
-                </span>{" "}
-                {step.unit}
-              </span>
-            </p>
+            </div>
           </li>
         );
       })}
@@ -392,7 +421,7 @@ function Flow({
   );
 }
 
-const FLOW_HINT = "棒は割合、白い線は比較日";
+const FLOW_HINT = "大きな数字は、前の段階から進んだ割合。棒の上の線は比較日";
 
 export function FunnelCard({
   day,
@@ -413,13 +442,15 @@ export function FunnelCard({
       hint={partial ? "集計の途中です。数え終わるまで少なく出ます" : FLOW_HINT}
       className={className}
     >
-      <Flow
-        steps={PURCHASE_FLOW}
-        day={day}
-        compare={compare}
-        compareLabel={compareLabel}
-      />
-      <p className="mt-auto border-t border-[var(--nb-border)] px-4 py-3 text-[13px] leading-relaxed text-[var(--nb-text-2)] sm:px-5">
+      <div className="border-t border-[var(--nb-border)]">
+        <Flow
+          steps={PURCHASE_FLOW}
+          day={day}
+          compare={compare}
+          compareLabel={compareLabel}
+        />
+      </div>
+      <p className="mt-auto border-t border-[var(--nb-border)] px-4 py-3.5 text-sm leading-relaxed text-[var(--nb-text-2)] sm:px-6">
         セッション数で集計（同じ訪問は1回）。上の「課金率」は人数で割るため、一致しません。
       </p>
     </Card>
@@ -440,24 +471,34 @@ export function FriendFlowCard({
   return (
     <Card
       title="友達診断の流れ"
-      hint={`${FLOW_HINT}。回数で集計`}
+      hint="大きな数字は、基準の段階から進んだ割合。回数で集計"
       className={className}
     >
-      <div className="grid flex-1 gap-px bg-[var(--nb-border)] md:grid-cols-2">
+      {/* 招待する本人 (4 段階) と、招待された友達 (3 段階)。広い画面では横に並べる。 */}
+      <div className="grid flex-1 gap-px border-t border-[var(--nb-border)] bg-[var(--nb-border)] xl:grid-cols-7">
         {[
-          { title: "招待する本人", steps: INVITER_FLOW },
-          { title: "招待された友達", steps: FRIEND_FLOW },
+          { title: "招待する本人", steps: INVITER_FLOW, span: "xl:col-span-4" },
+          {
+            title: "招待された友達",
+            steps: FRIEND_FLOW,
+            span: "xl:col-span-3",
+          },
         ].map((flow) => (
-          <div key={flow.title} className="bg-[var(--nb-surface)] pt-3">
-            <h3 className="px-4 text-[13px] font-bold tracking-wide text-[var(--nb-text-2)] sm:px-5">
+          <div
+            key={flow.title}
+            className={`flex flex-col bg-[var(--nb-surface)] ${flow.span}`}
+          >
+            <h3 className="border-b border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-4 py-2.5 text-sm font-bold text-[var(--nb-text)] 2xl:px-6">
               {flow.title}
             </h3>
-            <Flow
-              steps={flow.steps}
-              day={day}
-              compare={compare}
-              compareLabel={compareLabel}
-            />
+            <div className="flex-1 bg-[var(--nb-surface)]">
+              <Flow
+                steps={flow.steps}
+                day={day}
+                compare={compare}
+                compareLabel={compareLabel}
+              />
+            </div>
           </div>
         ))}
       </div>
@@ -515,14 +556,14 @@ export function HoursCard({
     >
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div className="overflow-auto xl:min-h-[22rem] xl:flex-1 xl:basis-0">
-          <table className="w-full min-w-max border-separate border-spacing-0 text-[15px]">
+          <table className="w-full min-w-max border-separate border-spacing-0 text-base">
             <thead>
               <tr>
                 {head.map((column, index) => (
                   <th
                     key={index}
                     scope="col"
-                    className={`sticky top-0 z-[1] whitespace-nowrap border-y border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-3.5 py-2.5 text-[13px] font-bold text-[var(--nb-text-2)] ${
+                    className={`sticky top-0 z-[1] whitespace-nowrap border-y border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-3.5 py-2.5 text-sm font-bold text-[var(--nb-text-2)] ${
                       index === 0 ? "left-0 z-[2] text-left" : "text-right"
                     } ${column.beside ? "pl-0" : ""}`}
                   >
@@ -547,7 +588,7 @@ export function HoursCard({
                     >
                       {hour.h}時台
                       {live && (
-                        <span className="ml-2 rounded-full border border-[var(--nb-border-strong)] px-1.5 py-px text-xs font-normal text-[var(--nb-text-2)]">
+                        <span className="ml-2 rounded-full border border-[var(--nb-border-strong)] px-1.5 py-px text-[13px] font-normal text-[var(--nb-text-2)]">
                           途中
                         </span>
                       )}
@@ -589,7 +630,7 @@ export function HoursCard({
             </tbody>
           </table>
           {rows.length === 0 && (
-            <p className="px-4 py-10 text-center text-[15px] text-[var(--nb-text-2)]">
+            <p className="px-4 py-10 text-center text-base text-[var(--nb-text-2)]">
               この日のデータはまだありません
             </p>
           )}
@@ -653,7 +694,7 @@ export function SourcesCard({
           />
           <div className="flex-1 bg-[var(--nb-compare)] opacity-60" />
         </div>
-        <div className="mt-2 flex justify-between text-[13px] tabular-nums text-[var(--nb-text-2)]">
+        <div className="mt-2 flex justify-between text-sm tabular-nums text-[var(--nb-text-2)]">
           <span>
             <span
               aria-hidden
@@ -679,7 +720,7 @@ export function SourcesCard({
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-max border-separate border-spacing-0 text-[15px]">
+        <table className="w-full min-w-max border-separate border-spacing-0 text-base">
           <thead>
             <tr>
               {[
@@ -693,7 +734,7 @@ export function SourcesCard({
                 <th
                   key={index}
                   scope="col"
-                  className={`whitespace-nowrap border-y border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-3.5 py-2.5 text-[13px] font-bold text-[var(--nb-text-2)] ${
+                  className={`whitespace-nowrap border-y border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-3.5 py-2.5 text-sm font-bold text-[var(--nb-text-2)] ${
                     index === 0 ? "sticky left-0 z-[1] text-left" : "text-right"
                   }`}
                 >
@@ -711,7 +752,7 @@ export function SourcesCard({
                 >
                   {row.name}
                   {row.tag && (
-                    <span className="ml-2 rounded-full border border-[var(--nb-accent)] px-1.5 py-px text-xs text-[var(--nb-accent)]">
+                    <span className="ml-2 rounded-full border border-[var(--nb-accent)] px-1.5 py-px text-[13px] text-[var(--nb-accent)]">
                       {row.tag}
                     </span>
                   )}
@@ -738,7 +779,7 @@ export function SourcesCard({
           </tbody>
         </table>
         {rows.length === 0 && (
-          <p className="px-4 py-10 text-center text-[15px] text-[var(--nb-text-2)]">
+          <p className="px-4 py-10 text-center text-base text-[var(--nb-text-2)]">
             この日のデータはまだありません
           </p>
         )}
@@ -803,56 +844,72 @@ export function SocialCards({
       hint="友達診断率とシェア率は、診断のあと日がたつほど増えます"
       className={className}
     >
-      <div className="grid flex-1 gap-px bg-[var(--nb-border)] sm:grid-cols-3">
+      {/* ファネルの箱と同じ形: 名前、何の割合か、大きな数字、棒、比較と内訳。 */}
+      <div className="grid flex-1 gap-px border-t border-[var(--nb-border)] bg-[var(--nb-border)] sm:grid-cols-3">
         {items.map((item) => {
           const now = item.pick(day);
           const before = item.pick(compare);
           return (
             <div
               key={item.label}
-              className="flex flex-col items-center bg-[var(--nb-surface)] px-4 py-5 text-center"
+              className="flex min-w-0 flex-col bg-[var(--nb-surface)] px-4 py-5 2xl:px-6"
             >
-              <p className="text-[15px] font-bold text-[var(--nb-text)]">
+              <p className="truncate text-base font-bold text-[var(--nb-text)]">
                 {item.label}
               </p>
-              <span className="mt-3">
-                <RingGauge share={now.value} size={112}>
-                  <span className="text-[1.375rem] font-bold tabular-nums text-[var(--nb-text)]">
-                    {percent(now.value)}
-                  </span>
-                </RingGauge>
-              </span>
-              <p className="mt-3 text-[13px] tabular-nums text-[var(--nb-text-2)]">
+              <p className="mt-0.5 truncate text-sm text-[var(--nb-text-2)]">
                 {item.note}
-                <br />
-                <span className="text-[var(--nb-text)]">
-                  {numberFormat.format(now.part)} ÷{" "}
-                  {numberFormat.format(now.whole)}
-                </span>
               </p>
-              <p className="mt-2 flex flex-wrap items-center justify-center gap-x-1.5 gap-y-1 text-[13px] tabular-nums text-[var(--nb-text-2)]">
-                {item.comparable ? (
-                  <>
-                    {compareLabel}{" "}
-                    <span className="text-[var(--nb-text)]">
-                      {percent(before.value)}
-                    </span>
+              <p className="mt-3 text-[2rem] font-bold leading-none tracking-tight tabular-nums text-[var(--nb-text)] xl:text-[2.25rem]">
+                <AnimatedNumber
+                  value={now.value}
+                  format={(shown) => percent(shown)}
+                />
+              </p>
+              <div className="relative mt-3.5 h-2 rounded-full bg-[var(--nb-surface-2)]">
+                <div
+                  className="h-full rounded-full bg-[var(--nb-accent)] transition-[width] duration-500 ease-out"
+                  style={{
+                    width: `${Math.min(1, now.value ?? 0) * 100}%`,
+                  }}
+                />
+                {before.value !== null && (
+                  <span
+                    aria-hidden
+                    className="absolute top-[-4px] h-4 w-0.5 rounded-full bg-[var(--nb-text)]"
+                    style={{
+                      left: `calc(${Math.min(1, before.value) * 100}% - 1px)`,
+                    }}
+                  />
+                )}
+              </div>
+              <div className="mt-3.5 grid gap-1 text-sm tabular-nums text-[var(--nb-text-2)]">
+                <p className="flex flex-wrap items-baseline gap-x-2">
+                  <span>
+                    {compareLabel}
+                    {item.comparable ? "" : "に診断した人"}
+                  </span>
+                  <span className="font-bold text-[var(--nb-text)]">
+                    {percent(before.value)}
+                  </span>
+                  {item.comparable && (
                     <DeltaText
                       delta={numbersDelta(now.value, before.value, "rate")}
                     />
-                  </>
-                ) : (
-                  <>
-                    {compareLabel}に診断した人は{" "}
-                    <span className="text-[var(--nb-text)]">
-                      {percent(before.value)}
-                    </span>
-                    <span className="basis-full text-[var(--nb-text-3)]">
-                      ※日数が違うため参考
-                    </span>
-                  </>
+                  )}
+                </p>
+                <p>
+                  <span className="font-bold text-[var(--nb-text)]">
+                    {numberFormat.format(now.part)}
+                  </span>{" "}
+                  ÷ {numberFormat.format(now.whole)} 人
+                </p>
+                {!item.comparable && (
+                  <p className="text-[13px] text-[var(--nb-text-3)]">
+                    日数が違うため、比較は参考
+                  </p>
                 )}
-              </p>
+              </div>
             </div>
           );
         })}
