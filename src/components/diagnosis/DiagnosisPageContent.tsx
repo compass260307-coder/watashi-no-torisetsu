@@ -18,6 +18,11 @@ import { preloadResultImage } from "@/lib/result-image-preload";
 import { prefetchFullAccessQuote } from "@/lib/use-full-access-quote";
 import { preloadLocalizedPurchaseCopy } from "@/i18n/ui/purchase-copy-loader";
 import type { PrefetchOptions } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import {
+  endFirstAnswerVeil,
+  firstAnswerVeilQuestionTop,
+  takeFirstAnswerHandoff,
+} from "@/lib/first-answer-handoff";
 import { diagnose } from "@/lib/diagnosis";
 import {
   LEGACY_QUESTION_SET_ID,
@@ -337,8 +342,60 @@ export default function DiagnosisPageContent({
     } catch {
       // 無視
     }
+    // トップページで答えた1問目を引き継ぐ (同じ質問セットの、実在する質問のときだけ)。
+    // 回答の計測はここで1回だけ送り、次の質問へ画面を送る。
+    const handoff = takeFirstAnswerHandoff();
+    if (
+      handoff &&
+      handoff.questionSet === questionSetId &&
+      activeQuestions.some((q) => q.id === handoff.questionId)
+    ) {
+      setAnswers((prev) =>
+        prev[handoff.questionId] === undefined
+          ? { ...prev, [handoff.questionId]: handoff.answer }
+          : prev,
+      );
+      track("diagnosis_question_answered", {
+        metadata: ANSWER_VALUE_TRACKING_ENABLED
+          ? {
+              questionId: handoff.questionId,
+              locale,
+              questionSet: trackedQuestionSet,
+              answer: handoff.answer,
+              answerMs: null,
+              answeredOn: "top",
+            }
+          : { questionId: handoff.questionId, locale, questionSet: trackedQuestionSet, answeredOn: "top" },
+      });
+      const next = activeQuestions[activeQuestions.findIndex((q) => q.id === handoff.questionId) + 1];
+      const scrollToNext = () => {
+        const el = next ? questionRefs.current[next.id] : null;
+        if (!el) return;
+        el.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "center" });
+        el.focus({ preventScroll: true });
+      };
+      // 描画と「先頭へ戻す」処理が終わってから動かす。
+      window.setTimeout(() => {
+        const veilTop = firstAnswerVeilQuestionTop();
+        const answered = questionRefs.current[handoff.questionId]?.querySelector("p");
+        if (veilTop === null || !answered) {
+          // 幕が無い (動きを減らす設定など) ときは、そのまま次の質問へ送る。
+          endFirstAnswerVeil();
+          scrollToNext();
+          return;
+        }
+        // トップで答えた質問が、幕に写している質問とぴったり重なる位置へ一瞬で合わせてから、
+        // 幕を消す。答えた質問がその場に残ったまま、まわりだけ診断ページに変わったように見える。
+        const delta = answered.getBoundingClientRect().top - veilTop;
+        window.scrollTo({ top: Math.max(0, window.scrollY + delta), behavior: "instant" });
+        requestAnimationFrame(() => {
+          endFirstAnswerVeil();
+          window.setTimeout(scrollToNext, 520);
+        });
+      }, 120);
+    }
     setHydrated(true);
-  }, [activeQuestions, questionSetVersion, settings]);
+  }, [activeQuestions, questionSetVersion, settings, questionSetId, locale, trackedQuestionSet]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
   // #1 自動保存: 回答 or ページ変更のたびに、回答内容 + 現在ページ + バージョンを保存
