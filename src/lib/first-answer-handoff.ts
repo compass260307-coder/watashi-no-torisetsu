@@ -76,7 +76,7 @@ export function startFirstAnswerVeil(card: HTMLElement): boolean {
       `transition:background-color ${VEIL_IN_MS}ms ease, opacity ${VEIL_OUT_MS}ms ease;`;
     const copy = card.cloneNode(true) as HTMLElement;
     copy.style.cssText =
-      `position:fixed;margin:0;max-width:none;box-sizing:border-box;` +
+      `position:fixed;margin:0;max-width:none;box-sizing:border-box;box-shadow:none;` +
       `top:${rect.top}px;left:${rect.left}px;width:${rect.width}px;` +
       `transition:left ${VEIL_IN_MS}ms ease, width ${VEIL_IN_MS}ms ease, padding ${VEIL_IN_MS}ms ease,` +
       ` border-radius ${VEIL_IN_MS}ms ease, box-shadow ${VEIL_IN_MS}ms ease;`;
