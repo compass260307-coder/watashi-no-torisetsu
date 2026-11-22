@@ -35,7 +35,6 @@ import type { AppResultLocale } from "@/i18n/result";
 import {
   accessPaywallVersionForLocale,
   accessProductPrice,
-  FULL_ACCESS_PRICE_JPY,
   SINGLE_ALL_ACCESS_PAYWALL_PRODUCT,
   THREE_COURSE_PAYWALL_VERSION,
   type AccessEntitlements,
@@ -57,7 +56,7 @@ import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
 import { useFullAccessStatus } from "@/lib/use-course-navigation-access";
-import { formatFullAccessAmount } from "@/lib/full-access-pricing";
+import { formatFullAccessAmount, jaFullAccessOfferForQuote } from "@/lib/full-access-pricing";
 import { useFullAccessQuote } from "@/lib/use-full-access-quote";
 import { getLastPaywallSource, scrollToPaywall } from "@/lib/scroll-to-paywall";
 import { SelfAccessPlanCarousel } from "./SelfAccessPlanCarousel";
@@ -435,7 +434,7 @@ export function FullAccessPromoCard({
   });
   const priceState = useFullAccessQuote(!previewMode && !usesPlanCarousel && product === "full_access", locale, ownerToken);
   const quote = priceState.quote;
-  // 宝箱を開くカード: 見積もりが¥499(日本円)以外と分かったとき・取得に失敗したときは従来の価格つきカードに戻す。
+  // 宝箱を開くカード: 見積もりが日本円の完全版の額(¥499 / 価格テストの¥699)以外と分かったとき・取得に失敗したときは従来の価格つきカードに戻す。
   const usesTreasureCta =
     opensTreasure &&
     !previewMode &&
@@ -444,7 +443,7 @@ export function FullAccessPromoCard({
     usesLegacyFullAccessCard &&
     product === "full_access" &&
     !priceState.failed &&
-    (!quote || (quote.market === "ja" && quote.amountMinor === FULL_ACCESS_PRICE_JPY));
+    (!quote || jaFullAccessOfferForQuote(quote) !== null);
   const salePrice = previewMode ? copy.price.sale
     : quote ? formatFullAccessAmount(quote.market, quote.amountMinor)
     : "—";

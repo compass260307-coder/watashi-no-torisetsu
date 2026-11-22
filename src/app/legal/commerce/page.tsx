@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import LegalDocument from "@/components/LegalDocument";
 import {
   FULL_ACCESS_PRICE_JPY,
+  FULL_ACCESS_TEST_PRICE_JPY,
   PREMIUM_BUNDLE_PRICE_JPY,
   RESULT_UPGRADE_PRICE_JPY,
 } from "@/lib/access-products";
@@ -68,7 +69,8 @@ export default function CommercePage() {
         <ul>
           <li>
             完全版（日本からアクセスした場合）: {FULL_ACCESS_PRICE_JPY.toLocaleString("ja-JP")}
-            円（税込・買い切り。自己診断のロックされた9セクション、16ページ以上の専用電子書籍、2人目以降の友達診断結果、何度でも更新できる他己分析PDF、相性診断、運命の設計図、AI占い師「Alice」とのチャット相談30回分、3種類のタロット占いを含む）
+            円または{FULL_ACCESS_TEST_PRICE_JPY.toLocaleString("ja-JP")}
+            円（税込・買い切り。お客様に適用される価格は、購入前の画面と決済画面に表示されます。自己診断のロックされた9セクション、16ページ以上の専用電子書籍、2人目以降の友達診断結果、何度でも更新できる他己分析PDF、相性診断、運命の設計図、AI占い師「Alice」とのチャット相談30回分、3種類のタロット占いを含む）
           </li>
           <li>結果アップグレード（完全版購入者向け）: {RESULT_UPGRADE_PRICE_JPY.toLocaleString("ja-JP")}円（税込・買い切り。自由回答をもとに専用キャラクター、専用タイプ名、自己診断結果、5章の専用鑑定書を作成。Alice Plusの月額・年額料金とは別の追加購入です）</li>
           <li>

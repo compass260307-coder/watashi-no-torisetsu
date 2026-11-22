@@ -5,12 +5,12 @@ import {
   type TreasureBenefit,
   type TreasureOffer,
 } from "@/components/result-upgrade/ResultUpgradeTreasure";
+import { THREE_COURSE_PAYWALL_VERSION } from "@/lib/access-products";
 import {
-  FULL_ACCESS_COUPON_JPY,
-  FULL_ACCESS_LIST_PRICE_JPY,
-  FULL_ACCESS_PRICE_JPY,
-  THREE_COURSE_PAYWALL_VERSION,
-} from "@/lib/access-products";
+  jaFullAccessOfferForArm,
+  jaFullAccessOfferForQuote,
+  type JaFullAccessPriceArm,
+} from "@/lib/full-access-pricing";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
 import type { FullAccessQuoteState } from "@/lib/use-full-access-quote";
@@ -20,6 +20,8 @@ import { FullAccessCta } from "./FullAccessCta";
 // 日本語Webの完全版（¥499）: 課金カードを開くCTAを押したとき、課金カードの代わりに
 // 宝箱から「リリース記念 ¥800 OFF」クーポンを受け取る全画面演出を出す。
 // クーポンは全員に同じ額で付く（通常価格¥1,299 − ¥800 = 請求額¥499）。抽選や期限があるようには見せない。
+// 2026-11-22からの価格テストで¥699の群に入った人には、同じ¥800クーポンで 通常価格¥1,499 − ¥800 = ¥699 を見せる。
+// 値札の額は必ずサーバーの見積もり（priceState）から決め、決済で請求する額と同じにする。
 
 const COUPON_RECEIVED_KEY = "torisetsu_full_access_coupon_received";
 
@@ -109,10 +111,13 @@ type Props = {
   surface?: "self" | "tako";
   variant?: "self" | "aisho";
   previewMode?: boolean;
+  /** プレビュー用: 価格テストのどちらの群の値札を見せるか（未指定は従来の¥499）。 */
+  previewArm?: JaFullAccessPriceArm;
   priceState?: FullAccessQuoteState;
-  /** 宝箱を開けずに閉じたとき。従来の課金カードを出す。 */
-  onShowCard: () => void;
-  /** 値札と特典を見たあと「あとで決める」で閉じたとき。 */
+  /**
+   * 閉じたとき。宝箱を開けずに「閉じる」を押したときも、値札と特典を見たあと「あとで決める」を
+   * 押したときも、課金カードは出さずに元のページへ戻す（2026-11-22 本人指示）。
+   */
   onClose: () => void;
 };
 
@@ -123,10 +128,14 @@ export function FullAccessTreasure({
   surface,
   variant,
   previewMode = false,
+  previewArm = "control",
   priceState,
-  onShowCard,
   onClose,
 }: Props) {
+  // 宝箱は見積もりが日本円の完全版の額と分かってから開く（PaywallModal）ので、通常は見積もりから決まる。
+  // 開いている間に額が変わらないよう、最初に決めた値札を使い続ける。
+  const [priceOffer] = useState(() =>
+    (previewMode ? null : jaFullAccessOfferForQuote(priceState?.quote)) ?? jaFullAccessOfferForArm(previewArm));
   // 同じタブで受け取り済みなら、宝箱を開け直させずに値札と特典から見せる。
   const [startAt] = useState<"chest" | "offer">(() => (fullAccessCouponReceived() ? "offer" : "chest"));
   const [offer] = useState(() => fullAccessOffer());
@@ -150,6 +159,7 @@ export function FullAccessTreasure({
         placement: "modal",
         surface: surface ?? "self",
         presentation: startAt === "offer" ? "treasure_offer" : "treasure",
+        displayed_price_minor: priceOffer.saleAmount,
       },
     });
     try {
@@ -157,13 +167,13 @@ export function FullAccessTreasure({
     } catch {
       /* noop */
     }
-  }, [ownerToken, previewMode, startAt, surface, variant]);
+  }, [ownerToken, previewMode, priceOffer, startAt, surface, variant]);
 
   return (
     <ResultUpgradeTreasure
-      couponJpy={FULL_ACCESS_COUPON_JPY}
-      listPriceJpy={FULL_ACCESS_LIST_PRICE_JPY}
-      priceJpy={FULL_ACCESS_PRICE_JPY}
+      couponJpy={priceOffer.couponAmount}
+      listPriceJpy={priceOffer.listAmount}
+      priceJpy={priceOffer.saleAmount}
       offer={offer}
       startAt={startAt}
       dismissLabel="閉じる"
@@ -187,7 +197,7 @@ export function FullAccessTreasure({
       }
       onCouponReceived={saveCouponReceived}
       onClose={onClose}
-      onDismiss={onShowCard}
+      onDismiss={onClose}
     />
   );
 }

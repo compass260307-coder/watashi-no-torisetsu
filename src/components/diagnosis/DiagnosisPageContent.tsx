@@ -61,6 +61,18 @@ type SavedProgress = {
 };
 // Phase 1.5-α Day 12-Polish-B: ニックネームの localStorage 保存先 (再訪時の自動入力)
 const NICKNAME_MAX = 20;
+// 質問ごとに「選んだ値」と「回答時間」を計測するか。false にすれば従来どおり到達だけを送る。
+const ANSWER_VALUE_TRACKING_ENABLED = true;
+const ANSWER_MS_MAX = 600_000;
+
+/** 直前の基準時刻からの経過ミリ秒を返し、基準時刻を今に進める。回答時 (イベントハンドラ) 専用。 */
+function takeAnswerMs(lastAtRef: { current: number | null }): number | null {
+  const now = performance.now();
+  const last = lastAtRef.current;
+  lastAtRef.current = now;
+  if (last === null) return null;
+  return Math.min(Math.max(Math.round(now - last), 0), ANSWER_MS_MAX);
+}
 const DEFAULT_MIN_LOADING_MS = 20000;
 const DIAGNOSIS_COMPLETE_DATA_LAYER_STORAGE_PREFIX =
   "wt_diagnosis_complete_sent_v1:";
@@ -224,6 +236,8 @@ export default function DiagnosisPageContent({
   const [showRediagnoseModal, setShowRediagnoseModal] = useState(false);
 
   const trackedStart = useRef(false);
+  // 直前の回答 (ページの先頭の質問ではページ表示) の時刻。質問ごとの回答時間の計測用。
+  const lastAnswerAtRef = useRef<number | null>(null);
   // 各質問要素への参照 (回答時の次質問オートスクロール用)。キー = question.id。
   const questionRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
@@ -357,6 +371,8 @@ export default function DiagnosisPageContent({
     if (!hydrated) return;
     if (typeof window === "undefined") return;
     window.scrollTo({ top: 0, behavior: "auto" });
+    // ページの先頭の質問は、ページが表示されてからの時間を回答時間とする。
+    lastAnswerAtRef.current = performance.now();
   }, [currentPage, hydrated]);
 
   // 「結果を見る」は最終ページの最下部にあるため、解析待ち画面へ差し替わった直後は
@@ -482,8 +498,23 @@ export default function DiagnosisPageContent({
       return { ...prev, [questionId]: value }; // 別の選択肢なら上書き (選び直し可)
     });
     if (isFirstAnswer) {
+      // 質問ごとの偏り・答えにくさを見るため、選んだ値と回答時間も送る (2026-11-21)。
+      //   answer:   最初に選んだ値 (1〜7)。選び直しは送らない。
+      //   answerMs: 直前の回答 (ページの先頭の質問ではページ表示) からのミリ秒。
+      //             離席で極端に長くなるので、集計は中央値で見る。上限 10 分。
+      // イベントの行数は増えない (既存の 1 回答 = 1 行に項目を足すだけ)。
+      // やめるときは ANSWER_VALUE_TRACKING_ENABLED を false にする。
+      const answerMs = takeAnswerMs(lastAnswerAtRef);
       track("diagnosis_question_answered", {
-        metadata: { questionId, locale, questionSet: trackedQuestionSet },
+        metadata: ANSWER_VALUE_TRACKING_ENABLED
+          ? {
+              questionId,
+              locale,
+              questionSet: trackedQuestionSet,
+              answer: value,
+              answerMs,
+            }
+          : { questionId, locale, questionSet: trackedQuestionSet },
       });
     }
 

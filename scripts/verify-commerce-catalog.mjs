@@ -83,6 +83,27 @@ const contractChecks = [
     ),
   },
   {
+    label: "Japanese full access price test (2026-11-22) bills JPY 699 from JPY 1,499 with the same JPY 800 coupon",
+    valid:
+      accessProducts.includes('"ja_full_access_price_test_699_v1_20261122" as const') &&
+      accessProducts.includes("export const FULL_ACCESS_TEST_LIST_PRICE_JPY = 1499;") &&
+      accessProducts.includes("export const FULL_ACCESS_TEST_PRICE_JPY = 699;") &&
+      regionalPricing.includes("saleAmount: FULL_ACCESS_TEST_PRICE_JPY,") &&
+      regionalPricing.includes("listAmount: FULL_ACCESS_TEST_LIST_PRICE_JPY,") &&
+      catalogIncludes("`ja_full_access_price_test_699_v1_20261122`"),
+  },
+  {
+    label: "Japanese full access price test shares one assignment between the quote and Checkout, and can be switched off",
+    valid:
+      read("src/lib/full-access-checkout-server.ts").includes('process.env.FULL_ACCESS_PRICE_TEST !== "off" && Date.now() < PRICE_TEST_END_MS') &&
+      accessProducts.includes('"2026-11-23T00:00:00+09:00" as const') &&
+      read("src/app/api/checkout/full-access-price/route.ts").includes("resolveJaFullAccessPriceAssignmentForRequest(request, ownerToken)") &&
+      checkoutRoute.includes("resolveJaFullAccessPriceAssignment(buyer)") &&
+      checkoutRoute.includes('"ja_full_access_checkout_plain_699_v1_20261122"') &&
+      catalogIncludes("`ja_full_access_checkout_plain_699_v1_20261122`") &&
+      commercePage.includes("FULL_ACCESS_TEST_PRICE_JPY.toLocaleString"),
+  },
+  {
     label: "Japanese full access price change records its effective time",
     valid: accessProducts.includes(
       '"2026-09-21T10:02:00+09:00" as const',

@@ -18,8 +18,9 @@ import { useUiText } from "@/i18n/ui/use-ui-copy";
 // open/onClose を自前管理して直接使えるようにした。
 
 import type { AppResultLocale } from "@/i18n/result";
-import { FULL_ACCESS_PRICE_JPY, type AccessProduct } from "@/lib/access-products";
+import type { AccessProduct } from "@/lib/access-products";
 import { paywallCardMode, type PaywallCardMode } from "@/lib/feature-flags";
+import { jaFullAccessOfferForQuote, type JaFullAccessPriceArm } from "@/lib/full-access-pricing";
 import { useFullAccessQuote } from "@/lib/use-full-access-quote";
 import { FullAccessTreasure } from "./FullAccessTreasure";
 import { PAYWALL_OPEN_EVENT } from "@/lib/scroll-to-paywall";
@@ -50,7 +51,7 @@ interface PaywallModalProps {
   heading?: string;
   cardMode?: PaywallCardMode;
   /**
-   * 導線(ctaSource)に関係なく宝箱の対象にする。日本語・完全版¥499の見積もりなどの条件は従来どおり。
+   * 導線(ctaSource)に関係なく宝箱の対象にする。日本語・完全版(日本円)の見積もりなどの条件は従来どおり。
    * 自己診断結果ページのモーダルと、下部ナビ・ハンバーガーメニューのロック(Alice・相性・タロット)で使う。
    */
   treasureEntry?: boolean;
@@ -64,11 +65,14 @@ export function PaywallOverlay({
   ctaSource,
   scrollLocked = false,
   treasureEntry = false,
+  treasurePreviewArm,
   ...cardProps
 }: PaywallModalProps & {
   onClose: () => void;
   ctaSource?: string;
   scrollLocked?: boolean;
+  /** ローカルのプレビュー専用: 価格テストのどちらの群の値札を宝箱に出すか。 */
+  treasurePreviewArm?: JaFullAccessPriceArm;
 }) {
   const presentation = useFullAccessTreasurePresentation(cardProps, ctaSource, treasureEntry);
   if (presentation.mode === "pending") {
@@ -90,8 +94,8 @@ export function PaywallOverlay({
         surface={cardProps.surface}
         variant={cardProps.variant}
         previewMode={cardProps.previewMode}
+        previewArm={treasurePreviewArm}
         priceState={presentation.priceState}
-        onShowCard={presentation.showCard}
         onClose={onClose}
       />
     );
@@ -106,7 +110,7 @@ export function PaywallOverlay({
   );
 }
 
-// 日本語Webの完全版¥499（日本円の見積もり）で、対象の導線から開いたときだけ、課金カードの代わりに宝箱の演出を出す。
+// 日本語Webの完全版（日本円の見積もり。¥499 / 価格テストの¥699）で、対象の導線から開いたときだけ、課金カードの代わりに宝箱の演出を出す。
 // 2026-11-19: 小規模テストとして、自己診断結果の本文にあるロック解除CTA（「今すぐアクセス」系）だけを対象にする。
 // 同日、自己診断結果ページ上部の固定バー（sticky_bar）も対象に加えた。友達診断ページの上部バーも
 // 同じ sticky_bar を使うため、そちらは surface="tako" で除外する。
@@ -160,7 +164,7 @@ function useFullAccessTreasurePresentation(
       : previewMode
         ? "treasure"
         : quote
-          ? quote.market === "ja" && quote.amountMinor === FULL_ACCESS_PRICE_JPY
+          ? jaFullAccessOfferForQuote(quote) !== null
             ? "treasure"
             : "card"
           : failed || timedOut
@@ -176,7 +180,6 @@ function useFullAccessTreasurePresentation(
   return {
     mode: decision ?? "pending",
     priceState,
-    showCard: () => setDecision("card"),
   } as const;
 }
 
