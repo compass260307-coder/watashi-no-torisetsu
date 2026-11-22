@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { isSafeOpaqueToken, readJsonObject } from "@/lib/api-security";
 import { hasSelfReportAccess } from "@/lib/entitlements";
 import { fullAccessQuoteForMarket } from "@/lib/full-access-pricing";
-import { fullAccessMarketForRequest, resolveFullAccessBuyer } from "@/lib/full-access-checkout-server";
+import {
+  fullAccessMarketForRequest,
+  resolveFullAccessBuyer,
+  resolveJaFullAccessPriceAssignmentForRequest,
+} from "@/lib/full-access-checkout-server";
 import { checkOrigin } from "@/lib/origin-check";
 
 const noStore = { headers: { "Cache-Control": "private, no-store" } };
@@ -29,5 +33,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Price temporarily unavailable" }, { ...noStore, status: 503 });
     }
   }
-  return NextResponse.json(fullAccessQuoteForMarket(market, koreanSelfReport), noStore);
+  // 日本円は価格テストの群（人ごとに固定）で請求額が決まる。決済APIも同じ判定で検証する。
+  let jaPriceArm: "control" | "test" = "control";
+  if (market === "ja") {
+    try {
+      jaPriceArm = (await resolveJaFullAccessPriceAssignmentForRequest(request, ownerToken)).arm;
+    } catch {
+      return NextResponse.json({ error: "Price temporarily unavailable" }, { ...noStore, status: 503 });
+    }
+  }
+  return NextResponse.json(fullAccessQuoteForMarket(market, koreanSelfReport, jaPriceArm), noStore);
 }

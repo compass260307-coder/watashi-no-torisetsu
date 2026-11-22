@@ -26,7 +26,7 @@ import {
   type PaywallPlacement,
   type ThreeCoursePaywallVersion
 } from "@/lib/access-products";
-import { FULL_ACCESS_PRICING, formatFullAccessAmount } from "@/lib/full-access-pricing";
+import { FULL_ACCESS_PRICING, formatFullAccessAmount, jaFullAccessOfferForQuote } from "@/lib/full-access-pricing";
 import { useFullAccessQuote, type FullAccessQuoteState } from "@/lib/use-full-access-quote";
 import { DIAGNOSIS_COUNT_SNAPSHOT } from "@/lib/proof-stats";
 import { track } from "@/lib/track";
@@ -266,7 +266,13 @@ function PlanCard({
   const purchased = isPurchased(plan.product, entitlements);
   const regional = plan.product === "full_access" && !previewMode && !purchased;
   const quote = regional ? priceState.quote : null;
-  const pricing = quote ? FULL_ACCESS_PRICING[quote.market] : null;
+  // 日本円は価格テストの群ごとに請求額が違う（¥499 / ¥699）。どちらも通常購入で、差額購入として見せない。
+  const jaOffer = jaFullAccessOfferForQuote(quote);
+  const pricing = quote
+    ? jaOffer
+      ? { ...FULL_ACCESS_PRICING.ja, saleAmount: jaOffer.saleAmount, listAmount: jaOffer.listAmount }
+      : FULL_ACCESS_PRICING[quote.market]
+    : null;
   const checkoutPrice = regional
     ? quote?.amountMinor
     : usePlanBasePrice || purchased ? plan.basePrice : accessProductPrice(locale, plan.product, entitlements);

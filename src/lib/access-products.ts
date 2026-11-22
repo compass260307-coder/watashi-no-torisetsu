@@ -294,6 +294,16 @@ export const FULL_ACCESS_PRICE_JPY = 499;
 /** 宝箱で渡す「リリース記念」クーポンの額（通常価格 − 請求額）。 */
 export const FULL_ACCESS_COUPON_JPY =
   FULL_ACCESS_LIST_PRICE_JPY - FULL_ACCESS_PRICE_JPY;
+// 2026-11-22の明示判断による価格テスト（日本円の完全版だけ）。開始時刻以降に初めて診断した人を
+// 人ごとに半々へ固定で分け、片方は通常価格 ¥1,499 − 同じ ¥800 クーポン = 請求額 ¥699 にする。
+// もう片方と、開始前に診断した人・本人を特定できない人は従来の ¥1,299 − ¥800 = ¥499 のまま。
+// 止めるときは環境変数 FULL_ACCESS_PRICE_TEST=off（全員 ¥499 に戻る）。
+export const FULL_ACCESS_PRICE_TEST_VERSION =
+  "ja_full_access_price_test_699_v1_20261122" as const;
+export const FULL_ACCESS_PRICE_TEST_START_AT =
+  "2026-11-22T21:00:00+09:00" as const;
+export const FULL_ACCESS_TEST_LIST_PRICE_JPY = 1499;
+export const FULL_ACCESS_TEST_PRICE_JPY = 699;
 export const PREMIUM_BUNDLE_LIST_PRICE_JPY = 1980;
 export const PREMIUM_BUNDLE_PRICE_JPY = 1299;
 // 旧完全版からのアップグレード価格。新規完全版の価格テストとは独立させる。

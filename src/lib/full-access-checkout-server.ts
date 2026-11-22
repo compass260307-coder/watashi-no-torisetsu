@@ -1,7 +1,12 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
 import type { NextRequest } from "next/server";
-import { fullAccessMarketForCountry } from "@/lib/full-access-pricing";
+import {
+  FULL_ACCESS_PRICE_TEST_START_AT,
+  FULL_ACCESS_PRICE_TEST_VERSION,
+} from "@/lib/access-products";
+import { fullAccessMarketForCountry, type JaFullAccessPriceArm } from "@/lib/full-access-pricing";
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
@@ -34,4 +39,76 @@ export async function resolveFullAccessBuyer(
   return session
     ? { id: session.id, email: session.email, owner_token: session.owner_token }
     : null;
+}
+
+// ===== 日本円の完全版の価格テスト（FULL_ACCESS_PRICE_TEST_VERSION） =====
+// 開始時刻以降に初めて診断した人だけを対象に、ユーザーIDから半々に固定で分ける。
+// 同じ人は、どのページ・どの端末から見ても同じ額になる。見積もりAPIと決済APIは必ずこの判定を共有する。
+export type JaFullAccessPriceAssignment = {
+  arm: JaFullAccessPriceArm;
+  /** テストの対象者（開始後に診断した人）か。対象外の人は control と同じ¥499だが、集計では分ける。 */
+  enrolled: boolean;
+};
+
+const NOT_ENROLLED: JaFullAccessPriceAssignment = { arm: "control", enrolled: false };
+// ローカル開発だけ、DEV_FULL_ACCESS_PRICE_TEST_START_AT で開始時刻を前倒しして両方の群を試せる。本番ビルドでは無視する。
+const devPriceTestStartAt =
+  process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1"
+    ? process.env.DEV_FULL_ACCESS_PRICE_TEST_START_AT?.trim() || null
+    : null;
+const PRICE_TEST_START_MS = Date.parse(devPriceTestStartAt ?? FULL_ACCESS_PRICE_TEST_START_AT);
+
+function priceTestEnabled() {
+  return process.env.FULL_ACCESS_PRICE_TEST !== "off";
+}
+
+export function jaFullAccessPriceAssignmentForUser(
+  userId: string,
+  diagnosisCompletedAt: string | null | undefined,
+): JaFullAccessPriceAssignment {
+  if (!priceTestEnabled() || !diagnosisCompletedAt) return NOT_ENROLLED;
+  const completedMs = Date.parse(diagnosisCompletedAt);
+  if (!Number.isFinite(completedMs) || completedMs < PRICE_TEST_START_MS) return NOT_ENROLLED;
+  const digest = createHash("sha256").update(`${FULL_ACCESS_PRICE_TEST_VERSION}:${userId}`).digest();
+  return { arm: digest[0] % 2 === 0 ? "control" : "test", enrolled: true };
+}
+
+/** 決済API用: 特定済みの購入者の群を引く。DBを読めないときは例外（呼び出し側で503にする）。 */
+export async function resolveJaFullAccessPriceAssignment(
+  buyer: Pick<FullAccessBuyer, "id"> | null,
+): Promise<JaFullAccessPriceAssignment> {
+  if (!priceTestEnabled() || !buyer) return NOT_ENROLLED;
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("id, diagnosis_completed_at")
+    .eq("id", buyer.id)
+    .maybeSingle();
+  if (error) throw new Error("price test assignment lookup failed");
+  return data
+    ? jaFullAccessPriceAssignmentForUser(data.id as string, data.diagnosis_completed_at as string | null)
+    : NOT_ENROLLED;
+}
+
+/**
+ * 見積もりAPI用: resolveFullAccessBuyer と同じ順（owner_token の本人 → ログイン中の本人）で
+ * 購入者を特定して群を引く。owner_token があれば users を1回読むだけで済ませる。
+ */
+export async function resolveJaFullAccessPriceAssignmentForRequest(
+  request: NextRequest,
+  ownerToken: string,
+): Promise<JaFullAccessPriceAssignment> {
+  if (!priceTestEnabled()) return NOT_ENROLLED;
+  if (ownerToken) {
+    const { data, error } = await supabaseAdmin
+      .from("users")
+      .select("id, diagnosis_completed_at")
+      .eq("owner_token", ownerToken)
+      .maybeSingle();
+    if (error) throw new Error("price test assignment lookup failed");
+    if (data) {
+      return jaFullAccessPriceAssignmentForUser(data.id as string, data.diagnosis_completed_at as string | null);
+    }
+  }
+  const session = await getSession(request);
+  return resolveJaFullAccessPriceAssignment(session ? { id: session.id } : null);
 }
