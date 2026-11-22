@@ -110,9 +110,10 @@ type Props = {
   variant?: "self" | "aisho";
   previewMode?: boolean;
   priceState?: FullAccessQuoteState;
-  /** 宝箱を開けずに閉じたとき。従来の課金カードを出す。 */
-  onShowCard: () => void;
-  /** 値札と特典を見たあと「あとで決める」で閉じたとき。 */
+  /**
+   * 閉じたとき。宝箱を開けずに「閉じる」を押したときも、値札と特典を見たあと「あとで決める」を
+   * 押したときも、課金カードは出さずに元のページへ戻す（2026-11-22 本人指示）。
+   */
   onClose: () => void;
 };
 
@@ -124,7 +125,6 @@ export function FullAccessTreasure({
   variant,
   previewMode = false,
   priceState,
-  onShowCard,
   onClose,
 }: Props) {
   // 同じタブで受け取り済みなら、宝箱を開け直させずに値札と特典から見せる。
@@ -187,7 +187,7 @@ export function FullAccessTreasure({
       }
       onCouponReceived={saveCouponReceived}
       onClose={onClose}
-      onDismiss={onShowCard}
+      onDismiss={onClose}
     />
   );
 }
