@@ -17,7 +17,7 @@
 // 金額はサーバ側の共通定数と Price/price_data で固定し、
 // クライアントが見た価格は一致確認にだけ使い、請求額には使わない。
 
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "node:crypto";
 import type Stripe from "stripe";
 import {
@@ -35,7 +35,6 @@ import { getLineResultUpgradeSession } from "@/lib/line-result-upgrade";
 import {
   getAccessPurchaseEntitlements,
   hasFullAccess,
-  hasPremiumBundleAccess,
   hasSelfReportAccess,
 } from "@/lib/entitlements";
 import {
@@ -556,20 +555,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: originCheck.error }, { status: 403 });
   }
 
-  const ipLimit = await consumeRateLimit(request, {
+  // 接続元ごとの回数制限は受付の直後に数え始め、結果は下の「本人の解決」とまとめて待つ。
+  // DBとの往復を1回ずつ順番に待つと、そのぶんボタンを押してから決済画面までが遅くなるため。
+  // 制限を超えていたら、本人の権利確認やStripeの呼び出しより前に429で止める（従来と同じ）。
+  const ipLimitPromise = consumeRateLimit(request, {
     scope: "full-access-checkout-ip",
     limit: 10,
     windowSeconds: 600,
   });
-  if (!ipLimit.allowed) {
-    return NextResponse.json(
-      { error: "Too many checkout attempts" },
-      {
-        status: 429,
-        headers: { "Retry-After": String(ipLimit.retryAfterSeconds ?? 60) },
-      },
-    );
-  }
+  // 下の入力チェックで先に返る場合に、待たれないまま失敗しても未処理のエラーにしない。
+  ipLimitPromise.catch(() => undefined);
 
   // ===== Stripe 環境 =====
   const stripe = getStripe();
@@ -774,30 +769,44 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid owner token" }, { status: 400 });
   }
 
-  if (bodyToken) {
-    const ownerLimit = await consumeRateLimit(request, {
-      scope: "full-access-checkout-owner",
-      identifier: bodyToken,
-      limit: 6,
-      windowSeconds: 600,
-    });
-    if (!ownerLimit.allowed) {
-      return NextResponse.json(
-        { error: "Too many checkout attempts" },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(ownerLimit.retryAfterSeconds ?? 60),
-          },
+  // 回数制限2つ（接続元・本人）と本人の解決は互いに依存しないので、同時に待つ。
+  const [ipLimit, ownerLimit, resolvedBuyer] = await Promise.all([
+    ipLimitPromise,
+    bodyToken
+      ? consumeRateLimit(request, {
+          scope: "full-access-checkout-owner",
+          identifier: bodyToken,
+          limit: 6,
+          windowSeconds: 600,
+        })
+      : null,
+    lineBuyer ? null : resolveFullAccessBuyer(request, bodyToken),
+  ]);
+  if (!ipLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many checkout attempts" },
+      {
+        status: 429,
+        headers: { "Retry-After": String(ipLimit.retryAfterSeconds ?? 60) },
+      },
+    );
+  }
+  if (ownerLimit && !ownerLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many checkout attempts" },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(ownerLimit.retryAfterSeconds ?? 60),
         },
-      );
-    }
+      },
+    );
   }
 
   if (lineBuyer && bodyToken && bodyToken !== lineBuyer.owner_token) {
     return NextResponse.json({ error: "result owner mismatch" }, { status: 403 });
   }
-  const buyer = lineBuyer ?? await resolveFullAccessBuyer(request, bodyToken);
+  const buyer = lineBuyer ?? resolvedBuyer;
   // ★ゲスト決済: buyer が解決できなくても 401 にしない。誰でも購入できるようにし、
   //   本人紐付けは webhook が Stripe 確定 email を優先キーに行う (email or id で紐付け)。
   //   userId=null がゲスト。買い手が判る場合のみ user_id/owner_token を使う。
@@ -806,16 +815,34 @@ export async function POST(request: NextRequest) {
   // ===== 二重課金防止 + 差額計算 =====
   // 本人が判る場合だけ現在の権限を並列取得する。クライアント表示は信用せず、
   // Checkout直前のこの値だけで実売価格を決める。
+  // 同じリクエストの中で使う確認（現在の権利・購入履歴・価格テストの群）は互いに依存しないので、
+  // ここで同時に始めてまとめて待つ。判定に使う値と、下で返すエラーの順番は従来と同じ。
+  //   - 完全版の権利は hasSelfReportAccess の中でも引くので、同じ結果を共有する。
+  //   - プレミアムの権利は購入履歴から決まる（hasPremiumBundleAccess と同じ判定）ので、
+  //     差額計算に使う購入履歴を1回だけ引いて両方に使う。
+  const fullAccessCheck = userId ? hasFullAccess(userId) : null;
+  const usesJaPriceAssignment = product === "full_access" && priceMarket === "ja";
+  const [selfReportAccess, fullAccess, purchaseEntitlements, jaPriceAssignmentResult] =
+    await Promise.all([
+      userId && fullAccessCheck
+        ? hasSelfReportAccess(userId, { full: fullAccessCheck })
+        : false,
+      fullAccessCheck ?? false,
+      userId ? getAccessPurchaseEntitlements(userId) : EMPTY_ACCESS_ENTITLEMENTS,
+      // 失敗は、従来と同じ位置（購入済み・アップグレード条件の確認のあと）で503にする。
+      usesJaPriceAssignment
+        ? resolveJaFullAccessPriceAssignment(buyer).then(
+            (assignment) => ({ ok: true as const, assignment }),
+            () => ({ ok: false as const }),
+          )
+        : null,
+    ]);
   const entitlements: AccessEntitlements = userId
-    ? await Promise.all([
-        hasSelfReportAccess(userId),
-        hasFullAccess(userId),
-        hasPremiumBundleAccess(userId),
-      ]).then(([selfReport, full, premiumBundle]) => ({
-        selfReport,
-        full,
-        premiumBundle,
-      }))
+    ? {
+        selfReport: selfReportAccess,
+        full: fullAccess,
+        premiumBundle: purchaseEntitlements.premiumBundle,
+      }
     : EMPTY_ACCESS_ENTITLEMENTS;
   const alreadyPurchased =
     product === "self_report"
@@ -884,12 +911,11 @@ export async function POST(request: NextRequest) {
   // 日本円の完全版は、価格テストの群（人ごとに固定）で請求額が決まる。見積もりAPIと同じ判定を使い、
   // 画面に出した額と一致しなければ下の stale_paywall で決済を作らない。
   let jaPriceAssignment: JaFullAccessPriceAssignment = { arm: "control", enrolled: false };
-  if (product === "full_access" && priceMarket === "ja") {
-    try {
-      jaPriceAssignment = await resolveJaFullAccessPriceAssignment(buyer);
-    } catch {
+  if (jaPriceAssignmentResult) {
+    if (!jaPriceAssignmentResult.ok) {
       return NextResponse.json({ error: "price_temporarily_unavailable" }, { status: 503 });
     }
+    jaPriceAssignment = jaPriceAssignmentResult.assignment;
   }
   const jaPriceOffer = jaFullAccessOfferForArm(jaPriceAssignment.arm);
   const checkoutPricing = product === "full_access" && priceMarket === "ja"
@@ -937,10 +963,7 @@ export async function POST(request: NextRequest) {
     : {};
   // 差額依存関係は users.plan ではなく、実際に残っている有効な購入履歴で記録する。
   // 旧来の plan='full' ユーザーには価格上の優待を維持しつつ、存在しない決済へ
-  // premium_bundle を依存させない。
-  const purchaseEntitlements = userId
-    ? await getAccessPurchaseEntitlements(userId)
-    : EMPTY_ACCESS_ENTITLEMENTS;
+  // premium_bundle を依存させない。（購入履歴は上の権利確認と同時に取得済み）
   const upgradeFrom = purchaseEntitlements.full
     ? "full_access"
     : purchaseEntitlements.selfReport
@@ -1308,53 +1331,57 @@ export async function POST(request: NextRequest) {
   // ===== Stripe Session 作成 =====
   // クライアントのバッファ送信とは独立した、サーバー正本のCheckout受付イベント。
   // CTAイベントがページ遷移で欠けても、Stripe作成数を上回る入口を必ず残す。
-  try {
-    const { error: requestEventError } = await supabaseAdmin
-      .from("events")
-      .insert({
-        event_name: "checkout_requested",
-        owner_token: buyer?.owner_token ?? null,
-        locale: checkoutLocale,
-        metadata: {
-          checkout_attempt_id: checkoutAttemptId,
-          guest: !userId,
-          user_id: userId,
-          product,
-          upgrade_from: upgradeFrom,
-          source: paywallSource,
-          paywall_version: paywallVersion,
-          ...regionalOfferMetadata,
-          ...(isResultUpgradeCheckout
-            ? { offer_version: resultUpgradeOfferVersion, ...(lineUpgradeCheckout ? { sales_channel: "line", sales_channel_version: LINE_RESULT_UPGRADE_OFFER_VERSION, line_user_id: lineBuyer!.lineUserId } : {}) }
-            : {}),
-          placement: paywallPlacement,
-          return_to: returnTo,
+  // 記録はStripeの呼び出しより先に始め、完了はStripeの作成と同時に待つ
+  // （DBとの往復1回ぶん、決済画面へ進むのが早くなる）。この処理は失敗しても例外を投げない。
+  const requestEventRecorded = (async () => {
+    try {
+      const { error: requestEventError } = await supabaseAdmin
+        .from("events")
+        .insert({
+          event_name: "checkout_requested",
+          owner_token: buyer?.owner_token ?? null,
           locale: checkoutLocale,
-          stripe_mode: process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_")
-            ? "live"
-            : "test",
-          payment_method: paypayRedirect
-            ? "paypay"
-            : embedded
-              ? "card_embedded"
-              : "redirect",
-        },
-      });
-    if (requestEventError && requestEventError.code !== "23505") {
+          metadata: {
+            checkout_attempt_id: checkoutAttemptId,
+            guest: !userId,
+            user_id: userId,
+            product,
+            upgrade_from: upgradeFrom,
+            source: paywallSource,
+            paywall_version: paywallVersion,
+            ...regionalOfferMetadata,
+            ...(isResultUpgradeCheckout
+              ? { offer_version: resultUpgradeOfferVersion, ...(lineUpgradeCheckout ? { sales_channel: "line", sales_channel_version: LINE_RESULT_UPGRADE_OFFER_VERSION, line_user_id: lineBuyer!.lineUserId } : {}) }
+              : {}),
+            placement: paywallPlacement,
+            return_to: returnTo,
+            locale: checkoutLocale,
+            stripe_mode: process.env.STRIPE_SECRET_KEY?.startsWith("sk_live_")
+              ? "live"
+              : "test",
+            payment_method: paypayRedirect
+              ? "paypay"
+              : embedded
+                ? "card_embedded"
+                : "redirect",
+          },
+        });
+      if (requestEventError && requestEventError.code !== "23505") {
+        console.error(
+          "[checkout/create-full-access-session] request event insert failed:",
+          { checkout_attempt_id: checkoutAttemptId, error: requestEventError.message },
+        );
+      }
+    } catch (error) {
       console.error(
-        "[checkout/create-full-access-session] request event insert failed:",
-        { checkout_attempt_id: checkoutAttemptId, error: requestEventError.message },
+        "[checkout/create-full-access-session] request event insert threw:",
+        {
+          checkout_attempt_id: checkoutAttemptId,
+          error: error instanceof Error ? error.message : String(error),
+        },
       );
     }
-  } catch (error) {
-    console.error(
-      "[checkout/create-full-access-session] request event insert threw:",
-      {
-        checkout_attempt_id: checkoutAttemptId,
-        error: error instanceof Error ? error.message : String(error),
-      },
-    );
-  }
+  })();
 
   let stripeSession;
   let stripeCreateMs = 0;
@@ -1490,8 +1517,10 @@ export async function POST(request: NextRequest) {
       idempotencyKey: `full-access:${checkoutAttemptId}`,
     });
     stripeCreateMs = Date.now() - stripeCreateStartedAt;
+    await requestEventRecorded;
   } catch (err) {
     console.error("[checkout/create-full-access-session] Stripe error:", err);
+    await requestEventRecorded;
     return NextResponse.json(
       { error: "Stripe session 作成に失敗しました" },
       { status: 500 },
@@ -1511,57 +1540,62 @@ export async function POST(request: NextRequest) {
 
   // 課金ファネル計測: Stripe Checkout 到達。Session 作成後なので計測失敗で
   // Checkout 自体は止めないが、必ず構造化ログへ残して欠損を検知可能にする。
-  try {
-    const { error: eventError } = await supabaseAdmin.from("events").insert({
-      event_name: "checkout_session_created",
-      owner_token: buyer?.owner_token ?? null,
+  // 記録する中身（処理時間を含む）は応答の前に確定させ、DBへの書き込みは応答を返したあとに行う
+  // （DBとの往復1回ぶん、決済画面へ進むのが早くなる）。
+  const sessionCreatedEvent = {
+    event_name: "checkout_session_created",
+    owner_token: buyer?.owner_token ?? null,
+    locale: checkoutLocale,
+    metadata: {
+      checkout_attempt_id: checkoutAttemptId,
+      guest: userId ? false : true,
+      user_id: userId,
+      stripe_session_id: stripeSession.id,
+      product,
+      upgrade_from: upgradeFrom,
+      charged_amount: chargedAmount,
+      charged_currency: checkoutPricing.currency,
+      // 受付(POST開始)→Session作成完了のサーバー処理時間と、うち
+      // Stripe API呼び出しの所要時間。遅延調査用で、挙動には影響しない。
+      server_duration_ms: Date.now() - requestReceivedAt,
+      stripe_create_ms: stripeCreateMs,
+      ...regionalOfferMetadata,
+      ...checkoutDisplayMetadata,
+      source: paywallSource,
+      paywall_version: paywallVersion,
+      ...(isResultUpgradeCheckout
+        ? { offer_version: resultUpgradeOfferVersion, ...(lineUpgradeCheckout ? { sales_channel: "line", sales_channel_version: LINE_RESULT_UPGRADE_OFFER_VERSION, line_user_id: lineBuyer!.lineUserId } : {}) }
+        : {}),
+      placement: paywallPlacement,
+      return_to: returnTo,
       locale: checkoutLocale,
-      metadata: {
-        checkout_attempt_id: checkoutAttemptId,
-        guest: userId ? false : true,
-        user_id: userId,
-        stripe_session_id: stripeSession.id,
-        product,
-        upgrade_from: upgradeFrom,
-        charged_amount: chargedAmount,
-        charged_currency: checkoutPricing.currency,
-        // 受付(POST開始)→Session作成完了のサーバー処理時間と、うち
-        // Stripe API呼び出しの所要時間。遅延調査用で、挙動には影響しない。
-        server_duration_ms: Date.now() - requestReceivedAt,
-        stripe_create_ms: stripeCreateMs,
-        ...regionalOfferMetadata,
-        ...checkoutDisplayMetadata,
-        source: paywallSource,
-        paywall_version: paywallVersion,
-        ...(isResultUpgradeCheckout
-          ? { offer_version: resultUpgradeOfferVersion, ...(lineUpgradeCheckout ? { sales_channel: "line", sales_channel_version: LINE_RESULT_UPGRADE_OFFER_VERSION, line_user_id: lineBuyer!.lineUserId } : {}) }
-          : {}),
-        placement: paywallPlacement,
-        return_to: returnTo,
-        locale: checkoutLocale,
-        payment_method: paypayRedirect
-          ? "paypay"
-          : embedded
-            ? "card_embedded"
-            : "redirect",
-        stripe_mode: stripeSession.livemode ? "live" : "test",
-      },
-    });
-    if (eventError) {
+      payment_method: paypayRedirect
+        ? "paypay"
+        : embedded
+          ? "card_embedded"
+          : "redirect",
+      stripe_mode: stripeSession.livemode ? "live" : "test",
+    },
+  };
+  after(async () => {
+    try {
+      const { error: eventError } = await supabaseAdmin.from("events").insert(sessionCreatedEvent);
+      if (eventError) {
+        console.error(
+          "[checkout/create-full-access-session] checkout event insert failed:",
+          { stripe_session_id: stripeSession.id, error: eventError.message },
+        );
+      }
+    } catch (error) {
       console.error(
-        "[checkout/create-full-access-session] checkout event insert failed:",
-        { stripe_session_id: stripeSession.id, error: eventError.message },
+        "[checkout/create-full-access-session] checkout event insert threw:",
+        {
+          stripe_session_id: stripeSession.id,
+          error: error instanceof Error ? error.message : String(error),
+        },
       );
     }
-  } catch (error) {
-    console.error(
-      "[checkout/create-full-access-session] checkout event insert threw:",
-      {
-        stripe_session_id: stripeSession.id,
-        error: error instanceof Error ? error.message : String(error),
-      },
-    );
-  }
+  });
 
   // amount / currency は実売価格の参考値。実課金額はサーバが確定する。
   // 旧クライアント (キャッシュ済みJS) がこのフィールドを読むため応答からは外さない。
