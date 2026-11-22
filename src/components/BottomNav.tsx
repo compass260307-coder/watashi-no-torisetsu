@@ -98,6 +98,7 @@ const HIDE_ON_PREFIXES = [
   "/en/tako-report/",
   "/id/tako-report/",
   "/line/", // LINE内ブラウザ専用ページ (Plus LP/決済着地)。固定CTAと衝突するためナビ非表示
+  "/internal/", // 社内向けの数値画面
   "/liff", // LIFF入口 (即リダイレクトのつなぎページ)。サイトchromeは出さない
 ];
 
