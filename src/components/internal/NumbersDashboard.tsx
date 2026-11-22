@@ -14,6 +14,7 @@ import {
   formatNumbersValue,
   headlineValue,
   isNumbersCatchingUp,
+  isValidNumbersDay,
   numbersDelta,
   shiftNumbersDay,
   sortComparisonIds,
@@ -33,6 +34,7 @@ import {
 } from "./NumbersHourlyChart";
 import { NumbersCostEntry } from "./NumbersCostEntry";
 import { EconomicsCard } from "./NumbersEconomics";
+import { useNumbersTheme } from "./use-numbers-theme";
 import {
   FriendFlowCard,
   FunnelCard,
@@ -44,7 +46,8 @@ import {
 import {
   Card,
   NUMBERS_THEMES,
-  type NumbersThemeName,
+  NumbersNav,
+  ThemeToggle,
   Segmented,
   numberFormat,
   yen,
@@ -77,8 +80,6 @@ function readCache(): NumbersPayload | null {
     return null;
   }
 }
-
-const THEME_KEY = "wt_internal_numbers_theme";
 
 function writeCache(payload: NumbersPayload): void {
   try {
@@ -136,49 +137,10 @@ export function NumbersDashboard() {
   const requestedDays = useRef(new Set<string>());
   const [costEntryOpen, setCostEntryOpen] = useState(false);
   // 配色。既定は白地 (2026-11-22 本人の指定)。黒地にも切り替えられる (端末ごとに覚える)。
-  const [theme, setTheme] = useState<NumbersThemeName>("light");
+  const { theme, toggleTheme } = useNumbersTheme();
   // スマホでは下の内訳を 1 つずつ切り替えて見る (全部並べると縦に長すぎる)。
   const [section, setSection] = useState<SectionKey>("funnel");
   const latestRequest = useRef(0);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      await Promise.resolve();
-      if (cancelled) return;
-      try {
-        if (window.localStorage.getItem(THEME_KEY) === "dark") {
-          setTheme("dark");
-        }
-      } catch {
-        // 読めない端末では、既定の白地のまま。
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // 画面の外側 (body) も同じ地の色にする。下部の余白に別の色の帯が出ないように。
-  useEffect(() => {
-    const previous = document.body.style.background;
-    document.body.style.background = String(
-      (NUMBERS_THEMES[theme] as Record<string, string>)["--nb-bg"],
-    );
-    return () => {
-      document.body.style.background = previous;
-    };
-  }, [theme]);
-
-  const toggleTheme = () => {
-    const next: NumbersThemeName = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    try {
-      window.localStorage.setItem(THEME_KEY, next);
-    } catch {
-      // 保存できない端末では、開き直すと既定に戻るだけ。
-    }
-  };
 
   const load = useCallback(async (target: string | null) => {
     const request = ++latestRequest.current;
@@ -215,8 +177,16 @@ export function NumbersDashboard() {
       // 端末の控えは描画後にしか読めない (サーバー側には無い) ので、ここで読む。
       const cached = await Promise.resolve(readCache());
       if (cancelled) return;
-      if (cached) setPayload((current) => current ?? cached);
-      await load(null);
+      // 「月の推移」の表から来たときは、?day= で指定された日を開く。
+      const asked = new URLSearchParams(window.location.search).get("day");
+      const target =
+        isValidNumbersDay(asked) && asked < todayInJst() ? asked : null;
+      if (target) {
+        setDay(target);
+      } else if (cached) {
+        setPayload((current) => current ?? cached);
+      }
+      await load(target);
     })();
     return () => {
       cancelled = true;
@@ -305,7 +275,7 @@ export function NumbersDashboard() {
 
   return (
     <main
-      className="min-h-dvh flex-1 bg-[var(--nb-bg)] pb-12 font-medium text-[var(--nb-text)] antialiased"
+      className="min-h-dvh flex-1 touch-manipulation bg-[var(--nb-bg)] pb-12 font-medium text-[var(--nb-text)] antialiased"
       style={NUMBERS_THEMES[theme]}
       data-theme={theme}
     >
@@ -316,6 +286,9 @@ export function NumbersDashboard() {
             <h1 className="text-lg font-bold leading-tight tracking-tight">
               数値
             </h1>
+            <div className="hidden sm:block">
+              <NumbersNav current="day" />
+            </div>
             <p
               className="flex min-w-0 items-center gap-2 text-[13px] text-[var(--nb-text-2)] sm:text-sm"
               aria-live="polite"
@@ -422,39 +395,7 @@ export function NumbersDashboard() {
             </button>
           </div>
 
-          <button
-            type="button"
-            onClick={toggleTheme}
-            aria-label={
-              theme === "dark"
-                ? "明るい配色に切り替える"
-                : "暗い配色に切り替える"
-            }
-            title={theme === "dark" ? "明るい配色にする" : "暗い配色にする"}
-            // スマホではヘッダーに収まらないので、ページのいちばん下に同じ切り替えを置く。
-            className={navButton.replace("flex ", "hidden sm:flex ")}
-          >
-            <svg
-              aria-hidden
-              width="17"
-              height="17"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.9"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              {theme === "dark" ? (
-                <>
-                  <circle cx="12" cy="12" r="4" />
-                  <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" />
-                </>
-              ) : (
-                <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7Z" />
-              )}
-            </svg>
-          </button>
+          <ThemeToggle theme={theme} onToggle={toggleTheme} variant="icon" />
 
           <button
             type="button"
@@ -486,6 +427,10 @@ export function NumbersDashboard() {
           </button>
         </div>
       </header>
+      {/* スマホではヘッダーに収まらないので、行き来のタブはその下に置く (固定しない。固定すると画面の上を広く覆ってしまう)。 */}
+      <div className="px-4 pt-3 sm:hidden">
+        <NumbersNav current="day" />
+      </div>
 
       <div className="px-4 pt-4 sm:px-6 xl:px-8 xl:pt-6">
         {status === "error" && (
@@ -532,15 +477,7 @@ export function NumbersDashboard() {
           <Skeleton />
         ) : null}
       </div>
-      <div className="px-4 pt-6 sm:hidden">
-        <button
-          type="button"
-          onClick={toggleTheme}
-          className="h-11 w-full rounded-xl border border-[var(--nb-border-strong)] text-sm font-bold text-[var(--nb-text)]"
-        >
-          {theme === "dark" ? "明るい配色にする" : "暗い配色にする"}
-        </button>
-      </div>
+      <ThemeToggle theme={theme} onToggle={toggleTheme} variant="wide" />
       {costEntryOpen && (
         <NumbersCostEntry
           onClose={() => setCostEntryOpen(false)}
