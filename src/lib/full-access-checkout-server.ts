@@ -3,6 +3,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import type { NextRequest } from "next/server";
 import {
+  FULL_ACCESS_PRICE_TEST_END_AT,
   FULL_ACCESS_PRICE_TEST_START_AT,
   FULL_ACCESS_PRICE_TEST_VERSION,
 } from "@/lib/access-products";
@@ -42,7 +43,7 @@ export async function resolveFullAccessBuyer(
 }
 
 // ===== 日本円の完全版の価格テスト（FULL_ACCESS_PRICE_TEST_VERSION） =====
-// 開始時刻以降に初めて診断した人だけを対象に、ユーザーIDから半々に固定で分ける。
+// 開始時刻から終了時刻までに初めて診断した人だけを対象に、ユーザーIDから半々に固定で分ける。
 // 同じ人は、どのページ・どの端末から見ても同じ額になる。見積もりAPIと決済APIは必ずこの判定を共有する。
 export type JaFullAccessPriceAssignment = {
   arm: JaFullAccessPriceArm;
@@ -57,9 +58,11 @@ const devPriceTestStartAt =
     ? process.env.DEV_FULL_ACCESS_PRICE_TEST_START_AT?.trim() || null
     : null;
 const PRICE_TEST_START_MS = Date.parse(devPriceTestStartAt ?? FULL_ACCESS_PRICE_TEST_START_AT);
+const PRICE_TEST_END_MS = Date.parse(FULL_ACCESS_PRICE_TEST_END_AT);
 
+// 終了時刻を過ぎたら、テストは自動で止まる（全員 ¥499）。環境変数でも止められる。
 function priceTestEnabled() {
-  return process.env.FULL_ACCESS_PRICE_TEST !== "off";
+  return process.env.FULL_ACCESS_PRICE_TEST !== "off" && Date.now() < PRICE_TEST_END_MS;
 }
 
 export function jaFullAccessPriceAssignmentForUser(
