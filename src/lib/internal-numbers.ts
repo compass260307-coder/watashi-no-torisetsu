@@ -96,6 +96,44 @@ export interface NumbersPayload {
   compare: NumbersDayBlock;
   /** 表示日の前 7 日の、時間別の平均。控えのある日だけで平均する。 */
   baseline?: NumbersBaseline;
+  /** 広告費 (表示日・比較日・直近 7 日)。広告費の SQL がまだ入っていない環境では無い。 */
+  costs?: {
+    day: NumbersCosts;
+    compare: NumbersCosts;
+    recent: Record<string, NumbersCosts>;
+  };
+  settings?: NumbersSettings;
+}
+
+export interface NumbersCostHour {
+  h: number;
+  /** その時間帯の広告費 (実績と推定の合計)。 */
+  cost: number;
+  /** うち、実績の分 (エクスポート、または日別の手入力)。 */
+  actual: number;
+  /** うち、配信計画からの推定の分 (実績が入っていない時間帯)。 */
+  plan: number;
+}
+
+export interface NumbersCosts {
+  hours: NumbersCostHour[];
+  mediums: { medium: string; actual: number; plan: number }[];
+  /** 実績が 1 つでも入っているか (0 円の実績と「未入力」を分ける)。 */
+  has_actual: boolean;
+  /** 時間別の実績が入っている最後の時間帯。無ければ null。 */
+  actual_through_hour: number | null;
+  /** この日に時間別の実績が入っているアカウントの数。 */
+  accounts_with_actual: number;
+  /** 直近 7 日に実績のあるアカウントの数 (この日の分がそろっているかの目安)。 */
+  accounts_recent: number;
+}
+
+/** 利益の概算に使う単価 (利益ダッシュボードの「設定」と同じ)。 */
+export interface NumbersSettings {
+  fee_rate: number;
+  server_cost_per_diagnosis: number;
+  ai_cost_per_purchase: number;
+  ai_cost_per_upgrade: number;
 }
 
 /** 平均の 1 時間分。件数も小数になる。 */
@@ -395,19 +433,63 @@ export function sortComparisonIds(ids: ComparisonId[]): ComparisonId[] {
 }
 
 /**
- * 今日の着地見込み。「今までの実績 × (比較相手の 1 日分 ÷ 比較相手の同じ時刻まで)」。
- * 1 日の中の時間帯の偏りが、比較相手と同じだと仮定した概算。率と単価には出さない。
+ * 0 時から untilHours 時間たった時点までの広告費。
+ * 実績は届いている分をそのまま足し、推定 (配信計画) は途中の時間帯を経過した割合だけ足す。
  */
-export function forecastHeadline(
-  definition: HeadlineDefinition,
-  current: number | null,
-  basis: NumbersComparison | null,
-): number | null {
-  if (definition.denominator || current === null || !basis) return null;
-  const soFar = definition.numerator(basis.untilCut);
-  const full = definition.numerator(basis.fullDay);
-  if (soFar <= 0 || full <= 0) return null;
-  return current * (full / soFar);
+export function costUntil(
+  costs: NumbersCosts,
+  untilHours: number,
+): { cost: number; actual: number; plan: number } {
+  let actual = 0;
+  let plan = 0;
+  for (const hour of costs.hours) {
+    const share = Math.max(0, Math.min(1, untilHours - hour.h));
+    if (share > 0) actual += hour.actual;
+    plan += hour.plan * share;
+  }
+  return { cost: actual + plan, actual, plan };
+}
+
+export interface NumbersEconomics {
+  cost: number;
+  fee: number;
+  server: number;
+  ai: number;
+  /** 純売上 − 決済手数料 − サーバー費の概算 − AI費の概算 − 広告費。 */
+  profit: number;
+  /** 広告費 ÷ 広告流入の診断数。 */
+  cpaAd: number | null;
+  /** 広告費 ÷ 診断数 (全体)。 */
+  cpaAll: number | null;
+}
+
+/** 利益ダッシュボードの「参考利益」と同じ計算。 */
+export function economics(
+  amounts: Pick<
+    NumbersSubtotal,
+    | "net"
+    | "diagnoses"
+    | "ad_diagnoses"
+    | "purchases_full"
+    | "purchases_upgrade"
+  >,
+  cost: number,
+  settings: NumbersSettings,
+): NumbersEconomics {
+  const fee = amounts.net * settings.fee_rate;
+  const server = amounts.diagnoses * settings.server_cost_per_diagnosis;
+  const ai =
+    amounts.purchases_full * settings.ai_cost_per_purchase +
+    amounts.purchases_upgrade * settings.ai_cost_per_upgrade;
+  return {
+    cost,
+    fee,
+    server,
+    ai,
+    profit: amounts.net - fee - server - ai - cost,
+    cpaAd: ratio(cost, amounts.ad_diagnoses),
+    cpaAll: ratio(cost, amounts.diagnoses),
+  };
 }
 
 const countFormat = new Intl.NumberFormat("ja-JP");
@@ -418,7 +500,7 @@ export function formatNumbersValue(
 ): string {
   if (value === null || !Number.isFinite(value)) return "–";
   if (kind === "count") {
-    // 平均や見込みは小数になる。10 未満だけ小数 1 桁を残し、それ以上は整数に丸める。
+    // 平均は小数になる。10 未満だけ小数 1 桁を残し、それ以上は整数に丸める。
     const rounded =
       Number.isInteger(value) || Math.abs(value) >= 10
         ? Math.round(value)

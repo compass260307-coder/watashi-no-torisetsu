@@ -19,6 +19,17 @@ const PRIVATE_HEADERS = {
   "X-Robots-Tag": "noindex, nofollow",
 } as const;
 
+/**
+ * 広告費つきの関数 (第3段の SQL) を呼ぶ。まだ DB に入っていない環境では、広告費なしの
+ * 関数で代える (SQL より先に画面が出ても、広告費の欄が出ないだけで動く)。
+ */
+async function callWithCosts(name: string, args: Record<string, unknown>) {
+  const withCosts = await supabaseAdmin.rpc(`${name}_with_costs`, args);
+  // PGRST202: その名前・引数の関数が見つからない。
+  if (withCosts.error?.code !== "PGRST202") return withCosts;
+  return supabaseAdmin.rpc(name, args);
+}
+
 export async function GET(request: NextRequest) {
   const user = await getSession(request);
   if (!(await isInternalDashboardViewer(user))) {
@@ -38,7 +49,7 @@ export async function GET(request: NextRequest) {
         { status: 400, headers: PRIVATE_HEADERS },
       );
     }
-    const { data, error } = await supabaseAdmin.rpc(
+    const { data, error } = await callWithCosts(
       "internal_numbers_compare_day",
       { p_day: blockParam, p_locale: "ja" },
     );
@@ -67,14 +78,11 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { data, error } = await supabaseAdmin.rpc(
-    "internal_numbers_dashboard",
-    {
-      p_day: dayParam,
-      p_compare_day: compareParam,
-      p_locale: "ja",
-    },
-  );
+  const { data, error } = await callWithCosts("internal_numbers_dashboard", {
+    p_day: dayParam,
+    p_compare_day: compareParam,
+    p_locale: "ja",
+  });
 
   if (error || !data) {
     console.error("[internal-numbers] dashboard query failed", {
