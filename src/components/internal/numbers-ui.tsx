@@ -1,5 +1,13 @@
+"use client";
+
 // 社内向け数値画面の、見た目の共通部品。色はここで一度だけ決め、各部品は役割名で参照する。
-import type { CSSProperties, ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 
 import type { NumbersDelta } from "@/lib/internal-numbers";
 
@@ -158,6 +166,93 @@ export function DataBar({
         }}
       />
       <span className="relative">{children}</span>
+    </span>
+  );
+}
+
+/**
+ * 数字が変わったとき、前の値から新しい値まで短く数え上げる。
+ * 「動きを減らす」設定の端末では、数え上げずにすぐ切り替える。
+ */
+export function AnimatedNumber({
+  value,
+  format,
+}: {
+  value: number | null;
+  format: (value: number | null) => string;
+}) {
+  const [shown, setShown] = useState<number | null>(value);
+  const shownRef = useRef<number | null>(value);
+
+  useEffect(() => {
+    const from = shownRef.current;
+    const apply = (next: number | null) => {
+      shownRef.current = next;
+      setShown(next);
+    };
+    const instant =
+      value === null ||
+      from === null ||
+      from === value ||
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const started = performance.now();
+    const DURATION_MS = 550;
+    let frame = window.requestAnimationFrame(function step(now) {
+      if (instant) return apply(value);
+      const t = Math.min(1, (now - started) / DURATION_MS);
+      const eased = 1 - (1 - t) ** 3;
+      apply(t >= 1 ? value : from + (value - from) * eased);
+      if (t < 1) frame = window.requestAnimationFrame(step);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [value]);
+
+  return <>{format(shown)}</>;
+}
+
+/** 割合を輪の長さで見せる。中の文字は呼び出し側が置く。 */
+export function RingGauge({
+  share,
+  size = 76,
+  children,
+}: {
+  share: number | null;
+  size?: number;
+  children?: ReactNode;
+}) {
+  const stroke = 7;
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const filled = Math.max(0, Math.min(1, share ?? 0)) * circumference;
+  return (
+    <span
+      className="relative inline-flex shrink-0 items-center justify-center"
+      style={{ width: size, height: size }}
+    >
+      <svg aria-hidden width={size} height={size} className="-rotate-90">
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="var(--nb-surface-2)"
+          strokeWidth={stroke}
+        />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="var(--nb-accent)"
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={`${filled} ${circumference}`}
+          style={{ transition: "stroke-dasharray 500ms ease-out" }}
+        />
+      </svg>
+      <span className="absolute inset-0 flex items-center justify-center">
+        {children}
+      </span>
     </span>
   );
 }

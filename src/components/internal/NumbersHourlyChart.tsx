@@ -7,16 +7,27 @@ import {
   headlineSeries,
   numbersDelta,
   type HeadlineDefinition,
+  type HeadlineHour,
   type HeadlineSeriesMode,
-  type NumbersHour,
 } from "@/lib/internal-numbers";
 
 import { DeltaBadge } from "./numbers-ui";
 
-// 表示日はアクセント色 (時間別は棒、累計は線と面)、比較日は細い灰色の線。
-// 2 系列は形と凡例でも見分けられる。色は numbers-ui の NUMBERS_THEME を参照する。
+// 表示日はアクセント色。比べる相手は 1 つ目が灰色、2 つ目がオレンジ。
+// 色だけに頼らないよう、相手ごとに線の種類 (実線・破線) も変え、凡例と吹き出しに名前を出す。
+// 色の組は、色覚の違いがあっても見分けられることを検証済み (青・灰・オレンジ)。
 const ACCENT = "var(--nb-accent)";
-const COMPARE = "var(--nb-compare)";
+export const COMPARISON_STYLES = [
+  { color: "#8b8b85", dash: undefined },
+  { color: "#d95926", dash: "6 4" },
+] as const;
+
+export type NumbersChartType = "line" | "bar";
+
+export interface ChartComparison {
+  label: string;
+  hours: HeadlineHour[];
+}
 
 /** 目盛りの上限を、4 等分してもきりのよい数に切り上げる (上に余白が空きすぎないよう細かく刻む)。 */
 const NICE_STEPS = [1, 1.2, 1.6, 2, 2.4, 3, 4, 5, 6, 8, 10];
@@ -57,13 +68,21 @@ function useElementWidth<T extends HTMLElement>() {
   return [ref, width] as const;
 }
 
+/** 上の角だけ丸めた棒。 */
+function barPath(left: number, top: number, width: number, bottom: number) {
+  const radius = Math.min(4, bottom - top, width / 2);
+  return `M${left},${bottom} V${top + radius} Q${left},${top} ${left + radius},${top} H${left + width - radius} Q${left + width},${top} ${left + width},${top + radius} V${bottom} Z`;
+}
+
 interface Props {
   metric: HeadlineDefinition;
   mode: HeadlineSeriesMode;
-  hours: NumbersHour[];
-  compareHours: NumbersHour[];
+  /** 時間別のときの形。表示日も比べる相手も、同じ形で描く。累計は常に線。 */
+  type: NumbersChartType;
+  hours: HeadlineHour[];
+  /** 比べる相手 (0〜2 個)。先頭が増減の基準。 */
+  comparisons: ChartComparison[];
   dayLabel: string;
-  compareLabel: string;
   /** 途中の時間帯 (今日の現在の時)。それより先の時間帯は描かない。過去日は null。 */
   currentHour: number | null;
   /** 0 時からの経過時間 (時間単位、小数)。「現在」の位置。過去日は null。 */
@@ -73,10 +92,10 @@ interface Props {
 export function NumbersHourlyChart({
   metric,
   mode,
+  type,
   hours,
-  compareHours,
+  comparisons,
   dayLabel,
-  compareLabel,
   currentHour,
   nowHours,
 }: Props) {
@@ -95,21 +114,27 @@ export function NumbersHourlyChart({
   const plotW = Math.max(0, width - pad.left - pad.right);
   const plotH = height - pad.top - pad.bottom;
   const slot = plotW / 24;
-  const barW = Math.max(3, Math.min(30, slot * 0.58));
   const bottom = pad.top + plotH;
 
+  const cumulative = mode === "cumulative";
+  const bars = !cumulative && type === "bar";
   const lastHour = currentHour ?? 23;
   const values = headlineSeries(metric, hours, mode, lastHour);
-  const compareValues = headlineSeries(metric, compareHours, mode, 23);
+  const compared = comparisons
+    .slice(0, COMPARISON_STYLES.length)
+    .map((comparison, index) => ({
+      ...comparison,
+      ...COMPARISON_STYLES[index],
+      values: headlineSeries(metric, comparison.hours, mode, 23),
+    }));
   const max = niceCeil(
     Math.max(
       0,
       ...values.map((v) => v ?? 0),
-      ...compareValues.map((v) => v ?? 0),
+      ...compared.flatMap((c) => c.values.map((v) => v ?? 0)),
     ),
   );
   const y = (value: number) => bottom - (value / max) * plotH;
-  const cumulative = mode === "cumulative";
   // 時間別は時間帯の真ん中、累計は時間帯の終わり (途中の時間帯は現在の位置) に点を打つ。
   const x = (h: number, forDay: boolean) => {
     if (!cumulative) return pad.left + slot * (h + 0.5);
@@ -137,18 +162,34 @@ export function NumbersHourlyChart({
     return segments;
   };
 
-  const compareSegments = linePoints(compareValues, false);
-  const daySegments = cumulative ? linePoints(values, true) : [];
+  // 時間別の線では、途中の時間帯 (まだ増える) を実線でつながない。確定した時間帯までを
+  // 実線で描き、途中の時間帯へは点線でつないで、白抜きの点を打つ。
+  const partialHour = !cumulative && currentHour !== null ? currentHour : null;
+  const settled =
+    partialHour === null
+      ? values
+      : values.map((v, h) => (h === partialHour ? null : v));
+  const daySegments = bars ? [] : linePoints(settled, true);
+  const partialValue = partialHour === null ? null : values[partialHour];
+  const beforePartial =
+    partialHour !== null && partialHour > 0 ? values[partialHour - 1] : null;
+
   const lastIndex = values.reduce<number | null>(
     (found, value, h) => (value !== null ? h : found),
     null,
   );
   const hasData =
     values.some((v) => v !== null && v > 0) ||
-    compareValues.some((v) => v !== null && v > 0);
+    compared.some((c) => c.values.some((v) => v !== null && v > 0));
+
+  // 棒は、時間帯ごとに「表示日・相手1・相手2」を横に並べる。
+  const groupCount = 1 + compared.length;
+  const groupW = Math.min(slot * 0.74, 30 * groupCount);
+  const barW = Math.max(2, groupW / groupCount - (groupCount > 1 ? 1.5 : 0));
+  const barLeft = (h: number, index: number) =>
+    pad.left + slot * (h + 0.5) - groupW / 2 + (groupW / groupCount) * index;
 
   const activeValue = active === null ? null : values[active];
-  const activeCompare = active === null ? null : compareValues[active];
   const activeX = active === null ? 0 : x(active, true);
   const hourLabels = narrow ? [0, 6, 12, 18] : [0, 3, 6, 9, 12, 15, 18, 21];
   const pick = (clientX: number, target: SVGElement) => {
@@ -161,25 +202,19 @@ export function NumbersHourlyChart({
     <div className="relative">
       <div className="mb-1 flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-xs text-[var(--nb-text-2)]">
         <span className="flex items-center gap-1.5">
-          <span
-            aria-hidden
-            className={
-              cumulative
-                ? "inline-block h-0.5 w-4 rounded-full"
-                : "inline-block h-2.5 w-2.5 rounded-[3px]"
-            }
-            style={{ background: ACCENT }}
-          />
+          <LegendMark color={ACCENT} bar={bars} />
           {dayLabel}
         </span>
-        <span className="flex items-center gap-1.5">
-          <span
-            aria-hidden
-            className="inline-block h-0.5 w-4 rounded-full"
-            style={{ background: COMPARE }}
-          />
-          {compareLabel}
-        </span>
+        {compared.map((comparison) => (
+          <span key={comparison.label} className="flex items-center gap-1.5">
+            <LegendMark
+              color={comparison.color}
+              dash={comparison.dash}
+              bar={bars}
+            />
+            {comparison.label}
+          </span>
+        ))}
       </div>
 
       <div ref={ref} style={{ height }} className="relative">
@@ -188,7 +223,7 @@ export function NumbersHourlyChart({
             width={width}
             height={height}
             role="img"
-            aria-label={`${metric.label}の${cumulative ? "累計" : "時間別"}グラフ。${dayLabel}と${compareLabel}の比較。数値は「時間別」の表にあります。`}
+            aria-label={`${metric.label}の${cumulative ? "累計" : "時間別"}グラフ。${[dayLabel, ...compared.map((c) => c.label)].join("、")}。数値は「時間別」の表にあります。`}
             className="block select-none"
           >
             <defs>
@@ -209,7 +244,7 @@ export function NumbersHourlyChart({
                 x2="0"
                 y2="1"
               >
-                <stop offset="0" stopColor={ACCENT} stopOpacity="0.28" />
+                <stop offset="0" stopColor={ACCENT} stopOpacity="0.26" />
                 <stop offset="1" stopColor={ACCENT} stopOpacity="0" />
               </linearGradient>
             </defs>
@@ -239,16 +274,7 @@ export function NumbersHourlyChart({
             ))}
 
             {active !== null &&
-              (cumulative ? (
-                <line
-                  x1={activeX}
-                  x2={activeX}
-                  y1={pad.top}
-                  y2={bottom}
-                  stroke="var(--nb-border-strong)"
-                  strokeWidth={1}
-                />
-              ) : (
+              (bars ? (
                 <rect
                   x={pad.left + slot * active}
                   y={pad.top}
@@ -257,59 +283,126 @@ export function NumbersHourlyChart({
                   fill="var(--nb-text)"
                   opacity={0.05}
                 />
+              ) : (
+                <line
+                  x1={activeX}
+                  x2={activeX}
+                  y1={pad.top}
+                  y2={bottom}
+                  stroke="var(--nb-border-strong)"
+                  strokeWidth={1}
+                />
               ))}
 
-            {!cumulative &&
-              values.map((value, h) => {
-                if (value === null || value <= 0) return null;
-                const top = y(value);
-                const radius = Math.min(4, bottom - top, barW / 2);
-                const left = x(h, true) - barW / 2;
-                return (
-                  <path
-                    key={h}
-                    d={`M${left},${bottom} V${top + radius} Q${left},${top} ${left + radius},${top} H${left + barW - radius} Q${left + barW},${top} ${left + barW},${top + radius} V${bottom} Z`}
-                    fill={`url(#${gradientId}-bar)`}
-                    // 途中の時間帯は薄くして、まだ増える数字だと分かるようにする。
-                    opacity={
-                      h === currentHour
-                        ? 0.45
-                        : active === null || active === h
-                          ? 1
-                          : 0.55
-                    }
-                  />
-                );
-              })}
-
-            {compareSegments.map((points, index) => (
-              <polyline
-                key={index}
-                points={points.join(" ")}
-                fill="none"
-                stroke={COMPARE}
-                strokeWidth={1.75}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-              />
-            ))}
-
-            {daySegments.map((points, index) => (
-              <g key={index}>
-                <polygon
-                  points={`${points[0].split(",")[0]},${bottom} ${points.join(" ")} ${points[points.length - 1].split(",")[0]},${bottom}`}
-                  fill={`url(#${gradientId}-area)`}
-                />
-                <polyline
-                  points={points.join(" ")}
-                  fill="none"
-                  stroke={ACCENT}
-                  strokeWidth={2.5}
-                  strokeLinejoin="round"
-                  strokeLinecap="round"
-                />
-              </g>
-            ))}
+            {bars ? (
+              <>
+                {compared.map((comparison, index) =>
+                  comparison.values.map((value, h) =>
+                    value === null || value <= 0 ? null : (
+                      <path
+                        key={`${comparison.label}-${h}`}
+                        d={barPath(
+                          barLeft(h, index + 1),
+                          y(value),
+                          barW,
+                          bottom,
+                        )}
+                        fill={comparison.color}
+                        opacity={active === null || active === h ? 0.85 : 0.45}
+                      />
+                    ),
+                  ),
+                )}
+                {values.map((value, h) =>
+                  value === null || value <= 0 ? null : (
+                    <path
+                      key={h}
+                      d={barPath(barLeft(h, 0), y(value), barW, bottom)}
+                      fill={`url(#${gradientId}-bar)`}
+                      // 途中の時間帯は薄くして、まだ増える数字だと分かるようにする。
+                      opacity={
+                        h === currentHour
+                          ? 0.45
+                          : active === null || active === h
+                            ? 1
+                            : 0.55
+                      }
+                    />
+                  ),
+                )}
+              </>
+            ) : (
+              <>
+                {compared.map((comparison) =>
+                  linePoints(comparison.values, false).map((points, index) => (
+                    <polyline
+                      key={`${comparison.label}-${index}`}
+                      points={points.join(" ")}
+                      fill="none"
+                      stroke={comparison.color}
+                      strokeWidth={1.75}
+                      strokeDasharray={comparison.dash}
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                  )),
+                )}
+                {daySegments.map((points, index) => (
+                  <g key={index}>
+                    {!metric.denominator && points.length > 1 && (
+                      <polygon
+                        points={`${points[0].split(",")[0]},${bottom} ${points.join(" ")} ${points[points.length - 1].split(",")[0]},${bottom}`}
+                        fill={`url(#${gradientId}-area)`}
+                      />
+                    )}
+                    <polyline
+                      points={points.join(" ")}
+                      fill="none"
+                      stroke={ACCENT}
+                      strokeWidth={2.5}
+                      strokeLinejoin="round"
+                      strokeLinecap="round"
+                    />
+                    {points.length === 1 && (
+                      <circle
+                        cx={Number(points[0].split(",")[0])}
+                        cy={Number(points[0].split(",")[1])}
+                        r={3}
+                        fill={ACCENT}
+                      />
+                    )}
+                  </g>
+                ))}
+                {partialHour !== null &&
+                  partialValue !== null &&
+                  partialValue !== undefined && (
+                    <g>
+                      {beforePartial !== null &&
+                        beforePartial !== undefined && (
+                          <line
+                            x1={x(partialHour - 1, true)}
+                            y1={y(beforePartial)}
+                            x2={x(partialHour, true)}
+                            y2={y(partialValue)}
+                            stroke={ACCENT}
+                            strokeWidth={2}
+                            strokeDasharray="2 5"
+                            strokeLinecap="round"
+                            opacity={0.8}
+                          />
+                        )}
+                      <circle
+                        cx={x(partialHour, true)}
+                        cy={y(partialValue)}
+                        r={4}
+                        fill="var(--nb-surface)"
+                        stroke={ACCENT}
+                        strokeWidth={2}
+                      />
+                    </g>
+                  )}
+              </>
+            )}
 
             {/* 今の位置。今日の表示のときだけ。 */}
             {nowHours !== null && (
@@ -358,26 +451,35 @@ export function NumbersHourlyChart({
               </g>
             )}
 
-            {active !== null && activeCompare !== null && (
-              <circle
-                cx={x(active, false)}
-                cy={y(activeCompare)}
-                r={4}
-                fill={COMPARE}
-                stroke="var(--nb-surface)"
-                strokeWidth={2}
-              />
-            )}
-            {cumulative && active !== null && activeValue !== null && (
-              <circle
-                cx={activeX}
-                cy={y(activeValue)}
-                r={4}
-                fill={ACCENT}
-                stroke="var(--nb-surface)"
-                strokeWidth={2}
-              />
-            )}
+            {!bars &&
+              active !== null &&
+              compared.map((comparison) => {
+                const value = comparison.values[active];
+                return value === null ? null : (
+                  <circle
+                    key={comparison.label}
+                    cx={x(active, false)}
+                    cy={y(value)}
+                    r={4}
+                    fill={comparison.color}
+                    stroke="var(--nb-surface)"
+                    strokeWidth={2}
+                  />
+                );
+              })}
+            {!bars &&
+              active !== null &&
+              activeValue !== null &&
+              active !== partialHour && (
+                <circle
+                  cx={activeX}
+                  cy={y(activeValue)}
+                  r={4}
+                  fill={ACCENT}
+                  stroke="var(--nb-surface)"
+                  strokeWidth={2}
+                />
+              )}
 
             {hourLabels.map((h) => (
               <text
@@ -422,18 +524,18 @@ export function NumbersHourlyChart({
         {active !== null && width > 0 && (
           <div
             role="status"
-            className="pointer-events-none absolute top-3 z-10 min-w-[11rem] rounded-xl border border-[var(--nb-border-strong)] bg-[var(--nb-surface-2)] px-3 py-2.5 text-xs shadow-[0_8px_30px_rgba(0,0,0,0.6)]"
+            className="pointer-events-none absolute top-3 z-10 min-w-[12rem] rounded-xl border border-[var(--nb-border-strong)] bg-[var(--nb-surface-2)] px-3 py-2.5 text-xs shadow-[0_8px_30px_rgba(0,0,0,0.6)]"
             style={
               active < 12
                 ? {
                     left: Math.min(
-                      width - 190,
+                      width - 205,
                       pad.left + slot * (active + 1) + 8,
                     ),
                   }
                 : {
                     right: Math.min(
-                      width - 190,
+                      width - 205,
                       width - (pad.left + slot * active) + 8,
                     ),
                   }
@@ -444,20 +546,25 @@ export function NumbersHourlyChart({
                 {cumulative ? `${active}時台までの累計` : `${active}時台`}
                 {active === currentHour ? "（途中）" : ""}
               </span>
-              {active <= lastHour && (
-                <DeltaBadge
-                  delta={numbersDelta(activeValue, activeCompare, metric.kind)}
-                  size="sm"
-                />
-              )}
+              {/* 増減は先頭の相手との比較。時間別の率・単価には出さない
+                  (1 時間の購入は数件で、偶然の揺れが大きい)。 */}
+              {compared.length > 0 &&
+                active <= lastHour &&
+                active !== partialHour &&
+                (cumulative || !metric.denominator) && (
+                  <DeltaBadge
+                    delta={numbersDelta(
+                      activeValue,
+                      compared[0].values[active],
+                      metric.kind,
+                    )}
+                    size="sm"
+                  />
+                )}
             </p>
             <p className="flex items-center justify-between gap-4 text-[var(--nb-text)]">
               <span className="flex items-center gap-1.5">
-                <span
-                  aria-hidden
-                  className="h-2 w-2 rounded-[2px]"
-                  style={{ background: ACCENT }}
-                />
+                <LegendMark color={ACCENT} bar={bars} small />
                 {dayLabel}
               </span>
               <span className="text-sm font-bold tabular-nums">
@@ -466,23 +573,67 @@ export function NumbersHourlyChart({
                   : formatNumbersValue(activeValue, metric.kind)}
               </span>
             </p>
-            <p className="mt-0.5 flex items-center justify-between gap-4 text-[var(--nb-text-2)]">
-              <span className="flex items-center gap-1.5">
-                <span
-                  aria-hidden
-                  className="h-0.5 w-2 rounded-full"
-                  style={{ background: COMPARE }}
-                />
-                {compareLabel}
-              </span>
-              <span className="tabular-nums">
-                {formatNumbersValue(activeCompare, metric.kind)}
-              </span>
-            </p>
+            {compared.map((comparison) => (
+              <p
+                key={comparison.label}
+                className="mt-0.5 flex items-center justify-between gap-4 text-[var(--nb-text-2)]"
+              >
+                <span className="flex items-center gap-1.5">
+                  <LegendMark
+                    color={comparison.color}
+                    dash={comparison.dash}
+                    bar={bars}
+                    small
+                  />
+                  {comparison.label}
+                </span>
+                <span className="tabular-nums">
+                  {formatNumbersValue(comparison.values[active], metric.kind)}
+                </span>
+              </p>
+            ))}
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+/** 凡例の印。線なら線 (破線は破線)、棒なら四角。 */
+function LegendMark({
+  color,
+  dash,
+  bar,
+  small,
+}: {
+  color: string;
+  dash?: string;
+  bar: boolean;
+  small?: boolean;
+}) {
+  if (bar) {
+    return (
+      <span
+        aria-hidden
+        className={`inline-block rounded-[3px] ${small ? "h-2 w-2" : "h-2.5 w-2.5"}`}
+        style={{ background: color }}
+      />
+    );
+  }
+  const length = small ? 12 : 18;
+  return (
+    <svg aria-hidden width={length} height={4} className="shrink-0">
+      <line
+        x1={1}
+        x2={length - 1}
+        y1={2}
+        y2={2}
+        stroke={color}
+        strokeWidth={2}
+        strokeDasharray={dash ? "4 3" : undefined}
+        strokeLinecap="round"
+      />
+    </svg>
   );
 }
 
@@ -493,18 +644,21 @@ export function NumbersSparkline({
   compareHours,
   currentHour,
   nowHours,
-}: Pick<
-  Props,
-  "metric" | "hours" | "compareHours" | "currentHour" | "nowHours"
->) {
+}: Pick<Props, "metric" | "hours" | "currentHour" | "nowHours"> & {
+  /** 増減の基準にしている相手。無いときは表示日の線だけ。 */
+  compareHours: HeadlineHour[] | null;
+}) {
   const lastHour = currentHour ?? 23;
   const values = headlineSeries(metric, hours, "cumulative", lastHour);
-  const compareValues = headlineSeries(metric, compareHours, "cumulative", 23);
+  const compareValues: (number | null)[] = compareHours
+    ? headlineSeries(metric, compareHours, "cumulative", 23)
+    : hours.map(() => null);
   const max = Math.max(
     1e-9,
     ...values.map((v) => v ?? 0),
     ...compareValues.map((v) => v ?? 0),
   );
+  const gradientId = useId();
   const W = 100;
   const H = 30;
   const path = (series: (number | null)[], forDay: boolean) => {
@@ -520,6 +674,7 @@ export function NumbersSparkline({
     });
     return points.join(" ");
   };
+  const dayPoints = path(values, true);
   return (
     <svg
       aria-hidden
@@ -527,16 +682,29 @@ export function NumbersSparkline({
       preserveAspectRatio="none"
       className="block h-8 w-full"
     >
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={ACCENT} stopOpacity="0.3" />
+          <stop offset="1" stopColor={ACCENT} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {/* 面を塗るのは件数と金額だけ。率と単価は 0 からの量ではないので塗らない。 */}
+      {dayPoints && !metric.denominator && (
+        <polygon
+          points={`${dayPoints.split(" ")[0].split(",")[0]},${H} ${dayPoints} ${dayPoints.split(" ").at(-1)?.split(",")[0]},${H}`}
+          fill={`url(#${gradientId})`}
+        />
+      )}
       <polyline
         points={path(compareValues, false)}
         fill="none"
-        stroke={COMPARE}
+        stroke={COMPARISON_STYLES[0].color}
         strokeWidth={1.25}
         vectorEffect="non-scaling-stroke"
         opacity={0.7}
       />
       <polyline
-        points={path(values, true)}
+        points={dayPoints}
         fill="none"
         stroke={ACCENT}
         strokeWidth={2}
