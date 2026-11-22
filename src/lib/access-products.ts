@@ -302,9 +302,16 @@ export const FULL_ACCESS_PRICE_TEST_VERSION =
   "ja_full_access_price_test_699_v1_20261122" as const;
 export const FULL_ACCESS_PRICE_TEST_START_AT =
   "2026-11-22T14:30:00+09:00" as const;
-// テストは 2026-11-22 の当日だけ（本人指示）。この時刻を過ぎたら、¥699の群だった人も含めて全員 ¥499 に戻る。
+// テストは 2026-11-25 まで（当日だけの予定を、2026-11-22 夜の本人指示で3日延長）。
+// この時刻を過ぎたら、¥699の群だった人も含めて全員 ¥499 に戻る。
 export const FULL_ACCESS_PRICE_TEST_END_AT =
+  "2026-11-26T00:00:00+09:00" as const;
+// 延長の反映が元の終了時刻（2026-11-23 0:00 JST）をまたぐため、この1時間に初めて診断した人は対象外（¥499のまま）。
+// 反映までのあいだに ¥499 を見た人の額が、あとから変わらないようにする。
+export const FULL_ACCESS_PRICE_TEST_PAUSE_START_AT =
   "2026-11-23T00:00:00+09:00" as const;
+export const FULL_ACCESS_PRICE_TEST_PAUSE_END_AT =
+  "2026-11-23T01:00:00+09:00" as const;
 export const FULL_ACCESS_TEST_LIST_PRICE_JPY = 1499;
 export const FULL_ACCESS_TEST_PRICE_JPY = 699;
 export const PREMIUM_BUNDLE_LIST_PRICE_JPY = 1980;
