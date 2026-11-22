@@ -79,11 +79,11 @@ const LOCALE_LABELS: Record<string, string> = {
 };
 
 const field =
-  "h-9 rounded-lg border border-[var(--nb-border-strong)] bg-transparent px-2.5 text-sm text-[var(--nb-text)] outline-none transition-colors focus:border-[var(--nb-accent)]";
+  "h-9 rounded-lg border border-[var(--nb-border-strong)] bg-transparent px-2.5 text-[15px] text-[var(--nb-text)] outline-none transition-colors focus:border-[var(--nb-accent)]";
 const primaryButton =
-  "h-9 rounded-lg bg-[var(--nb-text)] px-4 text-sm font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-40";
+  "h-9 rounded-lg bg-[var(--nb-text)] px-4 text-[15px] font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-40";
 const quietButton =
-  "h-8 rounded-lg border border-[var(--nb-border-strong)] px-3 text-xs font-bold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)] disabled:opacity-40";
+  "h-8 rounded-lg border border-[var(--nb-border-strong)] px-3 text-[13px] font-bold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)] disabled:opacity-40";
 const accentTint = (percent: number) =>
   `color-mix(in srgb, var(--nb-accent) ${percent}%, transparent)`;
 
@@ -114,7 +114,7 @@ function Mark({ tone, children }: { tone: string; children: ReactNode }) {
   return (
     <span
       aria-hidden="true"
-      className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold leading-none"
+      className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-xs font-bold leading-none"
       style={{
         color: tone,
         background: `color-mix(in srgb, ${tone} 16%, transparent)`,
@@ -306,14 +306,14 @@ export function NumbersCostEntry({
         <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-[var(--nb-border)] bg-[var(--nb-bg)] px-4 py-3 sm:rounded-t-2xl sm:px-5">
           <div className="mr-auto min-w-0">
             <h2 className="text-base font-bold">広告費を入れる</h2>
-            <p className="mt-0.5 text-xs text-[var(--nb-text-2)]">
+            <p className="mt-0.5 text-[13px] text-[var(--nb-text-2)]">
               入れた内容はすぐに保存され、数値画面に反映されます。
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="h-8 shrink-0 whitespace-nowrap rounded-lg border border-[var(--nb-border-strong)] px-3 text-xs font-bold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)]"
+            className="h-8 shrink-0 whitespace-nowrap rounded-lg border border-[var(--nb-border-strong)] px-3 text-[13px] font-bold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)]"
           >
             閉じる
           </button>
@@ -322,7 +322,7 @@ export function NumbersCostEntry({
         {failed && (
           <p
             role="alert"
-            className="mx-4 mt-4 rounded-lg border border-[var(--nb-down)] px-3 py-2 text-sm text-[var(--nb-down)] sm:mx-5"
+            className="mx-4 mt-4 rounded-lg border border-[var(--nb-down)] px-3 py-2 text-[15px] text-[var(--nb-down)] sm:mx-5"
           >
             登録内容を取得できませんでした。
             <button
@@ -335,7 +335,7 @@ export function NumbersCostEntry({
           </p>
         )}
         {!state && !failed && (
-          <p className="flex items-center gap-2 px-5 py-10 text-sm text-[var(--nb-text-2)]">
+          <p className="flex items-center gap-2 px-5 py-10 text-[15px] text-[var(--nb-text-2)]">
             <Spinner />
             読み込んでいます...
           </p>
@@ -442,8 +442,8 @@ function DropZone({
       >
         <path d="M12 16V4m0 0-4 4m4-4 4 4M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
       </svg>
-      <span className="text-sm font-bold">エクスポートをここに置く</span>
-      <span className="text-xs leading-relaxed text-[var(--nb-text-2)]">
+      <span className="text-[15px] font-bold">エクスポートをここに置く</span>
+      <span className="text-[13px] leading-relaxed text-[var(--nb-text-2)]">
         クリックして選ぶこともできます。複数まとめて置けます。
         <br />
         アカウントは自動で判別し、日本時間に直して保存します。同じ期間を置き直すと上書きされます。
@@ -490,7 +490,7 @@ function ImportList({
             ) : (
               <Spinner />
             )}
-            <p className="mr-auto min-w-0 text-sm tabular-nums">
+            <p className="mr-auto min-w-0 text-[15px] tabular-nums">
               {item.summary ? (
                 <>
                   <span className="font-bold">
@@ -512,12 +512,12 @@ function ImportList({
               )}
             </p>
             {item.summary && (
-              <span className="text-sm font-bold tabular-nums">
+              <span className="text-[15px] font-bold tabular-nums">
                 {yen(item.summary.spend)}
               </span>
             )}
             <span
-              className="text-xs font-bold"
+              className="text-[13px] font-bold"
               style={{
                 color:
                   item.status === "saved"
@@ -541,7 +541,7 @@ function ImportList({
               </button>
             )}
           </div>
-          <p className="mt-1 truncate pl-8 text-[11px] text-[var(--nb-text-3)]">
+          <p className="mt-1 truncate pl-8 text-xs text-[var(--nb-text-3)]">
             {item.fileName}
             {item.unmatched > 0 && item.status !== "needs_account"
               ? ` ・ 名前の形が違うキャンペーン ${item.unmatched} 件も、このアカウントとして含めています`
@@ -578,7 +578,7 @@ function NewAccountForm({
   const valid = /^[A-Z]{1,6}$/.test(form.code) && form.name.trim().length > 0;
   return (
     <div className="mt-2.5 grid gap-2 pl-8">
-      <p className="text-sm leading-relaxed">
+      <p className="text-[15px] leading-relaxed">
         {code
           ? `はじめて見るアカウント記号「${code}」です。`
           : "キャンペーン名からアカウントを判別できませんでした。"}
@@ -651,7 +651,9 @@ function NewAccountForm({
         </button>
       </div>
       {failed && (
-        <p className="text-sm text-[var(--nb-down)]">登録できませんでした。</p>
+        <p className="text-[15px] text-[var(--nb-down)]">
+          登録できませんでした。
+        </p>
       )}
     </div>
   );
@@ -714,7 +716,7 @@ function Coverage({ state }: { state: CostsState }) {
   );
   if (accounts.length === 0) {
     return (
-      <p className="text-sm text-[var(--nb-text-2)]">
+      <p className="text-[15px] text-[var(--nb-text-2)]">
         アカウントがまだ登録されていません。エクスポートを置くと、登録の案内が出ます。
       </p>
     );
@@ -735,12 +737,12 @@ function Coverage({ state }: { state: CostsState }) {
             <span
               key={account.code}
               title={`${account.name}（${account.code}）`}
-              className="truncate text-[11px] font-bold text-[var(--nb-text-2)]"
+              className="truncate text-xs font-bold text-[var(--nb-text-2)]"
             >
               {account.name}
             </span>
           ))}
-          <span className="text-right text-[11px] font-bold text-[var(--nb-text-2)]">
+          <span className="text-right text-xs font-bold text-[var(--nb-text-2)]">
             実績の合計
           </span>
           {days.map((day, back) => {
@@ -754,10 +756,10 @@ function Coverage({ state }: { state: CostsState }) {
             );
             return (
               <div key={day} className="contents">
-                <span className="text-xs tabular-nums text-[var(--nb-text)]">
+                <span className="text-[13px] tabular-nums text-[var(--nb-text)]">
                   {formatNumbersDay(day)}
                   {back === 0 && (
-                    <span className="ml-1 text-[10px] text-[var(--nb-text-2)]">
+                    <span className="ml-1 text-xs text-[var(--nb-text-2)]">
                       今日
                     </span>
                   )}
@@ -778,7 +780,7 @@ function Coverage({ state }: { state: CostsState }) {
                   );
                 })}
                 <span
-                  className="text-right text-xs font-bold tabular-nums"
+                  className="text-right text-[13px] font-bold tabular-nums"
                   style={{
                     color: entered ? "var(--nb-text)" : "var(--nb-text-3)",
                   }}
@@ -790,7 +792,7 @@ function Coverage({ state }: { state: CostsState }) {
           })}
         </div>
       </div>
-      <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--nb-text-2)]">
+      <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[var(--nb-text-2)]">
         <span className="flex items-center gap-1.5">
           <span
             className="h-2.5 w-2.5 rounded-[2px]"
@@ -890,7 +892,7 @@ function OtherMedia({
           ))}
         </select>
         <label className="relative">
-          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-[var(--nb-text-3)]">
+          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[15px] text-[var(--nb-text-3)]">
             ¥
           </span>
           <input
@@ -912,15 +914,17 @@ function OtherMedia({
           {busy ? "保存中..." : "保存する"}
         </button>
       </form>
-      <p className="text-xs leading-relaxed text-[var(--nb-text-2)]">
+      <p className="text-[13px] leading-relaxed text-[var(--nb-text-2)]">
         配信していない日は 0 を入れると「実績
         0円」になります。Xは、エクスポートを置いた日はそちらが優先されます。
       </p>
       {failed && (
-        <p className="text-sm text-[var(--nb-down)]">保存できませんでした。</p>
+        <p className="text-[15px] text-[var(--nb-down)]">
+          保存できませんでした。
+        </p>
       )}
       {state.daily.length > 0 && (
-        <ul className="grid gap-1 border-t border-[var(--nb-border)] pt-3 text-sm tabular-nums">
+        <ul className="grid gap-1 border-t border-[var(--nb-border)] pt-3 text-[15px] tabular-nums">
           {state.daily.map((entry) => (
             <li
               key={`${entry.day}-${entry.medium}`}
@@ -1101,10 +1105,10 @@ function PlanEditor({
 
   return (
     <div className="grid gap-3">
-      <p className="flex min-h-5 flex-wrap items-baseline gap-x-3 text-xs tabular-nums text-[var(--nb-text-2)]">
+      <p className="flex min-h-5 flex-wrap items-baseline gap-x-3 text-[13px] tabular-nums text-[var(--nb-text-2)]">
         {hover !== null ? (
           <>
-            <span className="text-sm font-bold text-[var(--nb-text)]">
+            <span className="text-[15px] font-bold text-[var(--nb-text)]">
               {hover}時台{" "}
               {Number.isFinite(hoverAmount) ? yen(hoverAmount as number) : "–"}
             </span>
@@ -1122,11 +1126,11 @@ function PlanEditor({
       {/* 棒グラフ。なぞった位置の高さを、その時間帯の金額にする。 */}
       <div className="rounded-xl border border-[var(--nb-border)] bg-[var(--nb-bg)] px-3 pb-2 pt-3">
         <div className="relative pr-11">
-          <span className="pointer-events-none absolute -top-1.5 right-0 text-[10px] tabular-nums text-[var(--nb-text-3)]">
+          <span className="pointer-events-none absolute -top-1.5 right-0 text-xs tabular-nums text-[var(--nb-text-3)]">
             {yen(scale)}
           </span>
           <span
-            className="pointer-events-none absolute right-0 text-[10px] tabular-nums text-[var(--nb-text-3)]"
+            className="pointer-events-none absolute right-0 text-xs tabular-nums text-[var(--nb-text-3)]"
             style={{ top: "calc(50% - 0.45rem)" }}
           >
             {yen(scale / 2)}
@@ -1189,7 +1193,7 @@ function PlanEditor({
             })}
           </div>
         </div>
-        <div className="mt-1 flex gap-[3px] pr-11 text-[10px] tabular-nums text-[var(--nb-text-3)]">
+        <div className="mt-1 flex gap-[3px] pr-11 text-xs tabular-nums text-[var(--nb-text-3)]">
           {amounts.map((_, hour) => (
             <span key={hour} className="flex-1 text-center">
               {hour % 3 === 0 ? hour : ""}
@@ -1208,7 +1212,7 @@ function PlanEditor({
                 hover === hour ? "var(--nb-accent)" : "var(--nb-border-strong)",
             }}
           >
-            <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] tabular-nums text-[var(--nb-text-3)]">
+            <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-xs tabular-nums text-[var(--nb-text-3)]">
               {hour}時
             </span>
             <input
@@ -1233,7 +1237,7 @@ function PlanEditor({
                 event.preventDefault();
                 inputs.current[(hour + 1) % 24]?.focus();
               }}
-              className="h-8 w-full bg-transparent pl-8 pr-2 text-right text-sm tabular-nums text-[var(--nb-text)] outline-none"
+              className="h-8 w-full bg-transparent pl-8 pr-2 text-right text-[15px] tabular-nums text-[var(--nb-text)] outline-none"
             />
           </label>
         ))}
@@ -1269,19 +1273,17 @@ function PlanEditor({
 
       <div className="flex flex-wrap items-end gap-x-5 gap-y-3 border-t border-[var(--nb-border)] pt-3">
         <div>
-          <p className="text-[11px] font-bold text-[var(--nb-text-2)]">
-            1日の合計
-          </p>
+          <p className="text-xs font-bold text-[var(--nb-text-2)]">1日の合計</p>
           <p className="mt-0.5 text-xl font-bold leading-none tabular-nums">
             {yen(total)}
           </p>
-          <p className="mt-1 min-h-4 text-[11px] tabular-nums text-[var(--nb-text-2)]">
+          <p className="mt-1 min-h-4 text-xs tabular-nums text-[var(--nb-text-2)]">
             {current && total !== savedTotal
               ? `いまの計画より ${total > savedTotal ? "+" : "−"}${yen(Math.abs(total - savedTotal))}`
               : ""}
           </p>
         </div>
-        <label className="grid gap-1 text-[11px] font-bold text-[var(--nb-text-2)]">
+        <label className="grid gap-1 text-xs font-bold text-[var(--nb-text-2)]">
           いつから使うか
           <input
             type="date"
@@ -1319,7 +1321,7 @@ function PlanEditor({
       </div>
       <p
         role="status"
-        className="min-h-4 text-xs font-bold"
+        className="min-h-4 text-[13px] font-bold"
         style={{
           color: notice?.tone === "ng" ? "var(--nb-down)" : "var(--nb-up)",
         }}
@@ -1328,16 +1330,16 @@ function PlanEditor({
       </p>
 
       <div className="border-t border-[var(--nb-border)] pt-3">
-        <h3 className="text-[11px] font-bold text-[var(--nb-text-2)]">
+        <h3 className="text-xs font-bold text-[var(--nb-text-2)]">
           登録済みの計画
         </h3>
         {plans.length === 0 ? (
-          <p className="mt-1.5 text-xs text-[var(--nb-text-2)]">
+          <p className="mt-1.5 text-[13px] text-[var(--nb-text-2)]">
             まだありません。実績が入っていない時間帯の広告費は 0
             として扱われます。
           </p>
         ) : (
-          <ul className="mt-1.5 grid gap-1 text-xs tabular-nums">
+          <ul className="mt-1.5 grid gap-1 text-[13px] tabular-nums">
             {plans.slice(0, 5).map((plan) => (
               <li key={plan.from} className="flex items-center gap-3">
                 <span className="w-28 text-[var(--nb-text-2)]">
@@ -1351,12 +1353,12 @@ function PlanEditor({
                   </span>
                 </span>
                 {plan.from === current?.from && (
-                  <span className="rounded-full border border-[var(--nb-border-strong)] px-2 py-0.5 text-[10px] font-bold text-[var(--nb-text)]">
+                  <span className="rounded-full border border-[var(--nb-border-strong)] px-2 py-0.5 text-xs font-bold text-[var(--nb-text)]">
                     いま使っている計画
                   </span>
                 )}
                 {plan.from > today && (
-                  <span className="text-[10px] text-[var(--nb-text-2)]">
+                  <span className="text-xs text-[var(--nb-text-2)]">
                     これから
                   </span>
                 )}
