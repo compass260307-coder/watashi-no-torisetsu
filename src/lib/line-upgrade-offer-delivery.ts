@@ -1,7 +1,7 @@
 import "server-only";
-import { pushLineMessages, replyLineMessages, type LineOutgoingMessage } from "@/lib/line";
+import { replyLineMessages, type LineOutgoingMessage } from "@/lib/line";
 
-async function deliver(messages: LineOutgoingMessage[], send: () => Promise<boolean>, kind: "reply" | "push") {
+async function deliver(messages: LineOutgoingMessage[], send: () => Promise<boolean>, kind: "reply") {
   // Duplicate webhooks return no messages. Never consume a reply token for them.
   if (!messages.length) return true;
   if (messages.length > 5) {
@@ -21,8 +21,4 @@ export function replyLineUpgradeMessages(replyToken: string, _lineUserId: string
   // Send the entire offer immediately, with one use of the webhook's reply token.
   // No background delay, automatic retry or push fallback after an uncertain reply.
   return deliver(messages, () => replyLineMessages(replyToken, messages), "reply");
-}
-export function pushLineUpgradeMessages(lineUserId: string, messages: LineOutgoingMessage[]) {
-  // LIFF linking has no reply token. Keep this path separate from webhook replies.
-  return deliver(messages, () => pushLineMessages(lineUserId, messages), "push");
 }

@@ -15,7 +15,6 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 import {
   isLinePlusPassPlan,
-  LINE_PLUS_PLAN_IDS,
   LINE_PLUS_PLANS,
   type LinePlusPassPlanId,
   type LinePlusPlanId,
@@ -68,10 +67,6 @@ export function linePlusPlanPriceId(planId: LinePlusPlanId): string | null {
 
 export function linePlusPlanPriceConfigured(planId: LinePlusPlanId): boolean {
   return linePlusPlanPriceId(planId) !== null;
-}
-
-export function configuredLinePlusPlanIds(): LinePlusPlanId[] {
-  return LINE_PLUS_PLAN_IDS.filter(linePlusPlanPriceConfigured);
 }
 
 export function linePlusDailyLimit(): number {
@@ -241,19 +236,6 @@ export async function findActiveLinePlusPass(
   return { expiresAt: data.current_period_end, planId };
 }
 
-/** @deprecated 旧LP互換。新規表示は findActiveLinePlusPass を使う。 */
-export async function findActiveWeekPass(
-  lineUserId: string,
-): Promise<{ expiresAt: string } | null> {
-  const pass = await findActiveLinePlusPass(lineUserId);
-  return pass ? { expiresAt: pass.expiresAt } : null;
-}
-
-/** @deprecated 旧LP互換。7日パスの設定を返す。 */
-export function linePlusWeekPriceConfigured(): boolean {
-  return linePlusPlanPriceConfigured("week");
-}
-
 /** 無期限プラン (買い切り¥9,800) を持っているか。LPの表示分岐用。 */
 export async function hasLifetimeLinePlus(
   lineUserId: string,
@@ -274,11 +256,6 @@ export async function hasLifetimeLinePlus(
     return false;
   }
   return (data ?? []).length > 0;
-}
-
-/** @deprecated 無期限プランの新規販売は終了。 */
-export function linePlusLifetimePriceConfigured(): boolean {
-  return false;
 }
 
 /**

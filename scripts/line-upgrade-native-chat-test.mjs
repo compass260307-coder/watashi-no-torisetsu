@@ -174,7 +174,6 @@ async function link({ token, status = 'linked', force = false, pushAvailable = t
     '@/lib/line-alice': {lineAliceChatEnabled:()=>true}, '@/lib/line-events': {recordLineEvent:async()=>{}},
     '@/lib/line-linking': {consumeLineLinkCode:async()=>{consumed++;return {status,user:{id:'owner',ownerToken:'owner-token'},switched:force};},lineLinkSuccessMessage:()=> '普通の連携案内'},
     '@/lib/line-upgrade-chat': {startLineUpgradeChat:async()=>{starts++;return first;}}, '@/lib/line-upgrade-intent': intent,
-    '@/lib/line-upgrade-offer-delivery': {pushLineUpgradeMessages:async(_user,messages)=>{sends.push(messages);return true;}},
     '@/lib/origin-check': {checkOrigin:()=>({ok:true})},
   }, {process:{env:{LINE_LOGIN_CHANNEL_ID:'test-channel'}},fetch:async()=>new Response(JSON.stringify({iss:'https://access.line.me',aud:'test-channel',sub:'U'+'1'.repeat(32),exp:Math.floor(Date.now()/1000)+3600}))});
   const response=await route.POST(new NextRequest('https://example.test/api/line/link',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code,idToken:'i'.repeat(40),force,...(token!==undefined?{intentToken:token}:{})})}));

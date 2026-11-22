@@ -447,10 +447,10 @@ export async function POST(request: NextRequest) {
   if (notificationLimit.allowed) {
     after(async () => {
       try {
-        // 1. owner の連絡先候補 (email + line_user_id + display_name + owner_token) を取得
+        // 1. owner の連絡先候補 (email + display_name + owner_token) を取得
         const { data: ownerRow, error: ownerLookupErr } = await supabaseAdmin
           .from("users")
-          .select("email, line_user_id, display_name, owner_token")
+          .select("email, display_name, owner_token")
           .eq("id", ownerUserId)
           .maybeSingle();
         if (ownerLookupErr) {
