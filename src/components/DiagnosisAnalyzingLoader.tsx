@@ -83,6 +83,7 @@ export function DiagnosisAnalyzingLoader({
   slides,
   slideDurationsMs,
   slidesLabel,
+  startDelayMs = 0,
   fontFamily = FONT_STACK,
 }: {
   messages?: string[];
@@ -97,6 +98,9 @@ export function DiagnosisAnalyzingLoader({
   slideDurationsMs?: number[];
   // 各スライド左上の見出し。全カード共通で、番号は付けない。
   slidesLabel?: string;
+  // 進行バーとチェックリストを出し始めるまでの待ち時間 (ms)。画面の登場の演出が終わってから
+  // 読み込みを始めたいときに指定する。totalMs は、この待ち時間を除いた読み込みの長さ。
+  startDelayMs?: number;
   fontFamily?: string;
 } = {}) {
   const [messageIndex, setMessageIndex] = useState(0);
@@ -127,11 +131,17 @@ export function DiagnosisAnalyzingLoader({
   }, [messageIndex, messageCount, messageDurationsMs]);
 
   useEffect(() => {
-    const stepInterval = setInterval(() => {
-      setCompletedSteps((prev) => Math.min(prev + 1, stepCount));
-    }, totalMs / Math.max(stepCount, 1));
-    return () => clearInterval(stepInterval);
-  }, [stepCount, totalMs]);
+    let stepInterval: ReturnType<typeof setInterval> | undefined;
+    const start = setTimeout(() => {
+      stepInterval = setInterval(() => {
+        setCompletedSteps((prev) => Math.min(prev + 1, stepCount));
+      }, totalMs / Math.max(stepCount, 1));
+    }, startDelayMs);
+    return () => {
+      clearTimeout(start);
+      clearInterval(stepInterval);
+    };
+  }, [stepCount, totalMs, startDelayMs]);
 
   const slideCount = slides?.length ?? 0;
   const slideDurationMs =
@@ -195,6 +205,11 @@ export function DiagnosisAnalyzingLoader({
       {/* スライド表示時はスライドの文が主役なので、切り替わる解析メッセージは出さない。 */}
       {slides ? null : message}
 
+      {/* 進行バーとチェックリスト。startDelayMs があるときは、その時間がたってからふわっと出て進み始める。 */}
+      <div
+        className={`flex w-full flex-col items-center ${startDelayMs > 0 ? "animate-fade-in" : ""}`}
+        style={startDelayMs > 0 ? { animationDelay: `${startDelayMs}ms` } : undefined}
+      >
       {/* Progress bar (淡ブルートラック + Sora ブルー塗り) */}
       <div
         className="mb-6 h-1.5 w-72 max-w-full overflow-hidden rounded-full"
@@ -203,7 +218,12 @@ export function DiagnosisAnalyzingLoader({
       >
         <div
           className="animate-progress-20s h-full rounded-full"
-          style={{ backgroundColor: SORA, animationDuration: `${totalMs}ms` }}
+          style={{
+            backgroundColor: SORA,
+            animationDuration: `${totalMs}ms`,
+            animationDelay: `${startDelayMs}ms`,
+            animationFillMode: "both",
+          }}
         />
       </div>
 
@@ -261,6 +281,7 @@ export function DiagnosisAnalyzingLoader({
           );
         })}
       </ul>
+      </div>
     </div>
   );
 }
@@ -341,7 +362,7 @@ function Face({ src, size, ring }: { src: string; size: number; ring: string }) 
 function NameChip({ label, color }: { label: string; color: string }) {
   return (
     <span
-      className="mt-2 inline-block rounded-full px-2.5 py-1 text-[11px] font-black leading-none text-white"
+      className="mt-2 inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-[11px] font-black leading-none text-white"
       style={{ backgroundColor: color }}
     >
       {label}
@@ -859,6 +880,376 @@ function ChatVisual({
   );
 }
 
+// (友達側) 最初のあいさつ: フェルトの絵 (地色が白) を帯の色になじませて出し、紙吹雪を降らせる。
+// 要素の両端 (percent %) を透明へぼかす指定。絵の地色は真っ白ではないので、枠の線が見えないようにする。
+function fadeEdges(direction: "to right" | "to bottom", percent: number): React.CSSProperties {
+  const mask = `linear-gradient(${direction}, transparent 0, #000 ${percent}%, #000 ${100 - percent}%, transparent 100%)`;
+  return { maskImage: mask, WebkitMaskImage: mask };
+}
+
+// 紙吹雪。帯の上から下へ、ゆっくり回りながら降り続ける (帯の外は切れて見えない)。
+const CONFETTI_COLORS = ["#F6C544", "#FF8FB1", "#8E8EF5", "#6FBF73", "#7CC8E0"];
+const CONFETTI = [
+  { left: 4, size: 7, delay: 0, duration: 3200, round: false },
+  { left: 11, size: 5, delay: 1400, duration: 3800, round: true },
+  { left: 18, size: 6, delay: 700, duration: 3000, round: false },
+  { left: 27, size: 5, delay: 2100, duration: 3600, round: true },
+  { left: 36, size: 6, delay: 300, duration: 4000, round: false },
+  { left: 47, size: 5, delay: 1700, duration: 3300, round: true },
+  { left: 58, size: 6, delay: 900, duration: 3700, round: false },
+  { left: 66, size: 5, delay: 2500, duration: 3100, round: true },
+  { left: 74, size: 7, delay: 500, duration: 3500, round: false },
+  { left: 82, size: 5, delay: 1900, duration: 3900, round: true },
+  { left: 89, size: 6, delay: 1100, duration: 3200, round: false },
+  { left: 95, size: 5, delay: 2800, duration: 3600, round: true },
+];
+
+function Confetti() {
+  return (
+    <>
+      {CONFETTI.map((piece, i) => (
+        <span
+          key={i}
+          className="slide-confetti pointer-events-none absolute -top-3"
+          style={{
+            left: `${piece.left}%`,
+            width: piece.size,
+            height: piece.round ? piece.size : piece.size * 1.6,
+            borderRadius: piece.round ? "50%" : 2,
+            backgroundColor: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+            animationDelay: `${piece.delay}ms`,
+            animationDuration: `${piece.duration}ms`,
+          }}
+          aria-hidden
+        />
+      ))}
+    </>
+  );
+}
+
+// フェルトの絵 (地色が白)。帯の中央に置き、乗算で帯の色になじませる。
+function FeltArt({ src }: { src: string }) {
+  return (
+    // 乗算は一番外側に付ける (動きを付けた要素の内側に置くと、帯の色と混ざらず白い四角が残る)。
+    <div
+      className="absolute left-[35px] top-0 h-[164px] w-[246px]"
+      style={{ mixBlendMode: "multiply", ...fadeEdges("to right", 5) }}
+    >
+      <div className="h-full w-full" style={fadeEdges("to bottom", 4)}>
+        <Pop delay={100} className="h-full w-full">
+          <SmoothImage
+            src={src}
+            alt=""
+            width={492}
+            height={328}
+            unoptimized
+            fadeIn={false}
+            className="h-full w-full object-contain"
+          />
+        </Pop>
+      </div>
+    </div>
+  );
+}
+
+function WelcomeVisual({
+  visual,
+}: {
+  visual: Extract<AnalyzingSlide["visual"], { kind: "welcome" }>;
+}) {
+  return (
+    <div className="relative h-[164px] w-[316px] shrink-0">
+      <FeltArt src={visual.image} />
+      <Confetti />
+    </div>
+  );
+}
+
+// (友達側) やること: 質問カード1枚だけの図。丸の1つが選ばれ、回答数が total まで進んで
+// 完了スタンプが出る。要素は「質問・丸・回答数」の3つに絞る。
+// 丸の色は実物 (src/components/diagnosis/LikertScale.tsx) と同じ並び:
+//   左 = そう思う側 (Sora ブルー) / 中央 = グレー / 右 = そう思わない側 (ピンク)。
+const SCALE_DOTS = [
+  { size: 27, color: "#5B5BEF" },
+  { size: 22, color: "#C6C6F5" },
+  { size: 17, color: "#A9A9BC" },
+  { size: 22, color: "#F3C4DA" },
+  { size: 27, color: "#E86AA6" },
+];
+const SCALE_PICK_INDEX = 0;
+const QUESTION_PICK_MS = 1000; // 丸が選ばれるまで
+const COUNT_START_MS = 1600; // 回答数が進み始めるまで
+const COUNT_RUN_MS = 1400; // 回答数が total まで進む時間
+
+function QuestionsVisual({
+  visual,
+}: {
+  visual: Extract<AnalyzingSlide["visual"], { kind: "questions" }>;
+}) {
+  const [picked, setPicked] = useState(false);
+  const [count, setCount] = useState(1);
+  const total = visual.total;
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const pick = setTimeout(() => setPicked(true), QUESTION_PICK_MS);
+    const start = setTimeout(() => {
+      interval = setInterval(() => {
+        setCount((prev) => {
+          if (prev >= total) {
+            clearInterval(interval);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, COUNT_RUN_MS / Math.max(total - 1, 1));
+    }, COUNT_START_MS);
+    return () => {
+      clearTimeout(pick);
+      clearTimeout(start);
+      clearInterval(interval);
+    };
+  }, [total]);
+  return (
+    <div className="relative h-[164px] w-[316px] shrink-0">
+      {/* カードは帯の上下中央に置く (上下の余白をそろえる)。 */}
+      <div className="absolute inset-0 flex items-center justify-center">
+        <Pop delay={100} className="w-[236px] rounded-[18px] bg-white px-4 pb-3.5 pt-3 shadow-[0_6px_18px_rgba(46,46,92,0.10)]">
+          {/* 見出しは回答数の札だけ (いま何問目か)。 */}
+          <div className="flex">
+            <span
+              className="rounded-full px-2.5 py-[5px] text-[12px] font-black leading-none text-white tabular-nums"
+              style={{ backgroundColor: SORA }}
+            >
+              {count}/{total}
+              {visual.unit}
+            </span>
+          </div>
+          <p className="mt-2 whitespace-pre-line text-left text-[14px] font-black leading-[1.45]" style={{ color: NAVY }}>
+            {visual.question}
+          </p>
+          <div className="mt-2.5 flex items-center justify-between px-2">
+            {SCALE_DOTS.map((dot, i) => {
+              const on = picked && i === SCALE_PICK_INDEX;
+              return (
+                <span
+                  key={i}
+                  className="flex items-center justify-center rounded-full border-[2.5px]"
+                  style={{
+                    width: dot.size,
+                    height: dot.size,
+                    borderColor: dot.color,
+                    backgroundColor: on ? dot.color : "#FFFFFF",
+                    transform: `scale(${on ? 1.15 : 1})`,
+                    transition:
+                      "background-color 160ms ease, transform 380ms cubic-bezier(0.34, 1.7, 0.64, 1)",
+                  }}
+                >
+                  {on ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : null}
+                </span>
+              );
+            })}
+          </div>
+        </Pop>
+      </div>
+      <At x={264} top={3}>
+        <Stamp label={visual.badge} delay={COUNT_START_MS + COUNT_RUN_MS + 250} />
+      </At>
+    </div>
+  );
+}
+
+// (友達側) 回答の行き先: 左の回答用紙 (チェックが3つ付く) から紙ひこうきが飛び、右の本人に届く。
+// 届くと、本人の顔に赤い「1」の印が付く (スタンプは出さない)。
+const SHEET_ROW_WIDTHS = [52, 40, 46];
+const FLY_AT_MS = 1300; // 紙ひこうきが飛び立つ
+const ARRIVE_AT_MS = FLY_AT_MS + 1000; // 本人に届く
+
+function DeliverVisual({
+  visual,
+}: {
+  visual: Extract<AnalyzingSlide["visual"], { kind: "deliver" }>;
+}) {
+  return (
+    <div className="relative h-[164px] w-[316px] shrink-0">
+      {/* 飛んでいく道すじ。 */}
+      <svg className="animate-fade-in absolute inset-0" width="316" height="164" viewBox="0 0 316 164" fill="none" aria-hidden style={{ animationDelay: "900ms" }}>
+        <path d="M136 92 Q 172 44 208 74" {...DOTTED} />
+      </svg>
+      {/* 回答用紙。 */}
+      <div className="absolute left-[24px] top-[27px]">
+        <Pop delay={100}>
+          <div className="w-[108px] -rotate-[5deg] rounded-[14px] bg-white px-3 pb-3.5 pt-3 shadow-[0_6px_18px_rgba(46,46,92,0.12)]">
+            <p className="whitespace-nowrap text-left text-[11px] font-black leading-none" style={{ color: NAVY }}>
+              {visual.sheetLabel}
+            </p>
+            <div className="mt-2.5 flex flex-col gap-2">
+              {SHEET_ROW_WIDTHS.map((width, i) => (
+                <Pop key={i} delay={350 + i * 220} className="flex origin-left items-center gap-2">
+                  <span
+                    className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full"
+                    style={{ backgroundColor: SORA }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="4.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </span>
+                  <span className="h-2 rounded-full" style={{ width, backgroundColor: TRACK }} />
+                </Pop>
+              ))}
+            </div>
+          </div>
+        </Pop>
+      </div>
+      {/* 紙ひこうき。回答用紙のそばから弧を描いて飛び、本人の手前で消える。 */}
+      <div
+        className="slide-fly absolute left-[190px] top-[56px] flex h-[34px] w-[34px] items-center justify-center rounded-full shadow-[0_4px_12px_rgba(91,91,239,0.40)]"
+        style={{ backgroundColor: SORA, animationDelay: `${FLY_AT_MS}ms` }}
+        aria-hidden
+      >
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M22 2 11 13" />
+          <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
+        </svg>
+      </div>
+      {/* 本人。届いた瞬間に赤い印が付く。 */}
+      <At x={250} top={36}>
+        <Pop delay={250} className="flex flex-col items-center">
+          <span className="relative">
+            <Face src={visual.recipientFace} size={74} ring={SORA} />
+            <span className="absolute -right-1 -top-1">
+              <Pop delay={ARRIVE_AT_MS}>
+                <span
+                  className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-[12px] font-black leading-none text-white"
+                  style={{ backgroundColor: "#EF4444", boxShadow: "0 0 0 2.5px #fff" }}
+                >
+                  1
+                </span>
+              </Pop>
+            </span>
+          </span>
+          <NameChip label={visual.recipientName} color={SORA} />
+        </Pop>
+      </At>
+    </div>
+  );
+}
+
+// (友達側) 本人が得るもの: 結果のカードが3枚 (キャラ / 理解度 / ギャップ) 順にポンと出て、
+// 最後に「ほかにもある」の札が出る。カードは左右を少し傾け、中央を一段高くして扇形に見せる。
+const RESULT_CARD_AT_MS = [200, 750, 1300];
+const RESULT_MORE_AT_MS = 2100;
+const RESULT_BARS = [
+  { color: "#3FA7C9", left: 28, width: 46 },
+  { color: "#3BA776", left: 44, width: 24 },
+  { color: "#E0A93B", left: 18, width: 40 },
+];
+
+function ResultCard({
+  label,
+  index,
+  children,
+}: {
+  label: string;
+  index: number;
+  children: React.ReactNode;
+}) {
+  const tilt = index === 0 ? -5 : index === 2 ? 5 : 0;
+  return (
+    <div className="absolute" style={{ left: 14 + index * 98, top: index === 1 ? 10 : 18 }}>
+      <Pop delay={RESULT_CARD_AT_MS[index]}>
+        <div
+          className="flex h-[104px] w-[92px] flex-col items-center rounded-[14px] bg-white px-2 pb-2 pt-2.5 shadow-[0_6px_18px_rgba(46,46,92,0.12)]"
+          style={{ transform: `rotate(${tilt}deg)` }}
+        >
+          <span
+            className="whitespace-nowrap rounded-full px-2 py-1 text-[10px] font-black leading-none text-white"
+            style={{ backgroundColor: SORA }}
+          >
+            {label}
+          </span>
+          <div className="flex w-full flex-1 flex-col items-center justify-center">{children}</div>
+        </div>
+      </Pop>
+    </div>
+  );
+}
+
+function ResultsVisual({
+  visual,
+}: {
+  visual: Extract<AnalyzingSlide["visual"], { kind: "results" }>;
+}) {
+  // 理解度の数字は、2枚目のカードが出たところで 0 から数え上がる。棒はそのあと伸びる。
+  const [score, setScore] = useState(0);
+  const [grown, setGrown] = useState(false);
+  const target = visual.score;
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | undefined;
+    const start = setTimeout(() => {
+      interval = setInterval(() => {
+        setScore((prev) => {
+          const next = Math.min(prev + 3, target);
+          if (next >= target) clearInterval(interval);
+          return next;
+        });
+      }, 24);
+    }, RESULT_CARD_AT_MS[1] + 250);
+    const grow = setTimeout(() => setGrown(true), RESULT_CARD_AT_MS[2] + 250);
+    return () => {
+      clearTimeout(start);
+      clearTimeout(grow);
+      clearInterval(interval);
+    };
+  }, [target]);
+  return (
+    <div className="relative h-[164px] w-[316px] shrink-0">
+      <ResultCard label={visual.labels[0]} index={0}>
+        <Face src={visual.face} size={44} ring={visual.faceColor} />
+        <span className="mt-1.5 whitespace-nowrap text-[10px] font-black leading-none" style={{ color: NAVY }}>
+          {visual.word}
+        </span>
+      </ResultCard>
+      <ResultCard label={visual.labels[1]} index={1}>
+        <span className="font-black leading-none tabular-nums" style={{ color: SORA }}>
+          <span className="text-[32px]">{score}</span>
+          <span className="text-[15px]">%</span>
+        </span>
+      </ResultCard>
+      <ResultCard label={visual.labels[2]} index={2}>
+        <div className="flex w-full flex-col gap-[7px] px-1">
+          {RESULT_BARS.map((bar) => (
+            <div key={bar.color} className="relative h-[7px] rounded-full" style={{ backgroundColor: `${bar.color}2E` }}>
+              <div
+                className="absolute inset-y-0 rounded-full"
+                style={{
+                  backgroundColor: bar.color,
+                  left: `${bar.left}%`,
+                  width: grown ? `${bar.width}%` : "0%",
+                  transition: "width 700ms cubic-bezier(0.34, 1.4, 0.64, 1)",
+                }}
+              />
+            </div>
+          ))}
+        </div>
+      </ResultCard>
+      <div className="absolute inset-x-0 top-[133px] flex justify-center">
+        <Pop delay={RESULT_MORE_AT_MS}>
+          <span
+            className="block whitespace-nowrap rounded-full bg-white px-3 py-1.5 text-[11px] font-black leading-none shadow-[0_3px_10px_rgba(46,46,92,0.10)]"
+            style={{ color: NAVY }}
+          >
+            <span style={{ color: SORA }}>＋</span> {visual.more}
+          </span>
+        </Pop>
+      </div>
+    </div>
+  );
+}
+
 // ⑤ どこから: 結果ページの下部ナビを模し、「友達診断」タブを吹き出しと輪で指す。
 // アイコンは実物 (src/components/BottomNav.tsx) と同じ形・同じ並び。実物を変えたらここも揃える。
 const NAV_ACTIVE = "#2A3A5C";
@@ -1005,6 +1396,8 @@ function slideFaces(slide: AnalyzingSlide): string[] {
   if (v.kind === "entry") return [v.selfFace];
   if (v.kind === "chat") return [v.friendFace];
   if (v.kind === "quiz") return [v.friendFace];
+  if (v.kind === "results") return [v.face];
+  if (v.kind === "deliver") return [v.recipientFace];
   return [];
 }
 
@@ -1026,6 +1419,8 @@ function AnalyzingSlideDeck({
   //   正面 / 右奥 (次の1枚) / 左奥 (前の1枚) / それ以外は真後ろに隠す
   // 正面のカードが左奥へ下がり、右奥のカードが正面へ出てくる。
   const count = slides.length;
+  // 文が2行のスライドがあるときは、その分だけカードを置く枠を高くする。
+  const deckHeight = DECK_HEIGHT + (slides.some((slide) => slide.text.includes("\n")) ? 18 : 0);
   // 絵は 340×270 の固定寸法で組んでいる。画面が狭いときは枠の幅を測り、
   // カード全体 (絵・文字・余白) を同じ比率で縮めて、右端が切れないようにする。
   const frameRef = useRef<HTMLDivElement>(null);
@@ -1043,11 +1438,11 @@ function AnalyzingSlideDeck({
     <div
       ref={frameRef}
       className="mb-7 w-[340px] max-w-full"
-      style={{ height: DECK_HEIGHT * scale }}
+      style={{ height: deckHeight * scale }}
     >
     <div
-      className="relative h-[270px] w-[340px] origin-top-left"
-      style={{ perspective: "800px", transform: `scale(${scale})` }}
+      className="relative w-[340px] origin-top-left"
+      style={{ height: deckHeight, perspective: "800px", transform: `scale(${scale})` }}
     >
       {/* 顔画像を先に読み込み、回ってきたときに欠けて見えないようにする。 */}
       {[...new Set(slides.flatMap(slideFaces))].map((src) => (
@@ -1080,8 +1475,20 @@ function AnalyzingSlideDeck({
             aria-hidden={front ? undefined : "true"}
           >
             {/* 見出しは全カード共通・同じ位置 (番号やカードごとの言い換えはしない)。 */}
-            {label ? (
-              <p className="mb-3.5 px-1.5 pt-0.5 text-[15px] font-black leading-none" style={{ color: NAVY }}>
+            {/* step を持つスライドは、見出しの前に「STEP 1」などの札を出す。 */}
+            {label || slide.step ? (
+              <p
+                className={`mb-3.5 px-1.5 pt-0.5 text-[15px] font-black leading-none ${slide.step ? "flex h-[15px] items-center gap-2" : ""}`}
+                style={{ color: NAVY }}
+              >
+                {slide.step ? (
+                  <span
+                    className="shrink-0 whitespace-nowrap rounded-full px-2.5 py-[5px] text-[11px] font-black leading-none tracking-wider text-white"
+                    style={{ backgroundColor: SORA }}
+                  >
+                    {slide.step}
+                  </span>
+                ) : null}
                 {label}
               </p>
             ) : null}
@@ -1105,12 +1512,21 @@ function AnalyzingSlideDeck({
                 <ChatVisual visual={slide.visual} />
               ) : slide.visual.kind === "entry" ? (
                 <EntryVisual visual={slide.visual} />
+              ) : slide.visual.kind === "deliver" ? (
+                <DeliverVisual visual={slide.visual} />
+              ) : slide.visual.kind === "results" ? (
+                <ResultsVisual visual={slide.visual} />
+              ) : slide.visual.kind === "questions" ? (
+                <QuestionsVisual visual={slide.visual} />
+              ) : slide.visual.kind === "welcome" ? (
+                <WelcomeVisual visual={slide.visual} />
               ) : (
                 <GapVisual visual={slide.visual} />
               )}
             </div>
+            {/* 2行の文は行間と上の余白を詰める (1行のときと同じ行間だと、文の上下と行の間が空きすぎる)。 */}
             <p
-              className="mt-3.5 whitespace-pre-line text-center text-[18px] font-black leading-[1.75]"
+              className={`whitespace-pre-line text-center text-[18px] font-black ${slide.text.includes("\n") ? "mt-2.5 leading-[1.45]" : "mt-3.5 leading-[1.75]"}`}
               style={{ color: NAVY }}
             >
               <SlideText text={slide.text} highlight={slide.highlight} />

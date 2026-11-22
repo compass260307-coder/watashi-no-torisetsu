@@ -17,7 +17,7 @@
 //   - LikertScale コンポーネント (Day 9 で Brand v2 化済、再利用)
 //   - 既存 components/FloatingCTABar (LP 用、別物)
 
-import { Suspense, use, useEffect, useRef, useState } from "react";
+import { Suspense, use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { track } from "@/lib/track";
@@ -28,6 +28,7 @@ import {
   type FriendQuestionV2,
 } from "@/lib/friend-questions-v2";
 import { LikertScale } from "@/components/diagnosis/LikertScale";
+import { FriendWelcomeLoader } from "@/components/friend/FriendWelcomeLoader";
 import { DiagnosisHero } from "@/components/diagnosis/DiagnosisHero";
 import TopHeader from "@/components/top/TopHeader";
 import TopFooter from "@/components/top/TopFooter";
@@ -56,7 +57,14 @@ import { phraseWrapJa } from "@/lib/ja-phrase";
 //   name はモーダル overlay として表示し、入力後すぐ submit() を呼ぶ。
 // submitting フェーズ (回答作成中の待機ページ) は廃止。送信中はメッセージ画面のまま
 // ボタンを「送信中...」表示にし、成功後はそのまま結果ページへ遷移する。
-type Phase = "scale" | "message" | "error";
+// welcome (2026-11-21、日本語版のみ): 質問の前に数秒だけ出す「ようこそ」画面。
+type Phase = "welcome" | "scale" | "message" | "error";
+
+// 冒頭の画面の版。friend_landing_viewed に載せ、反映前後・版ごとに
+// 「リンクを開いた → 回答を始めた」の割合を比べられるようにする。
+const FRIEND_INTRO_VERSION = "welcome_v1";
+// 「ようこそ」画面が消えるのにかける時間。globals.css の friend-welcome-leave と同じ長さにする。
+const WELCOME_LEAVE_MS = 2000;
 
 interface OwnerInfo {
   displayName: string | null;
@@ -177,7 +185,20 @@ function FriendContent({
   );
   // 導線改善: intro (owner トリセツ全文) を廃止し、踏んだ瞬間から質問 (scale) 直行。
   // owner のトリセツ相当は送信完了後の /evaluate/sent で「ご褒美」+自己診断CTAとして表示。
-  const [phase, setPhase] = useState<Phase>("scale");
+  // 日本語版だけ、質問の前に「ようこそ」画面 (数秒で自動的に質問へ進む) をはさむ。
+  const hasWelcome = locale === "ja";
+  const [phase, setPhase] = useState<Phase>(hasWelcome ? "welcome" : "scale");
+  // friend-info の応答が返ったか (成功・失敗どちらでも true)。「ようこそ」画面で、
+  // 名前を含む文を出してよいかの判断に使う。
+  const [ownerReady, setOwnerReady] = useState(previewMode);
+  const introVersion = hasWelcome ? FRIEND_INTRO_VERSION : "none";
+  // 「ようこそ」画面が消えていく途中か。消え終わるまでは質問画面の上に重ねたままにする。
+  const [welcomeLeaving, setWelcomeLeaving] = useState(false);
+  const finishWelcome = useCallback(() => {
+    setWelcomeLeaving(true);
+    setPhase("scale");
+    setTimeout(() => setWelcomeLeaving(false), WELCOME_LEAVE_MS);
+  }, []);
   const [pageIdx, setPageIdx] = useState<number>(0);
   const [scaleAnswers, setScaleAnswers] = useState<Record<number, AnswerValue>>(
     {},
@@ -218,7 +239,10 @@ function FriendContent({
         inviteValidated.current = true;
         if (!trackedLanding.current) {
           trackedLanding.current = true;
-          track("friend_landing_viewed", { inviteCode });
+          track("friend_landing_viewed", {
+            inviteCode,
+            metadata: { intro: introVersion },
+          });
         }
         // API確認より先に最初の回答が行われた場合も、検証完了後に開始イベントを補完する。
         if (
@@ -242,8 +266,9 @@ function FriendContent({
             (data.thirtyTwoTypeId as ThirtyTwoTypeId | null) ?? null,
         });
       })
-      .catch(() => {});
-  }, [inviteCode, previewMode]);
+      .catch(() => {})
+      .finally(() => setOwnerReady(true));
+  }, [inviteCode, previewMode, introVersion]);
 
   // 「次へ」等でステップ (ページ / フェーズ) が変わったら、必ず最上部へ。
   //   setState と同フレームで window.scrollTo すると、まだ差し替わっていない旧ページ上で
@@ -348,7 +373,10 @@ function FriendContent({
       // 確定する。この時点で不足している到達・初回回答イベントを順序どおり補完する。
       if (!trackedLanding.current) {
         trackedLanding.current = true;
-        track("friend_landing_viewed", { inviteCode });
+        track("friend_landing_viewed", {
+          inviteCode,
+          metadata: { intro: introVersion },
+        });
       }
       if (!trackedAnswerStart.current) {
         trackedAnswerStart.current = true;
@@ -392,22 +420,42 @@ function FriendContent({
     return <InvalidInviteScreen locale={locale} />;
   }
 
-  if (phase === "scale") {
+  if (phase === "welcome" || phase === "scale") {
+    // 「ようこそ」画面は、質問画面の上に重ねて出す。質問画面は裏で先に用意しておき
+    // (絵の読み込みも済ませる)、終わったら「ようこそ」画面だけをふわっと消して、
+    // 画面を作り直さずにそのまま質問へつなぐ。重ねている間、裏の質問画面は操作できない。
     return (
-      <ScaleScreen
-        page={pageIdx}
-        locale={locale}
-        totalPages={SCALE_PAGES.length}
-        questions={currentScalePage}
-        subjectLabel={subjectLabel}
-        scaleAnswers={scaleAnswers}
-        perceiverName={perceiverName}
-        onPerceiverNameChange={setPerceiverName}
-        onAnswer={handleScaleAnswer}
-        onNext={handleScaleNext}
-        onPrev={handleScalePrev}
-        isPageComplete={isCurrentScalePageComplete}
-      />
+      <>
+        <div className="contents" inert={phase === "welcome"}>
+          <ScaleScreen
+            page={pageIdx}
+            locale={locale}
+            totalPages={SCALE_PAGES.length}
+            questions={currentScalePage}
+            subjectLabel={subjectLabel}
+            scaleAnswers={scaleAnswers}
+            perceiverName={perceiverName}
+            onPerceiverNameChange={setPerceiverName}
+            onAnswer={handleScaleAnswer}
+            onNext={handleScaleNext}
+            onPrev={handleScalePrev}
+            isPageComplete={isCurrentScalePageComplete}
+          />
+        </div>
+        {phase === "welcome" || welcomeLeaving ? (
+          <div
+            className={`fixed inset-0 z-[60] flex flex-col overflow-y-auto overscroll-contain bg-[#FCFCFC] ${
+              welcomeLeaving ? "friend-welcome-leave pointer-events-none" : ""
+            }`}
+          >
+            <FriendWelcomeLoader
+              ownerName={owner.displayName?.trim() || null}
+              ownerReady={ownerReady}
+              onDone={finishWelcome}
+            />
+          </div>
+        ) : null}
+      </>
     );
   }
 
