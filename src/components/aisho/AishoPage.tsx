@@ -36,6 +36,7 @@ import { compat, type AxisKey, type CompatRank } from "@/lib/aisho-compat";
 //   value import は撤去し、型 (SceneKey) だけ type-only import する (バンドル無害)。
 import type { SceneKey } from "@/lib/aisho-scene-copy";
 import { scrollToPaywall } from "@/lib/scroll-to-paywall";
+import { useAishoEntryAccess } from "@/lib/use-aisho-navigation-access";
 import characterImages from "@/generated/character-images.json";
 import EnSiteFooter from "@/components/en/EnSiteFooter";
 import EnSiteHeader from "@/components/en/EnSiteHeader";
@@ -1159,6 +1160,18 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
     }
   }, []);
   const watcherToken = aishoGate.ownerToken ?? storedToken;
+  // 2026-11-22 本人指示: 日本語版の相性ページは課金済みの人だけの画面にする（検索などから直接来た
+  // 未課金の人に、ここで価格つきの課金カードを見せる導線を無くす）。未課金と確定したら、
+  // 診断済みの人は自分の結果ページへ、未診断の人は診断ページへ送る。
+  // 決済直後（?paid=1。反映待ち）と、権限を確認できなかったとき（通信失敗）は送らない。
+  const entryAccess = useAishoEntryAccess(locale === "ja" && !previewMode && !paidPending);
+  const leavingForFunnel = entryAccess.unlocked === false;
+  useEffect(() => {
+    if (!leavingForFunnel) return;
+    window.location.replace(
+      entryAccess.ownerToken ? `/me/${encodeURIComponent(entryAccess.ownerToken)}` : "/diagnosis",
+    );
+  }, [leavingForFunnel, entryAccess.ownerToken]);
   // 初期値は ?a=&b= から (遅延初期化。effect内setStateを避ける)
   const [slotA, setSlotA] = useState<ThirtyTwoTypeId | null>(() => {
     const a = searchParams.get("a");
@@ -1247,6 +1260,9 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
       resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, [resultShown]);
+
+  // 送り出す直前は、相性の画面や課金カードを一瞬でも見せない。
+  if (leavingForFunnel) return <main className="min-h-screen bg-white" aria-busy="true" />;
 
   return (
     <>

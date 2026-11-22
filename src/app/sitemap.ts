@@ -64,12 +64,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
         languages: localizedLanguages(route.ja, route.ko, route.en, route.id),
       };
       return [
-        {
-          url: absoluteSiteUrl(route.ja),
-          priority: route.priority,
-          changeFrequency: route.changeFrequency,
-          alternates,
-        },
+        ...(route.jaNoindex
+          ? []
+          : [{
+              url: absoluteSiteUrl(route.ja),
+              priority: route.priority,
+              changeFrequency: route.changeFrequency,
+              alternates,
+            }]),
         {
           url: absoluteSiteUrl(route.ko),
           priority: route.priority,
