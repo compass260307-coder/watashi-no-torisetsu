@@ -1,27 +1,36 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   HEADLINES,
   NUMBERS_EARLIEST_DAY,
   formatNumbersClock,
   formatNumbersDay,
-  formatNumbersDelta,
-  formatNumbersValue,
   isNumbersCatchingUp,
-  ratio,
   shiftNumbersDay,
-  sumEvents,
-  sumHours,
   todayInJst,
   type HeadlineKey,
-  type NumbersDayBlock,
-  type NumbersHourEvents,
+  type HeadlineSeriesMode,
   type NumbersPayload,
 } from "@/lib/internal-numbers";
 
 import { NumbersHourlyChart } from "./NumbersHourlyChart";
+import {
+  FriendFlowCard,
+  FunnelCard,
+  HoursCard,
+  KpiRow,
+  SocialCards,
+  SourcesCard,
+} from "./NumbersSections";
+import {
+  Card,
+  NUMBERS_THEME,
+  Segmented,
+  numberFormat,
+  yen,
+} from "./numbers-ui";
 
 // 今日の表示だけ、前回の結果を端末に控えておく。開いた瞬間に前回の数字を出し、
 // 取り直せたら差し替える (集計済みの数字だけで、個人を特定する値は含まない)。
@@ -37,20 +46,8 @@ const CATCH_UP_PAUSE_MS = 300;
 // 時間切れで失敗した呼び出しも、読んだ分は DB のキャッシュに残る。1 回だけ自動でやり直す。
 const AUTO_RETRIES = 1;
 
-const pause = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
-type TabKey = "hours" | "sources" | "funnel" | "social";
-
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "hours", label: "時間別" },
-  { key: "sources", label: "流入元" },
-  { key: "funnel", label: "ファネル" },
-  { key: "social", label: "口コミ" },
-];
-
-const count = new Intl.NumberFormat("ja-JP");
-const yen = (value: number) => `¥${count.format(Math.round(value))}`;
-const percent = (value: number | null, digits = 1) =>
-  value === null ? "–" : `${(value * 100).toFixed(digits)}%`;
+const pause = (ms: number) =>
+  new Promise((resolve) => window.setTimeout(resolve, ms));
 
 function readCache(): NumbersPayload | null {
   try {
@@ -88,7 +85,7 @@ export function NumbersDashboard() {
   const [payload, setPayload] = useState<NumbersPayload | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [metricKey, setMetricKey] = useState<HeadlineKey>("diagnoses");
-  const [tab, setTab] = useState<TabKey>("hours");
+  const [mode, setMode] = useState<HeadlineSeriesMode>("hourly");
   const latestRequest = useRef(0);
 
   const load = useCallback(async (target: string | null) => {
@@ -146,27 +143,87 @@ export function NumbersDashboard() {
   const busy = loading || status === "catching_up";
   // 取り直し中に見えているのが、別の日の数字や端末の控えのときは、そう分かるようにする。
   const stale = loading && payload !== null;
+  const live = payload?.meta.is_today === true && status === "ready";
+  const navButton =
+    "flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--nb-border)] text-[var(--nb-text)] transition-colors hover:border-[var(--nb-border-strong)] hover:bg-[var(--nb-surface-2)] disabled:pointer-events-none disabled:opacity-30";
 
   return (
     <main
-      className="min-h-dvh flex-1 bg-black pb-10 text-[#e7e9ea]"
-      style={{ colorScheme: "dark" }}
+      className="min-h-dvh flex-1 bg-[var(--nb-bg)] pb-10 text-[var(--nb-text)]"
+      style={NUMBERS_THEME}
     >
-      <div className="mx-auto w-full max-w-5xl px-3 pt-3 sm:px-6 sm:pt-6">
-        <header className="flex flex-wrap items-center gap-2">
-          <h1 className="mr-auto text-base font-bold">数値</h1>
+      <header className="sticky top-0 z-30 border-b border-[var(--nb-border)] bg-[color-mix(in_srgb,var(--nb-bg)_82%,transparent)] backdrop-blur-md">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-6 xl:px-8">
+          {/* スマホでは見出しと時刻を縦に重ね、日付の操作と更新ボタンを同じ行に収める。 */}
+          <div className="mr-auto flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
+            <h1 className="text-lg font-bold leading-tight tracking-tight">
+              数値
+            </h1>
+            <p
+              className="flex min-w-0 items-center gap-2 text-xs text-[var(--nb-text-2)]"
+              aria-live="polite"
+            >
+              {payload ? (
+                <>
+                  <span
+                    aria-hidden
+                    className={`h-2 w-2 shrink-0 rounded-full ${live ? "animate-pulse" : ""}`}
+                    style={{
+                      background: live
+                        ? "var(--nb-up)"
+                        : "var(--nb-border-strong)",
+                    }}
+                  />
+                  <span className="truncate tabular-nums">
+                    {payload.meta.is_today
+                      ? `${formatNumbersClock(payload.meta.generated_at)} 時点`
+                      : `${formatNumbersDay(payload.meta.day)} の1日分`}
+                    {stale ? " ・ 取り直しています..." : ""}
+                    {status === "catching_up"
+                      ? " ・ ファネルを集計しています..."
+                      : ""}
+                  </span>
+                </>
+              ) : loading ? (
+                "読み込んでいます..."
+              ) : null}
+            </p>
+          </div>
 
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
+            {shownDay !== today && (
+              <button
+                type="button"
+                onClick={() => show(null)}
+                className="h-9 rounded-lg border border-[var(--nb-border)] px-3 text-sm font-bold transition-colors hover:border-[var(--nb-border-strong)] hover:bg-[var(--nb-surface-2)]"
+              >
+                今日
+              </button>
+            )}
             <button
               type="button"
               aria-label="前の日"
               disabled={shownDay <= NUMBERS_EARLIEST_DAY}
               onClick={() => show(shiftNumbersDay(shownDay, -1))}
-              className="h-9 w-9 rounded-lg border border-[#2a2d31] text-[#e7e9ea] disabled:opacity-30"
+              className={navButton}
             >
-              ‹
+              <svg
+                aria-hidden
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+              >
+                <path
+                  d="M10 3 5 8l5 5"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </button>
-            <label className="relative">
+            <label>
               <span className="sr-only">表示する日</span>
               <input
                 type="date"
@@ -177,7 +234,7 @@ export function NumbersDashboard() {
                   const value = event.target.value;
                   if (value) show(value >= today ? null : value);
                 }}
-                className="h-9 rounded-lg border border-[#2a2d31] bg-transparent px-2 text-sm text-[#e7e9ea]"
+                className="h-9 w-[8.6rem] rounded-lg border border-[var(--nb-border)] bg-transparent px-2 text-sm tabular-nums text-[var(--nb-text)] transition-colors hover:border-[var(--nb-border-strong)] sm:w-auto sm:px-2.5"
               />
             </label>
             <button
@@ -188,9 +245,23 @@ export function NumbersDashboard() {
                 const next = shiftNumbersDay(shownDay, 1);
                 show(next >= today ? null : next);
               }}
-              className="h-9 w-9 rounded-lg border border-[#2a2d31] text-[#e7e9ea] disabled:opacity-30"
+              className={navButton}
             >
-              ›
+              <svg
+                aria-hidden
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+              >
+                <path
+                  d="m6 3 5 5-5 5"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
             </button>
           </div>
 
@@ -199,40 +270,37 @@ export function NumbersDashboard() {
             onClick={() => show(day)}
             disabled={busy}
             aria-busy={busy}
-            className="flex h-9 min-w-[5.5rem] items-center justify-center gap-2 rounded-lg bg-white px-4 text-sm font-bold text-black disabled:opacity-70"
+            className="flex h-9 min-w-9 items-center justify-center gap-2 rounded-lg bg-[var(--nb-text)] px-2.5 text-sm font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-70 sm:min-w-[6.5rem] sm:px-4"
           >
-            {busy && (
-              <span
-                aria-hidden
-                className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-black/30 border-t-black"
+            <svg
+              aria-hidden
+              width="15"
+              height="15"
+              viewBox="0 0 16 16"
+              fill="none"
+              className={busy ? "animate-spin" : ""}
+            >
+              <path
+                d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v2.6h-2.6"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
-            )}
-            {busy ? "更新中..." : "更新"}
+            </svg>
+            {/* スマホでは日付の操作と1行に収めるため、文字は読み上げ用にだけ残す。 */}
+            <span className="sr-only sm:not-sr-only">
+              {busy ? "更新中..." : "更新"}
+            </span>
           </button>
-        </header>
+        </div>
+      </header>
 
-        <p className="mt-2 min-h-5 text-xs text-[#8b8f94]" aria-live="polite">
-          {payload ? (
-            <>
-              {formatNumbersDay(payload.meta.day)}
-              {payload.meta.is_today
-                ? ` ${formatNumbersClock(payload.meta.generated_at)} 時点`
-                : " の1日分"}
-              {" ・ 比較: "}
-              {formatNumbersDay(payload.meta.compare_day)}
-              {payload.meta.is_today ? " の同じ時刻まで" : ""}
-              {stale ? " ・ 取り直しています..." : ""}
-              {status === "catching_up" ? " ・ ファネルを集計しています..." : ""}
-            </>
-          ) : loading ? (
-            "読み込んでいます..."
-          ) : null}
-        </p>
-
+      <div className="px-4 pt-4 sm:px-6 xl:px-8 xl:pt-6">
         {status === "error" && (
           <div
             role="alert"
-            className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-[#5c2b2e] bg-[#1d0f10] px-4 py-3 text-sm"
+            className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--nb-down)_45%,transparent)] bg-[color-mix(in_srgb,var(--nb-down)_10%,transparent)] px-4 py-3 text-sm"
           >
             <span className="mr-auto">
               数字を取得できませんでした。
@@ -241,7 +309,7 @@ export function NumbersDashboard() {
             <button
               type="button"
               onClick={() => show(day)}
-              className="rounded-lg border border-[#5c2b2e] px-3 py-1.5 font-bold"
+              className="rounded-lg border border-[color-mix(in_srgb,var(--nb-down)_45%,transparent)] px-3 py-1.5 font-bold"
             >
               もう一度試す
             </button>
@@ -253,8 +321,8 @@ export function NumbersDashboard() {
             payload={payload}
             metricKey={metricKey}
             onMetric={setMetricKey}
-            tab={tab}
-            onTab={setTab}
+            mode={mode}
+            onMode={setMode}
             dimmed={stale}
           />
         ) : loading ? (
@@ -266,19 +334,23 @@ export function NumbersDashboard() {
 }
 
 function Skeleton() {
+  const block =
+    "animate-pulse rounded-2xl border border-[var(--nb-border)] bg-[var(--nb-surface)]";
   return (
-    <div aria-hidden className="mt-4 space-y-4">
-      <div className="h-[23rem] animate-pulse rounded-2xl border border-[#1f2226] bg-[#0a0a0b]" />
-      <div className="h-64 animate-pulse rounded-2xl border border-[#1f2226] bg-[#0a0a0b]" />
+    <div aria-hidden className="grid gap-3 xl:gap-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5 xl:gap-4">
+        {HEADLINES.map((item, index) => (
+          <div
+            key={item.key}
+            className={`${block} h-36 ${index === 0 ? "col-span-2 md:col-span-1" : ""}`}
+          />
+        ))}
+      </div>
+      <div className="grid gap-3 xl:grid-cols-12 xl:gap-4">
+        <div className={`${block} h-[26rem] xl:col-span-8`} />
+        <div className={`${block} h-[26rem] xl:col-span-4`} />
+      </div>
     </div>
-  );
-}
-
-function Panel({ children }: { children: ReactNode }) {
-  return (
-    <section className="mt-4 overflow-hidden rounded-2xl border border-[#1f2226] bg-[#0a0a0b]">
-      {children}
-    </section>
   );
 }
 
@@ -286,444 +358,149 @@ function Body({
   payload,
   metricKey,
   onMetric,
-  tab,
-  onTab,
+  mode,
+  onMode,
   dimmed,
 }: {
   payload: NumbersPayload;
   metricKey: HeadlineKey;
   onMetric: (key: HeadlineKey) => void;
-  tab: TabKey;
-  onTab: (key: TabKey) => void;
+  mode: HeadlineSeriesMode;
+  onMode: (mode: HeadlineSeriesMode) => void;
   dimmed: boolean;
 }) {
   const { meta, day, compare } = payload;
-  const metric = HEADLINES.find((item) => item.key === metricKey) ?? HEADLINES[0];
-  const currentHour = meta.is_today
-    ? Math.min(23, Math.floor(meta.elapsed_seconds / 3600))
+  const metric =
+    HEADLINES.find((item) => item.key === metricKey) ?? HEADLINES[0];
+  const nowHours = meta.is_today
+    ? Math.min(24, meta.elapsed_seconds / 3600)
     : null;
+  const currentHour =
+    nowHours === null ? null : Math.min(23, Math.floor(nowHours));
   const dayLabel = formatNumbersDay(meta.day);
   const compareLabel = formatNumbersDay(meta.compare_day);
   const lastFullHour = currentHour === null ? null : currentHour - 1;
   const lastFull =
     lastFullHour !== null && lastFullHour >= 0 ? day.hours[lastFullHour] : null;
+  const lastFullBefore = lastFull ? compare.hours[lastFull.h] : null;
 
   return (
-    <div className={dimmed ? "opacity-60 transition-opacity" : "transition-opacity"}>
-      <Panel>
-        <div
-          role="tablist"
-          aria-label="グラフに出す指標"
-          className="flex overflow-x-auto border-b border-[#1f2226]"
+    <div
+      className={`grid gap-3 transition-opacity duration-200 xl:gap-4 ${dimmed ? "opacity-50" : ""}`}
+    >
+      <KpiRow
+        day={day}
+        compare={compare}
+        selected={metric.key}
+        onSelect={onMetric}
+        compareNote={meta.is_today ? `${compareLabel} 同時刻` : compareLabel}
+        currentHour={currentHour}
+        nowHours={nowHours}
+      />
+
+      <div className="grid gap-3 xl:grid-cols-12 xl:gap-4">
+        <Card
+          title={metric.label}
+          hint={metric.hint}
+          className="xl:col-span-8"
+          action={
+            <Segmented
+              label="グラフの見方"
+              value={mode}
+              onChange={onMode}
+              options={[
+                { value: "hourly", label: "時間別" },
+                { value: "cumulative", label: "累計" },
+              ]}
+            />
+          }
         >
-          {HEADLINES.map((item) => {
-            const value = item.fromSubtotal(day.until_cut);
-            const previous = item.fromSubtotal(compare.until_cut);
-            const delta = formatNumbersDelta(value, previous, item.kind);
-            const selected = item.key === metric.key;
-            return (
-              <button
-                key={item.key}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                onClick={() => onMetric(item.key)}
-                className={`min-w-[8.5rem] shrink-0 border-b-2 px-4 pb-3 pt-4 text-left ${
-                  selected ? "border-white" : "border-transparent"
-                }`}
-              >
-                <span
-                  className={`block text-xs ${selected ? "text-[#e7e9ea]" : "text-[#8b8f94]"}`}
-                >
-                  {item.label}
-                </span>
-                <span className="mt-1 block text-xl font-bold tabular-nums">
-                  {formatNumbersValue(value, item.kind)}
-                </span>
-                <span className="mt-0.5 block text-xs tabular-nums text-[#8b8f94]">
-                  {formatNumbersValue(previous, item.kind)}
-                  {delta ? `（${delta}）` : ""}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="px-3 pb-3 pt-4 sm:px-5">
-          <NumbersHourlyChart
-            metric={metric}
-            hours={day.hours}
-            compareHours={compare.hours}
-            dayLabel={dayLabel}
-            compareLabel={compareLabel}
-            currentHour={currentHour}
-          />
-        </div>
-
-        {lastFull && (
-          <p className="border-t border-[#1f2226] px-4 py-3 text-xs text-[#8b8f94]">
-            直近1時間（{lastFull.h}時台）
-            <span className="ml-3 text-[#e7e9ea]">診断 {count.format(lastFull.diagnoses)}</span>
-            <span className="ml-3 text-[#e7e9ea]">純売上 {yen(lastFull.net)}</span>
-            <span className="ml-3 text-[#e7e9ea]">買い切り {count.format(lastFull.purchases_full)}</span>
-          </p>
-        )}
-      </Panel>
-
-      <Panel>
-        <div
-          role="tablist"
-          aria-label="内訳"
-          className="flex overflow-x-auto border-b border-[#1f2226] px-2"
-        >
-          {TABS.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              role="tab"
-              aria-selected={tab === item.key}
-              onClick={() => onTab(item.key)}
-              className={`shrink-0 border-b-2 px-3 py-3 text-sm font-bold ${
-                tab === item.key
-                  ? "border-white text-[#e7e9ea]"
-                  : "border-transparent text-[#8b8f94]"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
-        {tab === "hours" && (
-          <HoursTable day={day} compare={compare} currentHour={currentHour} compareLabel={compareLabel} />
-        )}
-        {tab === "sources" && <SourcesTable day={day} />}
-        {tab === "funnel" && (
-          <FunnelTable
-            day={day}
-            compare={compare}
-            compareLabel={compareLabel}
-            partial={isNumbersCatchingUp(payload)}
-          />
-        )}
-        {tab === "social" && (
-          <SocialTable day={day} compare={compare} dayLabel={dayLabel} compareLabel={compareLabel} />
-        )}
-      </Panel>
-    </div>
-  );
-}
-
-function Table({
-  head,
-  rows,
-  note,
-  empty,
-}: {
-  head: string[];
-  rows: (string | number)[][];
-  note?: string;
-  empty?: string;
-}) {
-  return (
-    <>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-max text-sm">
-          <thead>
-            <tr className="bg-[#111315] text-xs text-[#8b8f94]">
-              {head.map((label, index) => (
-                <th
-                  // 見出しは同じ文言が並ぶことがある (「内訳」など) ので、位置で区別する。
-                  key={index}
-                  scope="col"
-                  className={`whitespace-nowrap px-4 py-2.5 font-normal ${index === 0 ? "sticky left-0 bg-[#111315] text-left" : "text-right"}`}
-                >
-                  {label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, rowIndex) => (
-              <tr key={rowIndex} className="border-t border-[#1f2226]">
-                {row.map((cell, index) => (
-                  <td
-                    key={index}
-                    // 横に送っても、どの行かが分かるように先頭の列は固定する。
-                    className={`whitespace-nowrap px-4 py-2.5 tabular-nums ${index === 0 ? "sticky left-0 bg-[#0a0a0b] text-left" : "text-right"}`}
-                  >
-                    {cell}
-                  </td>
+          <div className="px-3 pb-2 sm:px-4">
+            <NumbersHourlyChart
+              metric={metric}
+              mode={mode}
+              hours={day.hours}
+              compareHours={compare.hours}
+              dayLabel={dayLabel}
+              compareLabel={compareLabel}
+              currentHour={currentHour}
+              nowHours={nowHours}
+            />
+          </div>
+          {lastFull && lastFullBefore && (
+            <div className="mt-auto border-t border-[var(--nb-border)] sm:flex sm:items-stretch">
+              <p className="px-4 pt-3 text-xs font-bold text-[var(--nb-text-2)] sm:flex sm:w-40 sm:shrink-0 sm:items-center sm:px-5 sm:pt-0">
+                直近1時間（{lastFull.h}時台）
+              </p>
+              <dl className="grid flex-1 grid-cols-3 sm:divide-x sm:divide-[var(--nb-border)] sm:border-l sm:border-[var(--nb-border)]">
+                {[
+                  {
+                    label: "診断数",
+                    now: numberFormat.format(lastFull.diagnoses),
+                    before: numberFormat.format(lastFullBefore.diagnoses),
+                  },
+                  {
+                    label: "純売上",
+                    now: yen(lastFull.net),
+                    before: yen(lastFullBefore.net),
+                  },
+                  {
+                    label: "買い切り",
+                    now: numberFormat.format(lastFull.purchases_full),
+                    before: numberFormat.format(lastFullBefore.purchases_full),
+                  },
+                ].map((item) => (
+                  <div key={item.label} className="min-w-0 px-4 py-3 sm:px-5">
+                    <dt className="text-xs text-[var(--nb-text-2)]">
+                      {item.label}
+                    </dt>
+                    <dd className="mt-0.5 tabular-nums">
+                      <span className="text-lg font-bold">{item.now}</span>
+                      <span className="block truncate text-xs text-[var(--nb-text-2)] sm:ml-2 sm:inline">
+                        {compareLabel} {item.before}
+                      </span>
+                    </dd>
+                  </div>
                 ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              </dl>
+            </div>
+          )}
+        </Card>
+
+        <FunnelCard
+          day={day}
+          compare={compare}
+          compareLabel={compareLabel}
+          partial={isNumbersCatchingUp(payload)}
+          className="xl:col-span-4"
+        />
       </div>
-      {rows.length === 0 && (
-        <p className="px-4 py-8 text-center text-sm text-[#6e767d]">
-          {empty ?? "この日のデータはまだありません"}
-        </p>
-      )}
-      {note && (
-        <p className="border-t border-[#1f2226] px-4 py-3 text-xs leading-relaxed text-[#8b8f94]">
-          {note}
-        </p>
-      )}
-    </>
-  );
-}
 
-function HoursTable({
-  day,
-  compare,
-  currentHour,
-  compareLabel,
-}: {
-  day: NumbersDayBlock;
-  compare: NumbersDayBlock;
-  currentHour: number | null;
-  compareLabel: string;
-}) {
-  const last = currentHour ?? 23;
-  // 新しい時間帯を上に (スマホで開いてすぐ直近が見えるように)。
-  const rows = day.hours
-    .filter((hour) => hour.h <= last)
-    .reverse()
-    .map((hour) => {
-      const before = compare.hours[hour.h];
-      return [
-        `${hour.h}時台${hour.h === currentHour ? "（途中）" : ""}`,
-        count.format(hour.diagnoses),
-        count.format(hour.ad_diagnoses),
-        count.format(hour.diagnoses - hour.ad_diagnoses),
-        yen(hour.net),
-        count.format(hour.purchases_full),
-        percent(ratio(hour.purchases_full, hour.diagnoses), 2),
-        count.format(hour.purchases_upgrade),
-        count.format(before.diagnoses),
-        yen(before.net),
-      ];
-    });
-  return (
-    <Table
-      head={[
-        "時",
-        "診断数",
-        "広告",
-        "非広告",
-        "純売上",
-        "買い切り",
-        "課金率",
-        "アップグレード",
-        `${compareLabel} 診断数`,
-        `${compareLabel} 純売上`,
-      ]}
-      rows={rows}
-      note="診断数は診断を完了した人数。純売上は購入時刻で計上し、返金を引いています。広告は流入元が X・TikTok の人です。"
-    />
-  );
-}
+      <div className="grid gap-3 xl:grid-cols-12 xl:gap-4">
+        <HoursCard
+          day={day}
+          compare={compare}
+          currentHour={currentHour}
+          compareLabel={compareLabel}
+          className="xl:col-span-7"
+        />
+        <SourcesCard day={day} className="xl:col-span-5" />
+      </div>
 
-function SourcesTable({ day }: { day: NumbersDayBlock }) {
-  const total = day.sources.reduce((sum, source) => sum + source.diagnoses, 0);
-  const TOP = 12;
-  const shown = day.sources.slice(0, TOP);
-  const rest = day.sources.slice(TOP);
-  const rows = shown.map((source) => [
-    source.source || "（なし）",
-    source.is_ad ? "広告" : "非広告",
-    count.format(source.diagnoses),
-    percent(ratio(source.diagnoses, total)),
-    count.format(source.purchasers),
-    yen(source.net),
-    source.diagnoses > 0 ? `¥${(source.net / source.diagnoses).toFixed(2)}` : "–",
-  ]);
-  if (rest.length > 0) {
-    const diagnoses = rest.reduce((sum, source) => sum + source.diagnoses, 0);
-    const net = rest.reduce((sum, source) => sum + source.net, 0);
-    rows.push([
-      `その他（${rest.length}件）`,
-      rest.some((source) => source.is_ad) ? "–" : "非広告",
-      count.format(diagnoses),
-      percent(ratio(diagnoses, total)),
-      count.format(rest.reduce((sum, source) => sum + source.purchasers, 0)),
-      yen(net),
-      diagnoses > 0 ? `¥${(net / diagnoses).toFixed(2)}` : "–",
-    ]);
-  }
-  return (
-    <Table
-      head={["流入元", "区分", "診断数", "構成比", "購入者", "診断起点の純売上", "診断あたり"]}
-      rows={rows}
-      note="その日に診断した人が、今までに買った金額を流入元ごとに足しています（購入が遅れても診断した日に付きます）。"
-    />
-  );
-}
-
-interface FunnelStep {
-  label: string;
-  value: (block: NumbersDayBlock) => number;
-  /** 率の分母。無い段は率を出さない。 */
-  base?: (block: NumbersDayBlock) => number;
-  baseLabel?: string;
-  session?: string;
-}
-
-const event = (key: keyof NumbersHourEvents) => (block: NumbersDayBlock) =>
-  sumEvents(block.hours, key);
-
-const FUNNEL: FunnelStep[] = [
-  { label: "診断開始", value: event("started"), session: "diagnosis_started" },
-  {
-    label: "診断完了",
-    value: event("completed"),
-    base: event("started"),
-    baseLabel: "開始",
-    session: "diagnosis_completed",
-  },
-  {
-    label: "課金表示（カード）",
-    value: event("paywall_card"),
-    base: event("completed"),
-    baseLabel: "完了",
-  },
-  {
-    label: "課金表示（モーダル）",
-    value: event("paywall_modal"),
-    base: event("completed"),
-    baseLabel: "完了",
-  },
-  {
-    label: "購入ボタン",
-    value: event("cta"),
-    base: (block) => event("paywall_card")(block) + event("paywall_modal")(block),
-    baseLabel: "課金表示",
-    session: "purchase_cta_clicked",
-  },
-  {
-    label: "決済画面",
-    value: event("checkout"),
-    base: event("completed"),
-    baseLabel: "完了",
-    session: "checkout_session_created",
-  },
-  {
-    label: "購入完了",
-    value: event("paid"),
-    base: event("checkout"),
-    baseLabel: "決済画面",
-    session: "purchase_completed",
-  },
-  {
-    label: "友達診断ページ表示",
-    value: event("tako_viewed"),
-    base: event("completed"),
-    baseLabel: "完了",
-  },
-  {
-    label: "招待クリック",
-    value: event("invite_clicked"),
-    base: event("tako_viewed"),
-    baseLabel: "ページ表示",
-  },
-  { label: "友達がリンクを開いた", value: event("friend_landing") },
-  {
-    label: "友達の回答完了",
-    value: event("friend_completed"),
-    base: event("friend_landing"),
-    baseLabel: "リンクを開いた",
-  },
-  {
-    label: "友達が自己診断へ",
-    value: event("friend_to_self"),
-    base: event("friend_completed"),
-    baseLabel: "回答完了",
-  },
-  {
-    label: "友達診断ページの課金表示",
-    value: event("tako_paywall"),
-    base: event("tako_viewed"),
-    baseLabel: "ページ表示",
-  },
-  {
-    label: "友達診断ページからの購入",
-    value: event("tako_paid"),
-    base: event("tako_viewed"),
-    baseLabel: "ページ表示",
-  },
-];
-
-function FunnelTable({
-  day,
-  compare,
-  compareLabel,
-  partial,
-}: {
-  day: NumbersDayBlock;
-  compare: NumbersDayBlock;
-  compareLabel: string;
-  partial: boolean;
-}) {
-  const rows = FUNNEL.map((step) => {
-    const rate = step.base ? ratio(step.value(day), step.base(day)) : null;
-    const before = step.base ? ratio(step.value(compare), step.base(compare)) : null;
-    return [
-      step.label,
-      count.format(step.value(day)),
-      step.session && day.sessions[step.session] !== undefined
-        ? count.format(day.sessions[step.session])
-        : "–",
-      step.base ? `${percent(rate, 2)}（÷${step.baseLabel}）` : "–",
-      step.base ? percent(before, 2) : "–",
-    ];
-  });
-  return (
-    <Table
-      head={["段階", "回数", "セッション数", "率", `${compareLabel} の率`]}
-      rows={rows}
-      note={`${partial ? "【集計の途中です。数え終わるまで、回数と率は少なく出ます】" : ""}ファネルはイベントの回数です（同じ人が2回見れば2回）。上の「診断数」は人数なので、診断完了の回数とは少し違います。比較日の率は1日分です。`}
-    />
-  );
-}
-
-function SocialTable({
-  day,
-  compare,
-  dayLabel,
-  compareLabel,
-}: {
-  day: NumbersDayBlock;
-  compare: NumbersDayBlock;
-  dayLabel: string;
-  compareLabel: string;
-}) {
-  const nonAd = (block: NumbersDayBlock) => {
-    const diagnoses = sumHours(block.hours, (hour) => hour.diagnoses);
-    const ads = sumHours(block.hours, (hour) => hour.ad_diagnoses);
-    return { value: ratio(diagnoses - ads, diagnoses), detail: `${count.format(diagnoses - ads)} ÷ ${count.format(diagnoses)}` };
-  };
-  const cohort = (block: NumbersDayBlock, key: "friend_owners" | "sharers") => ({
-    value: ratio(block.cohort[key], block.cohort.diagnosers),
-    detail: `${count.format(block.cohort[key])} ÷ ${count.format(block.cohort.diagnosers)}`,
-  });
-  const line = (
-    label: string,
-    pick: (block: NumbersDayBlock) => { value: number | null; detail: string },
-  ) => {
-    const now = pick(day);
-    const before = pick(compare);
-    return [label, percent(now.value), now.detail, percent(before.value), before.detail];
-  };
-  return (
-    <Table
-      head={["指標", dayLabel, "内訳", compareLabel, "内訳"]}
-      rows={[
-        line("非広告流入比率", nonAd),
-        line("友達診断率", (block) => cohort(block, "friend_owners")),
-        line("シェア率", (block) => cohort(block, "sharers")),
-      ]}
-      note="友達診断率とシェア率は、その日に診断した人のうち、今までに友達の回答をもらった人・シェア操作をした人の割合です。日がたつと増えるので、新しい日ほど低く出ます。"
-    />
+      <div className="grid gap-3 xl:grid-cols-12 xl:gap-4">
+        <FriendFlowCard
+          day={day}
+          compare={compare}
+          compareLabel={compareLabel}
+          className="xl:col-span-8"
+        />
+        <SocialCards
+          day={day}
+          compare={compare}
+          compareLabel={compareLabel}
+          className="xl:col-span-4"
+        />
+      </div>
+    </div>
   );
 }
