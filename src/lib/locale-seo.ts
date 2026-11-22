@@ -107,6 +107,8 @@ export type LocalizedRoutePair = {
   id?: string;
   priority?: number;
   changeFrequency?: SitemapChangeFrequency;
+  /** 日本語のページだけ検索結果に出さない（サイトマップに載せない）。他言語のページは載せる。 */
+  jaNoindex?: boolean;
 };
 
 export const INDEXABLE_LOCALIZED_ROUTES: readonly LocalizedRoutePair[] = [
@@ -128,7 +130,8 @@ export const INDEXABLE_LOCALIZED_ROUTES: readonly LocalizedRoutePair[] = [
     priority: 0.8,
     changeFrequency: "weekly",
   },
-  { ja: "/aisho", ko: "/ko/aisho", en: "/en/aisho", id: "/id/aisho", priority: 0.8, changeFrequency: "monthly" },
+  // 日本語の相性ページは 2026-11-22 から noindex（src/app/aisho/layout.tsx）。
+  { ja: "/aisho", ko: "/ko/aisho", en: "/en/aisho", id: "/id/aisho", priority: 0.8, changeFrequency: "monthly", jaNoindex: true },
   { ja: "/unmei", ko: "/ko/unmei", en: "/en/unmei", id: "/id/unmei", priority: 0.8, changeFrequency: "monthly" },
   {
     ja: "/articles",

@@ -56,3 +56,48 @@ export function useAishoNavigationAccess(
 
   return enabled && state?.pathname === pathname && state.unlocked;
 }
+
+export type AishoEntryAccess = {
+  /** true=相性を開ける本人 / false=未課金と確定 / null=確認中、または通信失敗で確認できなかった。 */
+  unlocked: boolean | null;
+  /** この端末に残っている本人のトークン（診断済みの目印）。 */
+  ownerToken: string | null;
+};
+
+const ENTRY_ACCESS_PENDING: AishoEntryAccess = { unlocked: null, ownerToken: null };
+
+/**
+ * 相性ページの入口用。ナビ用の useAishoNavigationAccess と違い、「未課金と確定」と
+ * 「確認できなかった」を分ける（通信失敗で課金済みの人を追い出さないため）。
+ */
+export function useAishoEntryAccess(enabled: boolean): AishoEntryAccess {
+  const [state, setState] = useState<AishoEntryAccess>(ENTRY_ACCESS_PENDING);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    let cancelled = false;
+    let ownerToken: string | null = null;
+    try {
+      ownerToken = localStorage.getItem("torisetsu_owner_token");
+    } catch {
+      // Cookie session の判定へフォールバックする。
+    }
+    const query = ownerToken ? `?owner_token=${encodeURIComponent(ownerToken)}` : "";
+    fetch(`/api/aisho/access${query}`, { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        const data = (await response.json()) as { unlocked?: boolean };
+        return data.unlocked === true;
+      })
+      .catch(() => null)
+      .then((unlocked) => {
+        if (!cancelled) setState({ unlocked, ownerToken });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled]);
+
+  return enabled ? state : ENTRY_ACCESS_PENDING;
+}
