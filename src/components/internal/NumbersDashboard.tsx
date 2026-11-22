@@ -43,7 +43,8 @@ import {
 } from "./NumbersSections";
 import {
   Card,
-  NUMBERS_THEME,
+  NUMBERS_THEMES,
+  type NumbersThemeName,
   Segmented,
   numberFormat,
   yen,
@@ -76,6 +77,8 @@ function readCache(): NumbersPayload | null {
     return null;
   }
 }
+
+const THEME_KEY = "wt_internal_numbers_theme";
 
 function writeCache(payload: NumbersPayload): void {
   try {
@@ -132,9 +135,50 @@ export function NumbersDashboard() {
   const [failedDays, setFailedDays] = useState<Record<string, true>>({});
   const requestedDays = useRef(new Set<string>());
   const [costEntryOpen, setCostEntryOpen] = useState(false);
+  // 配色。黒地が読みにくいときは白地に切り替えられる (端末ごとに覚える)。
+  const [theme, setTheme] = useState<NumbersThemeName>("dark");
   // スマホでは下の内訳を 1 つずつ切り替えて見る (全部並べると縦に長すぎる)。
   const [section, setSection] = useState<SectionKey>("funnel");
   const latestRequest = useRef(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      await Promise.resolve();
+      if (cancelled) return;
+      try {
+        if (window.localStorage.getItem(THEME_KEY) === "light") {
+          setTheme("light");
+        }
+      } catch {
+        // 読めない端末では、既定の黒地のまま。
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // 画面の外側 (body) も同じ地の色にする。下部の余白に別の色の帯が出ないように。
+  useEffect(() => {
+    const previous = document.body.style.background;
+    document.body.style.background = String(
+      (NUMBERS_THEMES[theme] as Record<string, string>)["--nb-bg"],
+    );
+    return () => {
+      document.body.style.background = previous;
+    };
+  }, [theme]);
+
+  const toggleTheme = () => {
+    const next: NumbersThemeName = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    try {
+      window.localStorage.setItem(THEME_KEY, next);
+    } catch {
+      // 保存できない端末では、開き直すと既定に戻るだけ。
+    }
+  };
 
   const load = useCallback(async (target: string | null) => {
     const request = ++latestRequest.current;
@@ -261,8 +305,9 @@ export function NumbersDashboard() {
 
   return (
     <main
-      className="min-h-dvh flex-1 bg-[var(--nb-bg)] pb-10 text-[var(--nb-text)]"
-      style={NUMBERS_THEME}
+      className="min-h-dvh flex-1 bg-[var(--nb-bg)] pb-12 font-medium text-[var(--nb-text)] antialiased"
+      style={NUMBERS_THEMES[theme]}
+      data-theme={theme}
     >
       <header className="sticky top-0 z-30 border-b border-[var(--nb-border)] bg-[color-mix(in_srgb,var(--nb-bg)_82%,transparent)] backdrop-blur-md">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-6 xl:px-8">
@@ -272,7 +317,7 @@ export function NumbersDashboard() {
               数値
             </h1>
             <p
-              className="flex min-w-0 items-center gap-2 text-xs text-[var(--nb-text-2)] sm:text-[13px]"
+              className="flex min-w-0 items-center gap-2 text-[13px] text-[var(--nb-text-2)] sm:text-sm"
               aria-live="polite"
             >
               {payload ? (
@@ -307,7 +352,7 @@ export function NumbersDashboard() {
               <button
                 type="button"
                 onClick={() => show(null)}
-                className="h-9 rounded-lg border border-[var(--nb-border)] px-3 text-[15px] font-bold transition-colors hover:border-[var(--nb-border-strong)] hover:bg-[var(--nb-surface-2)]"
+                className="h-9 rounded-lg border border-[var(--nb-border)] px-3 text-base font-bold transition-colors hover:border-[var(--nb-border-strong)] hover:bg-[var(--nb-surface-2)]"
               >
                 今日
               </button>
@@ -346,7 +391,7 @@ export function NumbersDashboard() {
                   const value = event.target.value;
                   if (value) show(value >= today ? null : value);
                 }}
-                className="h-9 w-[8.3rem] rounded-lg border border-[var(--nb-border)] bg-transparent px-2 text-[15px] tabular-nums text-[var(--nb-text)] transition-colors hover:border-[var(--nb-border-strong)] sm:w-auto sm:px-2.5"
+                className="h-9 w-[7.4rem] rounded-lg border border-[var(--nb-border)] bg-transparent px-1.5 text-sm tabular-nums sm:w-[8.6rem] sm:px-2 sm:text-base text-[var(--nb-text)] transition-colors hover:border-[var(--nb-border-strong)] sm:w-auto sm:px-2.5"
               />
             </label>
             <button
@@ -379,10 +424,44 @@ export function NumbersDashboard() {
 
           <button
             type="button"
+            onClick={toggleTheme}
+            aria-label={
+              theme === "dark"
+                ? "明るい配色に切り替える"
+                : "暗い配色に切り替える"
+            }
+            title={theme === "dark" ? "明るい配色にする" : "暗い配色にする"}
+            // スマホではヘッダーに収まらないので、ページのいちばん下に同じ切り替えを置く。
+            className={navButton.replace("flex ", "hidden sm:flex ")}
+          >
+            <svg
+              aria-hidden
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.9"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              {theme === "dark" ? (
+                <>
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" />
+                </>
+              ) : (
+                <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7Z" />
+              )}
+            </svg>
+          </button>
+
+          <button
+            type="button"
             onClick={() => show(day)}
             disabled={busy}
             aria-busy={busy}
-            className="flex h-9 min-w-9 items-center justify-center gap-2 rounded-lg bg-[var(--nb-text)] px-2.5 text-[15px] font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-70 sm:min-w-[6.5rem] sm:px-4"
+            className="flex h-9 min-w-9 items-center justify-center gap-2 rounded-lg bg-[var(--nb-text)] px-2.5 text-base font-bold text-[var(--nb-bg)] transition-opacity hover:opacity-90 disabled:opacity-70 sm:min-w-[6.5rem] sm:px-4"
           >
             <svg
               aria-hidden
@@ -412,7 +491,7 @@ export function NumbersDashboard() {
         {status === "error" && (
           <div
             role="alert"
-            className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--nb-down)_45%,transparent)] bg-[color-mix(in_srgb,var(--nb-down)_10%,transparent)] px-4 py-3 text-[15px]"
+            className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--nb-down)_45%,transparent)] bg-[color-mix(in_srgb,var(--nb-down)_10%,transparent)] px-4 py-3 text-base"
           >
             <span className="mr-auto">
               数字を取得できませんでした。
@@ -452,6 +531,15 @@ export function NumbersDashboard() {
         ) : loading ? (
           <Skeleton />
         ) : null}
+      </div>
+      <div className="px-4 pt-6 sm:hidden">
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="h-11 w-full rounded-xl border border-[var(--nb-border-strong)] text-sm font-bold text-[var(--nb-text)]"
+        >
+          {theme === "dark" ? "明るい配色にする" : "暗い配色にする"}
+        </button>
       </div>
       {costEntryOpen && (
         <NumbersCostEntry
@@ -528,7 +616,7 @@ function Summary({
           : "少なく"
         : "";
   return (
-    <p className="text-[17px] leading-relaxed text-[var(--nb-text)]">
+    <p className="text-lg leading-relaxed text-[var(--nb-text)] sm:text-xl">
       {comparison.label}と比べて、
       {parts.map((part, index) => {
         const last = index === parts.length - 1;
@@ -613,7 +701,7 @@ function ComparisonPicker({
       aria-label="比べる相手"
       className="flex flex-wrap items-center gap-1.5"
     >
-      <span className="mr-1 text-[13px] font-bold text-[var(--nb-text-2)]">
+      <span className="mr-1 text-sm font-bold text-[var(--nb-text-2)]">
         比べる相手
       </span>
       {options.map((option) => {
@@ -626,7 +714,7 @@ function ComparisonPicker({
         return (
           <span
             key={option.id}
-            className={`inline-flex items-center rounded-full border text-[13px] transition-colors ${
+            className={`inline-flex items-center rounded-full border text-sm transition-colors ${
               on
                 ? "border-[var(--nb-border-strong)] bg-[var(--nb-surface-2)] text-[var(--nb-text)]"
                 : "border-[var(--nb-border)] text-[var(--nb-text-2)] hover:border-[var(--nb-border-strong)] hover:text-[var(--nb-text)]"
@@ -676,7 +764,7 @@ function ComparisonPicker({
           </span>
         );
       })}
-      <label className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[var(--nb-border-strong)] py-1 pl-3 pr-1.5 text-[13px] text-[var(--nb-text-2)]">
+      <label className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[var(--nb-border-strong)] py-1 pl-3 pr-1.5 text-sm text-[var(--nb-text-2)]">
         <span className="font-bold">日付を足す</span>
         <input
           type="date"
@@ -689,7 +777,7 @@ function ComparisonPicker({
               onAdd(value);
             }
           }}
-          className="h-6 w-[7.6rem] rounded-full bg-transparent px-1 text-[13px] tabular-nums text-[var(--nb-text)]"
+          className="h-6 w-[7.6rem] rounded-full bg-transparent px-1 text-sm tabular-nums text-[var(--nb-text)]"
         />
       </label>
     </div>
@@ -765,7 +853,7 @@ function Body({
 
   return (
     <div
-      className={`grid gap-3 transition-opacity duration-200 xl:gap-4 ${dimmed ? "opacity-50" : ""}`}
+      className={`grid gap-4 transition-opacity duration-200 xl:gap-5 ${dimmed ? "opacity-50" : ""}`}
     >
       <div className="grid gap-3">
         <Summary payload={payload} comparison={comparison} />
@@ -793,120 +881,114 @@ function Body({
 
       <EconomicsCard payload={payload} onOpenEntry={onOpenCostEntry} />
 
-      <div className="grid gap-3 xl:grid-cols-12 xl:gap-4">
-        <Card
-          title={metric.label}
-          hint={metric.hint}
-          className="xl:col-span-8"
-          action={
-            <div className="flex flex-wrap items-center gap-2">
-              {mode === "hourly" && (
-                <Segmented
-                  label="グラフの形"
-                  value={chartType}
-                  onChange={onChartType}
-                  options={[
-                    { value: "line", label: "線" },
-                    { value: "bar", label: "棒" },
-                  ]}
-                />
-              )}
+      <Card
+        title={metric.label}
+        hint={metric.hint}
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            {mode === "hourly" && (
               <Segmented
-                label="グラフの見方"
-                value={mode}
-                onChange={onMode}
+                label="グラフの形"
+                value={chartType}
+                onChange={onChartType}
                 options={[
-                  { value: "hourly", label: "時間別" },
-                  { value: "cumulative", label: "累計" },
+                  { value: "line", label: "線" },
+                  { value: "bar", label: "棒" },
                 ]}
               />
-            </div>
-          }
-        >
-          <div className="px-3 pb-2 sm:px-4">
-            <NumbersHourlyChart
-              metric={metric}
-              mode={mode}
-              type={chartType}
-              hours={day.hours}
-              comparisons={comparisons}
-              dayLabel={dayLabel}
-              currentHour={currentHour}
-              nowHours={nowHours}
-            />
-          </div>
-          {lastFull && (
-            <div className="mt-auto border-t border-[var(--nb-border)] sm:flex sm:items-stretch">
-              <p className="whitespace-nowrap px-4 pt-3 text-[13px] font-bold text-[var(--nb-text-2)] sm:flex sm:shrink-0 sm:items-center sm:px-5 sm:pt-0">
-                直近1時間（{lastFull.h}時台）
-              </p>
-              <dl className="grid flex-1 grid-cols-3 sm:divide-x sm:divide-[var(--nb-border)] sm:border-l sm:border-[var(--nb-border)]">
-                {[
-                  {
-                    label: "診断数",
-                    now: numberFormat.format(lastFull.diagnoses),
-                    before: lastFullBefore
-                      ? formatNumbersValue(lastFullBefore.diagnoses, "count")
-                      : null,
-                  },
-                  {
-                    label: "純売上",
-                    now: yen(lastFull.net),
-                    before: lastFullBefore ? yen(lastFullBefore.net) : null,
-                  },
-                  {
-                    label: "買い切り",
-                    now: numberFormat.format(lastFull.purchases_full),
-                    before: lastFullBefore
-                      ? formatNumbersValue(
-                          lastFullBefore.purchases_full,
-                          "count",
-                        )
-                      : null,
-                  },
-                ].map((item) => (
-                  <div key={item.label} className="min-w-0 px-4 py-3 sm:px-5">
-                    <dt className="text-[13px] text-[var(--nb-text-2)]">
-                      {item.label}
-                    </dt>
-                    <dd className="mt-0.5 tabular-nums">
-                      <span className="text-lg font-bold">{item.now}</span>
-                      {item.before !== null && comparison && (
-                        <span className="block truncate text-[13px] text-[var(--nb-text-2)] sm:ml-2 sm:inline">
-                          {comparison.shortLabel} {item.before}
-                        </span>
-                      )}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </div>
-          )}
-        </Card>
-
-        <div className="xl:hidden">
-          <div className="overflow-x-auto">
+            )}
             <Segmented
-              label="内訳"
-              value={section}
-              onChange={onSection}
-              options={SECTIONS}
+              label="グラフの見方"
+              value={mode}
+              onChange={onMode}
+              options={[
+                { value: "hourly", label: "時間別" },
+                { value: "cumulative", label: "累計" },
+              ]}
             />
           </div>
+        }
+      >
+        <div className="px-3 pb-2 sm:px-4">
+          <NumbersHourlyChart
+            metric={metric}
+            mode={mode}
+            type={chartType}
+            hours={day.hours}
+            comparisons={comparisons}
+            dayLabel={dayLabel}
+            currentHour={currentHour}
+            nowHours={nowHours}
+          />
         </div>
+        {lastFull && (
+          <div className="mt-auto border-t border-[var(--nb-border)] sm:flex sm:items-stretch">
+            <p className="whitespace-nowrap px-4 pt-3 text-sm font-bold text-[var(--nb-text-2)] sm:flex sm:shrink-0 sm:items-center sm:px-5 sm:pt-0">
+              直近1時間（{lastFull.h}時台）
+            </p>
+            <dl className="grid flex-1 grid-cols-3 sm:divide-x sm:divide-[var(--nb-border)] sm:border-l sm:border-[var(--nb-border)]">
+              {[
+                {
+                  label: "診断数",
+                  now: numberFormat.format(lastFull.diagnoses),
+                  before: lastFullBefore
+                    ? formatNumbersValue(lastFullBefore.diagnoses, "count")
+                    : null,
+                },
+                {
+                  label: "純売上",
+                  now: yen(lastFull.net),
+                  before: lastFullBefore ? yen(lastFullBefore.net) : null,
+                },
+                {
+                  label: "買い切り",
+                  now: numberFormat.format(lastFull.purchases_full),
+                  before: lastFullBefore
+                    ? formatNumbersValue(lastFullBefore.purchases_full, "count")
+                    : null,
+                },
+              ].map((item) => (
+                <div key={item.label} className="min-w-0 px-4 py-3 sm:px-5">
+                  <dt className="text-sm text-[var(--nb-text-2)]">
+                    {item.label}
+                  </dt>
+                  <dd className="mt-0.5 tabular-nums">
+                    <span className="text-lg font-bold">{item.now}</span>
+                    {item.before !== null && comparison && (
+                      <span className="block truncate text-sm text-[var(--nb-text-2)] sm:ml-2 sm:inline">
+                        {comparison.shortLabel} {item.before}
+                      </span>
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+      </Card>
 
+      {/* スマホでは下の内訳を 1 つずつ切り替えて見る。PC では全部を、上から順に並べる。 */}
+      <div className="xl:hidden">
+        <div className="overflow-x-auto">
+          <Segmented
+            label="内訳"
+            value={section}
+            onChange={onSection}
+            options={SECTIONS}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-12 xl:gap-5">
         <div className={only("funnel")}>
           <FunnelCard
             day={day}
             compare={flowCompare}
             compareLabel={flowLabel}
             partial={isNumbersCatchingUp(payload)}
-            className="xl:col-span-4"
+            className="xl:col-span-12"
           />
         </div>
-      </div>
-
-      <div className="grid gap-3 xl:grid-cols-12 xl:gap-4">
         <div className={only("hours")}>
           <HoursCard
             day={day}
@@ -918,21 +1000,20 @@ function Body({
         <div className={only("sources")}>
           <SourcesCard day={day} className="xl:col-span-5" />
         </div>
-      </div>
-
-      <div className={only("social")}>
-        <div className="grid gap-3 xl:grid-cols-12 xl:gap-4">
+        <div className={only("social")}>
           <FriendFlowCard
             day={day}
             compare={flowCompare}
             compareLabel={flowLabel}
-            className="xl:col-span-7"
+            className="xl:col-span-12"
           />
+        </div>
+        <div className={only("social")}>
           <SocialCards
             day={day}
             compare={flowCompare}
             compareLabel={flowLabel}
-            className="xl:col-span-5"
+            className="xl:col-span-12"
           />
         </div>
       </div>
