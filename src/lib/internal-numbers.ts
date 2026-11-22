@@ -105,7 +105,9 @@ export function isNumbersCatchingUp(payload: NumbersPayload): boolean {
 }
 
 /** YYYY-MM-DD として実在する日付か。 */
-export function isValidNumbersDay(value: string | null | undefined): value is string {
+export function isValidNumbersDay(
+  value: string | null | undefined,
+): value is string {
   if (!value) return false;
   const match = DAY_PATTERN.exec(value);
   if (!match) return false;
@@ -148,7 +150,7 @@ export function sumEvents(
   return hours.reduce((total, hour) => total + hour.events[key], 0);
 }
 
-/** 上部に並べる主要指標。値は「この時刻まで」の小計から出す。 */
+/** 上部に並べる主要指標。 */
 export type HeadlineKey =
   | "diagnoses"
   | "net"
@@ -156,51 +158,96 @@ export type HeadlineKey =
   | "purchase_rate"
   | "net_per_diagnosis";
 
+/** 指標の計算に使う数字。1 時間分 (NumbersHour) にも小計 (NumbersSubtotal) にもある。 */
+type HeadlineAmounts = Pick<
+  NumbersSubtotal,
+  "diagnoses" | "net" | "purchases_full"
+>;
+
 export interface HeadlineDefinition {
   key: HeadlineKey;
   label: string;
+  /** グラフの見出しに添える、数え方の一言。 */
+  hint: string;
   kind: "count" | "yen" | "rate" | "yen_decimal";
-  fromSubtotal: (subtotal: NumbersSubtotal) => number | null;
-  fromHour: (hour: NumbersHour) => number | null;
+  /** 分子。分母が無い指標は、これがそのまま値になる。 */
+  numerator: (amounts: HeadlineAmounts) => number;
+  /** 率や単価の分母。足し上げるときは分子と分母を別々に足してから割る。 */
+  denominator?: (amounts: HeadlineAmounts) => number;
 }
 
 export const HEADLINES: HeadlineDefinition[] = [
   {
     key: "diagnoses",
     label: "診断数",
+    hint: "診断を完了した人数",
     kind: "count",
-    fromSubtotal: (s) => s.diagnoses,
-    fromHour: (h) => h.diagnoses,
+    numerator: (x) => x.diagnoses,
   },
   {
     key: "net",
     label: "純売上",
+    hint: "購入時刻で計上し、返金を引いた金額",
     kind: "yen",
-    fromSubtotal: (s) => s.net,
-    fromHour: (h) => h.net,
+    numerator: (x) => x.net,
   },
   {
     key: "purchases_full",
     label: "買い切り",
+    hint: "完全版の購入件数",
     kind: "count",
-    fromSubtotal: (s) => s.purchases_full,
-    fromHour: (h) => h.purchases_full,
+    numerator: (x) => x.purchases_full,
   },
   {
     key: "purchase_rate",
     label: "課金率",
+    hint: "買い切り ÷ 診断数",
     kind: "rate",
-    fromSubtotal: (s) => ratio(s.purchases_full, s.diagnoses),
-    fromHour: (h) => ratio(h.purchases_full, h.diagnoses),
+    numerator: (x) => x.purchases_full,
+    denominator: (x) => x.diagnoses,
   },
   {
     key: "net_per_diagnosis",
     label: "診断あたり売上",
+    hint: "純売上 ÷ 診断数",
     kind: "yen_decimal",
-    fromSubtotal: (s) => ratio(s.net, s.diagnoses),
-    fromHour: (h) => ratio(h.net, h.diagnoses),
+    numerator: (x) => x.net,
+    denominator: (x) => x.diagnoses,
   },
 ];
+
+export function headlineValue(
+  definition: HeadlineDefinition,
+  amounts: HeadlineAmounts,
+): number | null {
+  return definition.denominator
+    ? ratio(definition.numerator(amounts), definition.denominator(amounts))
+    : definition.numerator(amounts);
+}
+
+export type HeadlineSeriesMode = "hourly" | "cumulative";
+
+/**
+ * グラフ用の 24 個の値。lastHour より先 (まだ来ていない時間帯) は null。
+ * 累計は、その時間帯の終わりまでを足したもの。率と単価は、分子と分母を別々に足してから割る。
+ */
+export function headlineSeries(
+  definition: HeadlineDefinition,
+  hours: NumbersHour[],
+  mode: HeadlineSeriesMode,
+  lastHour: number,
+): (number | null)[] {
+  let numerator = 0;
+  let denominator = 0;
+  return hours.map((hour) => {
+    if (hour.h > lastHour) return null;
+    if (mode === "hourly") return headlineValue(definition, hour);
+    numerator += definition.numerator(hour);
+    if (!definition.denominator) return numerator;
+    denominator += definition.denominator(hour);
+    return ratio(numerator, denominator);
+  });
+}
 
 const countFormat = new Intl.NumberFormat("ja-JP");
 
@@ -215,23 +262,33 @@ export function formatNumbersValue(
   return `${(value * 100).toFixed(2)}%`;
 }
 
+export interface NumbersDelta {
+  /** 符号なしの大きさ。"5.9%" や "0.03pt"。 */
+  text: string;
+  direction: "up" | "down" | "flat";
+}
+
 /**
  * 比較日との差。数と金額は増減率 (%)、率はポイント差 (pt)。
  * 比べられないとき (どちらかが無い、比較日が 0) は null。
  */
-export function formatNumbersDelta(
+export function numbersDelta(
   current: number | null,
   previous: number | null,
   kind: HeadlineDefinition["kind"],
-): string | null {
+): NumbersDelta | null {
   if (current === null || previous === null) return null;
-  if (kind === "rate") {
-    const points = (current - previous) * 100;
-    return `${points >= 0 ? "+" : "−"}${Math.abs(points).toFixed(2)}pt`;
-  }
-  if (previous === 0) return null;
-  const change = ((current - previous) / previous) * 100;
-  return `${change >= 0 ? "+" : "−"}${Math.abs(change).toFixed(1)}%`;
+  if (kind !== "rate" && previous === 0) return null;
+  const change =
+    kind === "rate"
+      ? (current - previous) * 100
+      : ((current - previous) / previous) * 100;
+  const digits = kind === "rate" ? 2 : 1;
+  const rounded = Number(Math.abs(change).toFixed(digits));
+  return {
+    text: `${rounded.toFixed(digits)}${kind === "rate" ? "pt" : "%"}`,
+    direction: rounded === 0 ? "flat" : change > 0 ? "up" : "down",
+  };
 }
 
 /** "2026-11-22" → "11/22(日)"。 */
