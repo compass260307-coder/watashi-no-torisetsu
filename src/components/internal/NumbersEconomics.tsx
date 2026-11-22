@@ -102,7 +102,7 @@ export function EconomicsCard({
       action={
         <div className="flex flex-wrap items-center gap-2">
           <span
-            className="rounded-full border px-2.5 py-1 text-[13px] font-bold"
+            className="rounded-full border px-2.5 py-1 text-sm font-bold"
             style={{
               color: basis.tone,
               borderColor:
@@ -116,7 +116,7 @@ export function EconomicsCard({
           <button
             type="button"
             onClick={onOpenEntry}
-            className="h-8 rounded-lg border border-[var(--nb-border-strong)] px-3 text-[13px] font-bold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)]"
+            className="h-8 rounded-lg border border-[var(--nb-border-strong)] px-3 text-sm font-bold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)]"
           >
             広告費を入れる
           </button>
@@ -127,19 +127,19 @@ export function EconomicsCard({
         {cells.map((cell) => (
           <div
             key={cell.label}
-            className="min-w-0 bg-[var(--nb-surface)] px-4 py-4 sm:px-5"
+            className="min-w-0 bg-[var(--nb-surface)] px-4 py-5 sm:px-6"
           >
-            <dt className="text-[15px] font-bold text-[var(--nb-text)]">
+            <dt className="text-base font-bold text-[var(--nb-text)]">
               {cell.label}
             </dt>
-            <dd className="mt-2">
+            <dd className="mt-3">
               <span
-                className="text-[1.7rem] font-bold leading-none tracking-tight tabular-nums"
+                className="text-[2rem] font-bold leading-none tracking-tight tabular-nums xl:text-[2.5rem]"
                 style={{ color: cell.tone ?? "var(--nb-text)" }}
               >
                 <AnimatedNumber value={cell.value} format={cell.format} />
               </span>
-              <span className="mt-2 block min-h-5 truncate text-[13px] tabular-nums text-[var(--nb-text-2)]">
+              <span className="mt-2 block min-h-5 truncate text-sm tabular-nums text-[var(--nb-text-2)]">
                 {cell.before !== null ? (
                   <>
                     {compareNote}{" "}
@@ -153,14 +153,14 @@ export function EconomicsCard({
                   ""
                 )}
               </span>
-              <span className="mt-0.5 block min-h-4 truncate text-[13px] tabular-nums text-[var(--nb-text-2)]">
+              <span className="mt-0.5 block min-h-4 truncate text-sm tabular-nums text-[var(--nb-text-2)]">
                 {cell.extra}
               </span>
             </dd>
           </div>
         ))}
       </dl>
-      <p className="border-t border-[var(--nb-border)] px-4 py-3 text-[13px] leading-relaxed tabular-nums text-[var(--nb-text-2)] sm:px-5">
+      <p className="border-t border-[var(--nb-border)] px-4 py-3 text-sm leading-relaxed tabular-nums text-[var(--nb-text-2)] sm:px-5">
         {now && spent ? (
           <>
             純売上 {signedYen(day.until_cut.net)} − 手数料 {signedYen(now.fee)}{" "}

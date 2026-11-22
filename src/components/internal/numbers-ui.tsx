@@ -11,22 +11,54 @@ import {
 
 import type { NumbersDelta } from "@/lib/internal-numbers";
 
-/** 画面全体の色。黒地に、白の文字・1 色のアクセント・増減の 2 色だけを使う。 */
-export const NUMBERS_THEME = {
-  "--nb-bg": "#000000",
-  "--nb-surface": "#0b0c0e",
-  "--nb-surface-2": "#121417",
-  "--nb-border": "#1c1f23",
-  "--nb-border-strong": "#2f3336",
-  "--nb-text": "#e7e9ea",
-  "--nb-text-2": "#a7b1bc",
-  "--nb-text-3": "#77828d",
-  "--nb-accent": "#1d9bf0",
-  "--nb-compare": "#8b8b85",
-  "--nb-up": "#00ba7c",
-  "--nb-down": "#f4212e",
-  colorScheme: "dark",
-} as CSSProperties;
+// 文字は、太さを細かく選べる端末のフォントを先に使う (Mac・iPhone ではヒラギノ)。
+// サイト共通の Noto Sans JP は太さが 2 種類しか無く、黒地では細い字になって読みにくい。
+const FONT_FAMILY =
+  '-apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", Meiryo, sans-serif';
+
+export type NumbersThemeName = "dark" | "light";
+
+/**
+ * 画面全体の色。文字・面・1 色のアクセント・増減の 2 色だけを使う。
+ * 黒地 (dark) と白地 (light) を選べる。各部品は役割名 (--nb-*) で参照する。
+ */
+export const NUMBERS_THEMES: Record<NumbersThemeName, CSSProperties> = {
+  dark: {
+    "--nb-bg": "#050607",
+    "--nb-surface": "#121416",
+    "--nb-surface-2": "#1c1f23",
+    "--nb-border": "#262a2f",
+    "--nb-border-strong": "#3d444b",
+    "--nb-text": "#f4f6f7",
+    "--nb-text-2": "#b8c1ca",
+    "--nb-text-3": "#8b95a0",
+    "--nb-accent": "#1d9bf0",
+    "--nb-compare": "#8b8b85",
+    "--nb-up": "#00c283",
+    "--nb-down": "#ff5560",
+    colorScheme: "dark",
+    fontFamily: FONT_FAMILY,
+  } as CSSProperties,
+  light: {
+    "--nb-bg": "#f2f4f6",
+    "--nb-surface": "#ffffff",
+    "--nb-surface-2": "#eef1f4",
+    "--nb-border": "#e0e4e9",
+    "--nb-border-strong": "#c3cad2",
+    "--nb-text": "#0f1419",
+    "--nb-text-2": "#45505b",
+    "--nb-text-3": "#687480",
+    "--nb-accent": "#1883d0",
+    "--nb-compare": "#7a838c",
+    "--nb-up": "#00845a",
+    "--nb-down": "#d42a36",
+    colorScheme: "light",
+    fontFamily: FONT_FAMILY,
+  } as CSSProperties,
+};
+
+/** 既定の配色 (黒地)。 */
+export const NUMBERS_THEME = NUMBERS_THEMES.dark;
 
 export const numberFormat = new Intl.NumberFormat("ja-JP");
 export const yen = (value: number) =>
@@ -52,15 +84,13 @@ export function Card({
       className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[var(--nb-border)] bg-[var(--nb-surface)] ${className}`}
     >
       {title && (
-        <header className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 pb-3 pt-4 sm:px-5">
+        <header className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 pb-4 pt-5 sm:px-6">
           <div className="mr-auto min-w-0">
-            <h2 className="text-[15px] font-bold text-[var(--nb-text)]">
+            <h2 className="text-lg font-bold leading-tight text-[var(--nb-text)]">
               {title}
             </h2>
             {hint && (
-              <p className="mt-0.5 text-[13px] text-[var(--nb-text-2)]">
-                {hint}
-              </p>
+              <p className="mt-1 text-sm text-[var(--nb-text-2)]">{hint}</p>
             )}
           </div>
           {action}
@@ -95,7 +125,7 @@ export function DeltaBadge({
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full font-bold tabular-nums ${
-        size === "sm" ? "px-1.5 py-px text-xs" : "px-2 py-0.5 text-[13px]"
+        size === "sm" ? "px-1.5 py-px text-[13px]" : "px-2 py-0.5 text-sm"
       }`}
       style={{
         color,
@@ -175,7 +205,7 @@ export function Segmented<T extends string>({
           type="button"
           aria-pressed={option.value === value}
           onClick={() => onChange(option.value)}
-          className={`rounded-md px-3 py-1 text-[13px] font-bold transition-colors ${
+          className={`rounded-md px-3 py-1 text-sm font-bold transition-colors ${
             option.value === value
               ? "bg-[var(--nb-surface-2)] text-[var(--nb-text)] shadow-[inset_0_0_0_1px_var(--nb-border-strong)]"
               : "text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
