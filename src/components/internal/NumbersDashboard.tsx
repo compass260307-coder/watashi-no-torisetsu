@@ -8,7 +8,7 @@ import {
   NUMBERS_EARLIEST_DAY,
   buildComparison,
   comparisonDay,
-  defaultComparisonId,
+  DEFAULT_COMPARISON_ID,
   formatNumbersClock,
   formatNumbersDay,
   formatNumbersValue,
@@ -135,8 +135,8 @@ export function NumbersDashboard() {
   const [failedDays, setFailedDays] = useState<Record<string, true>>({});
   const requestedDays = useRef(new Set<string>());
   const [costEntryOpen, setCostEntryOpen] = useState(false);
-  // 配色。黒地が読みにくいときは白地に切り替えられる (端末ごとに覚える)。
-  const [theme, setTheme] = useState<NumbersThemeName>("dark");
+  // 配色。既定は白地 (2026-11-22 本人の指定)。黒地にも切り替えられる (端末ごとに覚える)。
+  const [theme, setTheme] = useState<NumbersThemeName>("light");
   // スマホでは下の内訳を 1 つずつ切り替えて見る (全部並べると縦に長すぎる)。
   const [section, setSection] = useState<SectionKey>("funnel");
   const latestRequest = useRef(0);
@@ -147,11 +147,11 @@ export function NumbersDashboard() {
       await Promise.resolve();
       if (cancelled) return;
       try {
-        if (window.localStorage.getItem(THEME_KEY) === "light") {
-          setTheme("light");
+        if (window.localStorage.getItem(THEME_KEY) === "dark") {
+          setTheme("dark");
         }
       } catch {
-        // 読めない端末では、既定の黒地のまま。
+        // 読めない端末では、既定の白地のまま。
       }
     })();
     return () => {
@@ -224,7 +224,7 @@ export function NumbersDashboard() {
   }, [load]);
 
   // 選んだ相手のうち、まだ数字を取っていない日を取りに行く。
-  const selected = payload ? (selection ?? [defaultComparisonId(payload)]) : [];
+  const selected = payload ? (selection ?? [DEFAULT_COMPARISON_ID]) : [];
   const missingDays = payload
     ? selected
         .map((id) => comparisonDay(payload, id))
@@ -254,7 +254,7 @@ export function NumbersDashboard() {
 
   const toggleComparison = (id: ComparisonId) => {
     if (!payload) return;
-    const current = selection ?? [defaultComparisonId(payload)];
+    const current = selection ?? [DEFAULT_COMPARISON_ID];
     if (current.includes(id)) {
       setSelection(current.filter((item) => item !== id));
       return;
@@ -274,7 +274,7 @@ export function NumbersDashboard() {
   const addCustomDay = (target: string) => {
     if (!payload) return;
     setCustomDays((days) => (days.includes(target) ? days : [...days, target]));
-    const current = selection ?? [defaultComparisonId(payload)];
+    const current = selection ?? [DEFAULT_COMPARISON_ID];
     const id: ComparisonId = `date:${target}`;
     if (!current.includes(id) && current.length < MAX_COMPARISONS) {
       setSelection(sortComparisonIds([...current, id]));

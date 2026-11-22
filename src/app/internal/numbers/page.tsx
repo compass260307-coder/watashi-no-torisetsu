@@ -16,13 +16,13 @@ export default async function InternalNumbersPage() {
   const user = await getSession();
   if (!(await isInternalDashboardViewer(user))) {
     return (
-      <main className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-4 bg-black px-6 text-center text-[#e7e9ea]">
-        <p className="text-sm leading-relaxed text-[#8b8f94]">
+      <main className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-4 bg-[#f2f4f6] px-6 text-center text-[#0f1419]">
+        <p className="text-sm leading-relaxed text-[#45505b]">
           このページは、許可されたアカウントでログインしているときだけ表示されます。
         </p>
         <Link
           href="/login"
-          className="rounded-lg bg-white px-4 py-2 text-sm font-bold text-black"
+          className="rounded-lg bg-[#0f1419] px-4 py-2 text-sm font-bold text-white"
         >
           ログインする
         </Link>
