@@ -93,10 +93,17 @@ export async function GET(request: NextRequest) {
     return json({ error: "costs_unavailable" }, 503);
   }
 
-  // 時間別の実績は、日 × アカウントごとに「何時間分あるか」と合計だけを返す。
+  // 時間別の実績は、日 × アカウントごとに「どの時間帯があるか」と合計だけを返す。
+  // mask は 0〜23 時台の 24 文字で、実績がある時間帯が "1"。
   const coverage = new Map<
     string,
-    { day: string; account: string; hours: number; spend: number }
+    {
+      day: string;
+      account: string;
+      hours: number;
+      spend: number;
+      mask: string;
+    }
   >();
   for (const row of hourly.data ?? []) {
     const key = `${row.day} ${row.account}`;
@@ -105,8 +112,10 @@ export async function GET(request: NextRequest) {
       account: row.account,
       hours: 0,
       spend: 0,
+      mask: "0".repeat(24),
     };
     entry.hours += 1;
+    entry.mask = `${entry.mask.slice(0, row.hour)}1${entry.mask.slice(row.hour + 1)}`;
     entry.spend += Number(row.spend_jpy);
     coverage.set(key, entry);
   }

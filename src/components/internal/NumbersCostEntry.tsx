@@ -1,15 +1,27 @@
 "use client";
 
-// 「広告費を入れる」の入力画面。
-//   * X のエクスポート (xlsx) を置く → 日本時間の時間別の実績として保存
-//   * 日別の金額を手で入れる (TikTok など)
-//   * 配信計画 (時間別の予算) を手で入れる → 実績が入っていない時間帯を、この金額で補う
-import { useCallback, useEffect, useState } from "react";
+// 「広告費を入れる」の入力画面。1 枚で、今なにが入っているかと、入れる場所の両方が見える。
+//   左: 実績 ... X のエクスポート (xlsx) を画面のどこかに置くと、その場で取り込む。
+//        直近 7 日 × アカウントごとに、どの時間帯の実績が入っているかを帯で見せる。
+//        エクスポートを置けない媒体は、日別の金額を入れる。
+//   右: 配信計画 ... 時間帯ごとの予算。棒グラフで形を見ながら直す (棒をなぞる・数字を打つ・
+//        表計算から 24 個まとめて貼る)。実績が入っていない時間帯を、この金額で補う。
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ClipboardEvent,
+  type DragEvent,
+  type PointerEvent,
+  type ReactNode,
+} from "react";
 
 import {
+  formatNumbersDay,
   shiftNumbersDay,
   todayInJst,
-  formatNumbersDay,
 } from "@/lib/internal-numbers";
 import {
   detectXAdsAccount,
@@ -19,7 +31,7 @@ import {
   type XAdsHourlyRow,
 } from "@/lib/x-ads-export";
 
-import { Segmented, numberFormat, yen } from "./numbers-ui";
+import { Card, numberFormat, yen } from "./numbers-ui";
 
 interface Account {
   code: string;
@@ -37,15 +49,16 @@ interface CostsState {
     amount_jpy: number;
   }[];
   daily: { day: string; medium: string; spend_jpy: number }[];
-  coverage: { day: string; account: string; hours: number; spend: number }[];
+  /** mask は 0〜23 時台の 24 文字で、実績がある時間帯が "1"。 */
+  coverage: {
+    day: string;
+    account: string;
+    hours: number;
+    spend: number;
+    mask?: string;
+  }[];
 }
 
-type Tab = "export" | "daily" | "plan";
-const TABS: { value: Tab; label: string }[] = [
-  { value: "export", label: "Xのエクスポート" },
-  { value: "daily", label: "日別の金額" },
-  { value: "plan", label: "配信計画" },
-];
 const MEDIUM_LABELS: Record<string, string> = {
   x: "X",
   tiktok: "TikTok",
@@ -66,11 +79,15 @@ const LOCALE_LABELS: Record<string, string> = {
 };
 
 const field =
-  "h-9 rounded-lg border border-[var(--nb-border-strong)] bg-transparent px-2.5 text-sm text-[var(--nb-text)]";
+  "h-9 rounded-lg border border-[var(--nb-border-strong)] bg-transparent px-2.5 text-sm text-[var(--nb-text)] outline-none transition-colors focus:border-[var(--nb-accent)]";
 const primaryButton =
-  "h-9 rounded-lg bg-[var(--nb-text)] px-4 text-sm font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-50";
+  "h-9 rounded-lg bg-[var(--nb-text)] px-4 text-sm font-bold text-black transition-opacity hover:opacity-90 disabled:opacity-40";
 const quietButton =
-  "h-8 rounded-lg border border-[var(--nb-border-strong)] px-3 text-xs font-bold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)] disabled:opacity-50";
+  "h-8 rounded-lg border border-[var(--nb-border-strong)] px-3 text-xs font-bold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)] disabled:opacity-40";
+const accentTint = (percent: number) =>
+  `color-mix(in srgb, var(--nb-accent) ${percent}%, transparent)`;
+
+const jstHourNow = () => new Date(Date.now() + 9 * 3600e3).getUTCHours();
 
 async function post(body: Record<string, unknown>): Promise<void> {
   const response = await fetch("/api/internal/numbers/costs", {
@@ -82,6 +99,59 @@ async function post(body: Record<string, unknown>): Promise<void> {
   if (!response.ok) throw new Error(`costs ${response.status}`);
 }
 
+/* ------------------------------------------------------------------ 小物 */
+
+function Spinner() {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-block h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-[var(--nb-border-strong)] border-t-[var(--nb-text)]"
+    />
+  );
+}
+
+function Mark({ tone, children }: { tone: string; children: ReactNode }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold leading-none"
+      style={{
+        color: tone,
+        background: `color-mix(in srgb, ${tone} 16%, transparent)`,
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/* ---------------------------------------------------------------- 取り込み */
+
+interface ImportItem {
+  id: string;
+  fileName: string;
+  status: "reading" | "needs_account" | "saving" | "saved" | "error";
+  message?: string;
+  rows: XAdsExportRow[];
+  code: string | null;
+  accountName?: string;
+  unmatched: number;
+  summary?: { range: string; hours: number; spend: number };
+}
+
+function summarize(hourly: XAdsHourlyRow[]) {
+  const first = hourly[0];
+  const last = hourly[hourly.length - 1];
+  return {
+    range: `${formatNumbersDay(first.day)} ${first.hour}時 〜 ${formatNumbersDay(last.day)} ${last.hour}時`,
+    hours: hourly.length,
+    spend: hourly.reduce((total, row) => total + row.spend, 0),
+  };
+}
+
+const hasFiles = (event: DragEvent) =>
+  Array.from(event.dataTransfer.types).includes("Files");
+
 export function NumbersCostEntry({
   onClose,
   onSaved,
@@ -90,9 +160,11 @@ export function NumbersCostEntry({
   /** 保存できたとき。呼び出し側が数字を取り直す。 */
   onSaved: () => void;
 }) {
-  const [tab, setTab] = useState<Tab>("export");
   const [state, setState] = useState<CostsState | null>(null);
   const [failed, setFailed] = useState(false);
+  const [items, setItems] = useState<ImportItem[]>([]);
+  const [dragging, setDragging] = useState(false);
+  const dragDepth = useRef(0);
 
   const reload = useCallback(async () => {
     try {
@@ -124,14 +196,82 @@ export function NumbersCostEntry({
     };
   }, [onClose, reload]);
 
-  const saved = () => {
+  const changed = useCallback(() => {
     onSaved();
     void reload();
+  }, [onSaved, reload]);
+
+  const patch = (id: string, change: Partial<ImportItem>) =>
+    setItems((current) =>
+      current.map((item) => (item.id === id ? { ...item, ...change } : item)),
+    );
+
+  /** 読み取った行を、そのアカウントの実績として保存する。 */
+  const importRows = async (
+    id: string,
+    rows: XAdsExportRow[],
+    account: Account,
+  ): Promise<boolean> => {
+    const hourly = toJstHourly(rows, account.timezone);
+    patch(id, {
+      status: "saving",
+      code: account.code,
+      accountName: account.name,
+      summary: summarize(hourly),
+      message: undefined,
+    });
+    try {
+      await post({ action: "upload", account: account.code, rows: hourly });
+      patch(id, { status: "saved" });
+      return true;
+    } catch {
+      patch(id, { status: "error", message: "保存できませんでした" });
+      return false;
+    }
+  };
+
+  /** 置かれたファイルを読み、登録済みのアカウントのものは、その場で保存する。 */
+  const addFiles = async (files: File[]) => {
+    if (!state || files.length === 0) return;
+    let saved = false;
+    for (const file of files) {
+      const id = `${file.name}-${file.size}-${Date.now()}-${Math.random()}`;
+      const base = {
+        id,
+        fileName: file.name,
+        rows: [],
+        code: null,
+        unmatched: 0,
+      };
+      setItems((current) => [{ ...base, status: "reading" }, ...current]);
+      try {
+        if (!/\.xlsx$/i.test(file.name)) {
+          throw new Error("xlsx ファイルではありません");
+        }
+        const rows = await parseXAdsExport(await file.arrayBuffer());
+        if (rows.length === 0) throw new Error("時間別の行がありません");
+        const { code, unmatchedCampaigns } = detectXAdsAccount(rows);
+        const account = state.accounts.find((entry) => entry.code === code);
+        patch(id, { rows, code, unmatched: unmatchedCampaigns });
+        if (!account) {
+          patch(id, { status: "needs_account" });
+          continue;
+        }
+        saved = (await importRows(id, rows, account)) || saved;
+      } catch (error) {
+        patch(id, {
+          status: "error",
+          message:
+            error instanceof Error ? error.message : "読み取れませんでした",
+        });
+      }
+    }
+    if (saved) changed();
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/70 p-3 sm:p-6"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/75 sm:p-4 xl:p-6"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -140,239 +280,286 @@ export function NumbersCostEntry({
         role="dialog"
         aria-modal="true"
         aria-label="広告費を入れる"
-        className="w-full max-w-3xl rounded-2xl border border-[var(--nb-border-strong)] bg-[var(--nb-surface)] text-[var(--nb-text)] shadow-[0_20px_60px_rgba(0,0,0,0.7)]"
+        className="relative mx-auto flex min-h-full w-full max-w-[1480px] flex-col bg-[var(--nb-bg)] text-[var(--nb-text)] shadow-[0_24px_80px_rgba(0,0,0,0.8)] sm:min-h-0 sm:rounded-2xl sm:border sm:border-[var(--nb-border-strong)]"
+        onDragEnter={(event) => {
+          if (!hasFiles(event)) return;
+          event.preventDefault();
+          dragDepth.current += 1;
+          setDragging(true);
+        }}
+        onDragOver={(event) => {
+          if (hasFiles(event)) event.preventDefault();
+        }}
+        onDragLeave={(event) => {
+          if (!hasFiles(event)) return;
+          dragDepth.current = Math.max(0, dragDepth.current - 1);
+          if (dragDepth.current === 0) setDragging(false);
+        }}
+        onDrop={(event) => {
+          if (!hasFiles(event)) return;
+          event.preventDefault();
+          dragDepth.current = 0;
+          setDragging(false);
+          void addFiles(Array.from(event.dataTransfer.files));
+        }}
       >
-        <header className="flex flex-wrap items-center gap-3 border-b border-[var(--nb-border)] px-4 py-3 sm:px-5">
-          <h2 className="mr-auto text-base font-bold">広告費を入れる</h2>
+        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-[var(--nb-border)] bg-[var(--nb-bg)] px-4 py-3 sm:rounded-t-2xl sm:px-5">
+          <div className="mr-auto min-w-0">
+            <h2 className="text-base font-bold">広告費を入れる</h2>
+            <p className="mt-0.5 text-xs text-[var(--nb-text-2)]">
+              入れた内容はすぐに保存され、数値画面に反映されます。
+            </p>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="閉じる"
-            className="h-8 w-8 rounded-lg border border-[var(--nb-border)] text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
+            className="h-8 shrink-0 whitespace-nowrap rounded-lg border border-[var(--nb-border-strong)] px-3 text-xs font-bold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)]"
           >
-            ×
+            閉じる
           </button>
         </header>
-        <div className="overflow-x-auto px-4 pt-3 sm:px-5">
-          <Segmented
-            label="入れ方"
-            value={tab}
-            onChange={setTab}
-            options={TABS}
-          />
-        </div>
-        <div className="px-4 pb-5 pt-4 sm:px-5">
-          {failed && (
-            <p role="alert" className="mb-3 text-sm text-[var(--nb-down)]">
-              登録内容を取得できませんでした。
-              <button
-                type="button"
-                onClick={() => void reload()}
-                className="ml-2 underline"
+
+        {failed && (
+          <p
+            role="alert"
+            className="mx-4 mt-4 rounded-lg border border-[var(--nb-down)] px-3 py-2 text-sm text-[var(--nb-down)] sm:mx-5"
+          >
+            登録内容を取得できませんでした。
+            <button
+              type="button"
+              onClick={() => void reload()}
+              className="ml-2 underline"
+            >
+              もう一度試す
+            </button>
+          </p>
+        )}
+        {!state && !failed && (
+          <p className="flex items-center gap-2 px-5 py-10 text-sm text-[var(--nb-text-2)]">
+            <Spinner />
+            読み込んでいます...
+          </p>
+        )}
+
+        {state && (
+          <div className="grid gap-3 p-3 sm:p-4 xl:grid-cols-12 xl:gap-4 xl:p-5">
+            <div className="grid min-w-0 content-start gap-3 xl:col-span-7 xl:gap-4">
+              <Card
+                title="実績を入れる"
+                hint="X広告マネージャーの時間別エクスポート（xlsx）"
               >
-                もう一度試す
-              </button>
+                <div className="grid gap-3 px-4 pb-4 sm:px-5 sm:pb-5">
+                  <DropZone dragging={dragging} onFiles={addFiles} />
+                  <ImportList
+                    items={items}
+                    onRetry={(item) => {
+                      const account = state.accounts.find(
+                        (entry) => entry.code === item.code,
+                      );
+                      if (!account) return;
+                      void importRows(item.id, item.rows, account).then(
+                        (ok) => ok && changed(),
+                      );
+                    }}
+                    onRegistered={(item, account) => {
+                      void importRows(item.id, item.rows, account).then(() =>
+                        changed(),
+                      );
+                    }}
+                  />
+                </div>
+              </Card>
+              <Card
+                title="入っている実績"
+                hint="直近7日。帯の1目盛りが1時間で、左が0時台、右が23時台です"
+              >
+                <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+                  <Coverage state={state} />
+                </div>
+              </Card>
+              <Card
+                title="そのほかの媒体"
+                hint="エクスポートを置けない媒体は、1日分の金額を入れます"
+              >
+                <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+                  <OtherMedia state={state} onSaved={changed} />
+                </div>
+              </Card>
+            </div>
+            <div className="grid min-w-0 content-start gap-3 xl:col-span-5 xl:gap-4">
+              <Card
+                title="配信計画"
+                hint="Xの時間帯ごとの予算（全アカウントの合計）。実績が入っていない時間帯の広告費を、この金額で補います"
+              >
+                <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+                  <PlanEditor state={state} onSaved={changed} />
+                </div>
+              </Card>
+            </div>
+          </div>
+        )}
+
+        {dragging && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-20 grid place-items-center border-2 border-dashed border-[var(--nb-accent)] sm:rounded-2xl"
+            style={{ background: "rgba(0, 0, 0, 0.72)" }}
+          >
+            <p className="text-lg font-bold">
+              ここに置くと、そのまま取り込みます
             </p>
-          )}
-          {!state && !failed && (
-            <p className="text-sm text-[var(--nb-text-2)]">
-              読み込んでいます...
-            </p>
-          )}
-          {state && tab === "export" && (
-            <ExportTab state={state} onSaved={saved} />
-          )}
-          {state && tab === "daily" && (
-            <DailyTab state={state} onSaved={saved} />
-          )}
-          {state && tab === "plan" && <PlanTab state={state} onSaved={saved} />}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-/* -------------------------------------------------------- X のエクスポート */
-
-interface ExportItem {
-  id: string;
-  fileName: string;
-  status: "needs_account" | "ready" | "saving" | "saved" | "error";
-  message?: string;
-  rows: XAdsExportRow[];
-  code: string | null;
-  unmatched: number;
-  hourly?: XAdsHourlyRow[];
-}
-
-function summarize(hourly: XAdsHourlyRow[]) {
-  const first = hourly[0];
-  const last = hourly[hourly.length - 1];
-  return {
-    range: `${formatNumbersDay(first.day)} ${first.hour}時 〜 ${formatNumbersDay(last.day)} ${last.hour}時`,
-    hours: hourly.length,
-    spend: hourly.reduce((total, row) => total + row.spend, 0),
-  };
-}
-
-function ExportTab({
-  state,
-  onSaved,
+function DropZone({
+  dragging,
+  onFiles,
 }: {
-  state: CostsState;
-  onSaved: () => void;
+  dragging: boolean;
+  onFiles: (files: File[]) => Promise<void>;
 }) {
-  const [items, setItems] = useState<ExportItem[]>([]);
-  const patch = (id: string, change: Partial<ExportItem>) =>
-    setItems((current) =>
-      current.map((item) => (item.id === id ? { ...item, ...change } : item)),
-    );
-
-  const addFiles = async (files: FileList) => {
-    for (const file of Array.from(files)) {
-      const id = `${file.name}-${file.size}-${Date.now()}`;
-      try {
-        const rows = await parseXAdsExport(await file.arrayBuffer());
-        if (rows.length === 0) throw new Error("時間別の行がありません");
-        const { code, unmatchedCampaigns } = detectXAdsAccount(rows);
-        const account = state.accounts.find((item) => item.code === code);
-        setItems((current) => [
-          ...current,
-          {
-            id,
-            fileName: file.name,
-            rows,
-            code,
-            unmatched: unmatchedCampaigns,
-            status: account ? "ready" : "needs_account",
-            hourly: account ? toJstHourly(rows, account.timezone) : undefined,
-          },
-        ]);
-      } catch (error) {
-        setItems((current) => [
-          ...current,
-          {
-            id,
-            fileName: file.name,
-            rows: [],
-            code: null,
-            unmatched: 0,
-            status: "error",
-            message:
-              error instanceof Error ? error.message : "読み取れませんでした",
-          },
-        ]);
-      }
-    }
-  };
-
-  const save = async (item: ExportItem) => {
-    if (!item.code || !item.hourly) return;
-    patch(item.id, { status: "saving" });
-    try {
-      await post({ action: "upload", account: item.code, rows: item.hourly });
-      patch(item.id, { status: "saved" });
-      onSaved();
-    } catch {
-      patch(item.id, { status: "error", message: "保存できませんでした" });
-    }
-  };
-
   return (
-    <div className="grid gap-4">
-      <p className="text-sm leading-relaxed text-[var(--nb-text-2)]">
-        X広告マネージャーの時間別エクスポート（xlsx）を選んでください。1アカウント1ファイルで、複数まとめて選べます。キャンペーン名からアカウントを判別し、日本時間に直して保存します。同じ期間を置き直すと上書きされます。
-      </p>
-      <label className="flex cursor-pointer flex-col items-center gap-1 rounded-xl border border-dashed border-[var(--nb-border-strong)] px-4 py-6 text-center text-sm hover:bg-[var(--nb-surface-2)]">
-        <span className="font-bold">ファイルを選ぶ</span>
-        <span className="text-xs text-[var(--nb-text-2)]">export-….xlsx</span>
-        <input
-          type="file"
-          accept=".xlsx"
-          multiple
-          className="sr-only"
-          onChange={(event) => {
-            if (event.target.files?.length) void addFiles(event.target.files);
-            event.target.value = "";
-          }}
-        />
-      </label>
-
-      {items.map((item) => {
-        const summary = item.hourly?.length ? summarize(item.hourly) : null;
-        const account = state.accounts.find(
-          (entry) => entry.code === item.code,
-        );
-        return (
-          <div
-            key={item.id}
-            className="rounded-xl border border-[var(--nb-border)] px-4 py-3"
-          >
-            <p className="truncate text-xs text-[var(--nb-text-2)]">
-              {item.fileName}
-            </p>
-            {item.status === "error" && (
-              <p className="mt-1 text-sm text-[var(--nb-down)]">
-                {item.message}
-              </p>
-            )}
-            {item.status === "needs_account" && (
-              <NewAccountForm
-                code={item.code}
-                onRegistered={(registered) => {
-                  patch(item.id, {
-                    code: registered.code,
-                    status: "ready",
-                    hourly: toJstHourly(item.rows, registered.timezone),
-                  });
-                  onSaved();
-                }}
-              />
-            )}
-            {summary && item.status !== "error" && (
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-2">
-                <p className="mr-auto text-sm tabular-nums">
-                  <span className="font-bold">
-                    {account?.name ?? item.code}
-                  </span>
-                  <span className="ml-2 text-[var(--nb-text-2)]">
-                    {summary.range}（{numberFormat.format(summary.hours)}
-                    時間分）
-                  </span>
-                  <span className="ml-2 font-bold">{yen(summary.spend)}</span>
-                  {item.unmatched > 0 && (
-                    <span className="ml-2 text-xs text-[var(--nb-text-2)]">
-                      名前の形が違うキャンペーン {item.unmatched}{" "}
-                      件も、このアカウントとして含めています
-                    </span>
-                  )}
-                </p>
-                {item.status === "saved" ? (
-                  <span className="text-sm font-bold text-[var(--nb-up)]">
-                    保存しました
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={item.status === "saving"}
-                    onClick={() => void save(item)}
-                    className={primaryButton}
-                  >
-                    {item.status === "saving" ? "保存中..." : "取り込む"}
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      <Coverage state={state} />
-    </div>
+    <label
+      className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-dashed px-4 py-7 text-center transition-colors hover:bg-[var(--nb-surface-2)]"
+      style={{
+        borderColor: dragging ? "var(--nb-accent)" : "var(--nb-border-strong)",
+        background: dragging ? accentTint(10) : undefined,
+      }}
+    >
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 24 24"
+        className="h-7 w-7 text-[var(--nb-text-2)] transition-colors group-hover:text-[var(--nb-text)]"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <path d="M12 16V4m0 0-4 4m4-4 4 4M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
+      </svg>
+      <span className="text-sm font-bold">エクスポートをここに置く</span>
+      <span className="text-xs leading-relaxed text-[var(--nb-text-2)]">
+        クリックして選ぶこともできます。複数まとめて置けます。
+        <br />
+        アカウントは自動で判別し、日本時間に直して保存します。同じ期間を置き直すと上書きされます。
+      </span>
+      <input
+        type="file"
+        accept=".xlsx"
+        multiple
+        className="sr-only"
+        onChange={(event) => {
+          const files = Array.from(event.target.files ?? []);
+          event.target.value = "";
+          void onFiles(files);
+        }}
+      />
+    </label>
   );
 }
 
-/** はじめて見るアカウント記号のファイル。名前とタイムゾーンを登録してから取り込む。 */
+function ImportList({
+  items,
+  onRetry,
+  onRegistered,
+}: {
+  items: ImportItem[];
+  onRetry: (item: ImportItem) => void;
+  onRegistered: (item: ImportItem, account: Account) => void;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <ul className="grid gap-2">
+      {items.map((item) => (
+        <li
+          key={item.id}
+          className="rounded-xl border border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-3.5 py-3"
+        >
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+            {item.status === "saved" ? (
+              <Mark tone="var(--nb-up)">✓</Mark>
+            ) : item.status === "error" ? (
+              <Mark tone="var(--nb-down)">!</Mark>
+            ) : item.status === "needs_account" ? (
+              <Mark tone="var(--nb-text-2)">?</Mark>
+            ) : (
+              <Spinner />
+            )}
+            <p className="mr-auto min-w-0 text-sm tabular-nums">
+              {item.summary ? (
+                <>
+                  <span className="font-bold">
+                    {item.accountName ?? item.code}
+                  </span>
+                  <span className="ml-2 text-[var(--nb-text-2)]">
+                    {item.summary.range}（
+                    {numberFormat.format(item.summary.hours)}時間分）
+                  </span>
+                </>
+              ) : (
+                <span className="text-[var(--nb-text-2)]">
+                  {item.status === "reading" ? "読み取っています..." : ""}
+                  {item.status === "error" ? "取り込めませんでした" : ""}
+                  {item.status === "needs_account"
+                    ? "アカウントの登録が必要です"
+                    : ""}
+                </span>
+              )}
+            </p>
+            {item.summary && (
+              <span className="text-sm font-bold tabular-nums">
+                {yen(item.summary.spend)}
+              </span>
+            )}
+            <span
+              className="text-xs font-bold"
+              style={{
+                color:
+                  item.status === "saved"
+                    ? "var(--nb-up)"
+                    : item.status === "error"
+                      ? "var(--nb-down)"
+                      : "var(--nb-text-2)",
+              }}
+            >
+              {item.status === "saved" && "取り込みました"}
+              {item.status === "saving" && "保存中..."}
+              {item.status === "error" && item.message}
+            </span>
+            {item.status === "error" && item.summary && (
+              <button
+                type="button"
+                className={quietButton}
+                onClick={() => onRetry(item)}
+              >
+                もう一度
+              </button>
+            )}
+          </div>
+          <p className="mt-1 truncate pl-8 text-[11px] text-[var(--nb-text-3)]">
+            {item.fileName}
+            {item.unmatched > 0 && item.status !== "needs_account"
+              ? ` ・ 名前の形が違うキャンペーン ${item.unmatched} 件も、このアカウントとして含めています`
+              : ""}
+          </p>
+          {item.status === "needs_account" && (
+            <NewAccountForm
+              code={item.code}
+              onRegistered={(account) => onRegistered(item, account)}
+            />
+          )}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** はじめて見るアカウント記号のファイル。名前とタイムゾーンを登録すると、続けて取り込む。 */
 function NewAccountForm({
   code,
   onRegistered,
@@ -390,12 +577,12 @@ function NewAccountForm({
   const [failed, setFailed] = useState(false);
   const valid = /^[A-Z]{1,6}$/.test(form.code) && form.name.trim().length > 0;
   return (
-    <div className="mt-2 grid gap-2">
-      <p className="text-sm">
+    <div className="mt-2.5 grid gap-2 pl-8">
+      <p className="text-sm leading-relaxed">
         {code
           ? `はじめて見るアカウント記号「${code}」です。`
           : "キャンペーン名からアカウントを判別できませんでした。"}
-        名前とタイムゾーンを登録してください（タイムゾーンは広告マネージャーのアカウント設定で確認できます）。
+        名前とタイムゾーンを登録すると、続けて取り込みます（タイムゾーンは広告マネージャーのアカウント設定で確認できます）。
       </p>
       <div className="flex flex-wrap items-center gap-2">
         {!code && (
@@ -445,7 +632,7 @@ function NewAccountForm({
         <button
           type="button"
           disabled={!valid || busy}
-          className={quietButton}
+          className={primaryButton}
           onClick={async () => {
             setBusy(true);
             setFailed(false);
@@ -460,7 +647,7 @@ function NewAccountForm({
             }
           }}
         >
-          {busy ? "登録中..." : "登録する"}
+          {busy ? "登録中..." : "登録して取り込む"}
         </button>
       </div>
       {failed && (
@@ -470,58 +657,180 @@ function NewAccountForm({
   );
 }
 
-/** 直近の日に、どのアカウントの実績が何時間分入っているか。 */
+/* ------------------------------------------------------ 入っている実績の帯 */
+
+/** 1 日 × 1 アカウントの 24 時間。実績がある時間帯を塗る。 */
+function HourStrip({
+  mask,
+  futureFrom,
+  label,
+}: {
+  mask: string | undefined;
+  /** この時間帯から先は、まだ来ていない (今日だけ)。 */
+  futureFrom: number;
+  label: string;
+}) {
+  return (
+    <svg
+      role="img"
+      aria-label={label}
+      viewBox="0 0 24 6"
+      preserveAspectRatio="none"
+      className="h-3 w-full"
+    >
+      <title>{label}</title>
+      {Array.from({ length: 24 }, (_, hour) => {
+        const filled = mask?.[hour] === "1";
+        return (
+          <rect
+            key={hour}
+            x={hour + 0.1}
+            y={0}
+            width={0.8}
+            height={6}
+            fill={
+              filled
+                ? "var(--nb-accent)"
+                : hour >= futureFrom
+                  ? "var(--nb-border)"
+                  : "var(--nb-border-strong)"
+            }
+            opacity={filled ? 1 : hour >= futureFrom ? 0.6 : 1}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
 function Coverage({ state }: { state: CostsState }) {
-  const days = [...new Set(state.coverage.map((entry) => entry.day))]
-    .sort()
-    .reverse()
-    .slice(0, 7);
-  if (days.length === 0) {
+  const [clock] = useState(() => ({ today: todayInJst(), hour: jstHourNow() }));
+  const days = Array.from({ length: 7 }, (_, back) =>
+    shiftNumbersDay(clock.today, -back),
+  );
+  const accounts = state.accounts.filter((account) => account.medium === "x");
+  const cells = new Map(
+    state.coverage.map((entry) => [`${entry.day} ${entry.account}`, entry]),
+  );
+  if (accounts.length === 0) {
     return (
-      <p className="text-xs text-[var(--nb-text-2)]">
-        時間別の実績は、まだ入っていません。
+      <p className="text-sm text-[var(--nb-text-2)]">
+        アカウントがまだ登録されていません。エクスポートを置くと、登録の案内が出ます。
       </p>
     );
   }
+  const columns = `5.5rem repeat(${accounts.length}, minmax(2.75rem, 1fr)) 5rem`;
   return (
     <div>
-      <h3 className="text-xs font-bold text-[var(--nb-text-2)]">
-        入っている実績（直近）
-      </h3>
-      <ul className="mt-1.5 grid gap-1 text-xs tabular-nums text-[var(--nb-text-2)]">
-        {days.map((target) => (
-          <li key={target}>
-            <span className="mr-2 font-bold text-[var(--nb-text)]">
-              {formatNumbersDay(target)}
+      <div className="overflow-x-auto">
+        <div
+          className="grid items-center gap-x-2 gap-y-2.5"
+          style={{
+            gridTemplateColumns: columns,
+            minWidth: `${10.5 + accounts.length * 3.25}rem`,
+          }}
+        >
+          <span />
+          {accounts.map((account) => (
+            <span
+              key={account.code}
+              title={`${account.name}（${account.code}）`}
+              className="truncate text-[11px] font-bold text-[var(--nb-text-2)]"
+            >
+              {account.name}
             </span>
-            {state.coverage
-              .filter((entry) => entry.day === target)
-              .map(
-                (entry) =>
-                  `${state.accounts.find((account) => account.code === entry.account)?.name ?? entry.account} ${entry.hours}時間 ${yen(entry.spend)}`,
-              )
-              .join(" ・ ")}
-          </li>
-        ))}
-      </ul>
+          ))}
+          <span className="text-right text-[11px] font-bold text-[var(--nb-text-2)]">
+            実績の合計
+          </span>
+          {days.map((day, back) => {
+            const total = accounts.reduce(
+              (sum, account) =>
+                sum + (cells.get(`${day} ${account.code}`)?.spend ?? 0),
+              0,
+            );
+            const entered = accounts.some((account) =>
+              cells.has(`${day} ${account.code}`),
+            );
+            return (
+              <div key={day} className="contents">
+                <span className="text-xs tabular-nums text-[var(--nb-text)]">
+                  {formatNumbersDay(day)}
+                  {back === 0 && (
+                    <span className="ml-1 text-[10px] text-[var(--nb-text-2)]">
+                      今日
+                    </span>
+                  )}
+                </span>
+                {accounts.map((account) => {
+                  const entry = cells.get(`${day} ${account.code}`);
+                  return (
+                    <HourStrip
+                      key={account.code}
+                      mask={entry?.mask}
+                      futureFrom={back === 0 ? clock.hour + 1 : 24}
+                      label={`${formatNumbersDay(day)} ${account.name}: ${
+                        entry
+                          ? `${entry.hours}時間分 ${yen(entry.spend)}`
+                          : "未入力"
+                      }`}
+                    />
+                  );
+                })}
+                <span
+                  className="text-right text-xs font-bold tabular-nums"
+                  style={{
+                    color: entered ? "var(--nb-text)" : "var(--nb-text-3)",
+                  }}
+                >
+                  {entered ? yen(total) : "未入力"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-[var(--nb-text-2)]">
+        <span className="flex items-center gap-1.5">
+          <span
+            className="h-2.5 w-2.5 rounded-[2px]"
+            style={{ background: "var(--nb-accent)" }}
+          />
+          実績あり
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span
+            className="h-2.5 w-2.5 rounded-[2px]"
+            style={{ background: "var(--nb-border-strong)" }}
+          />
+          未入力（配信計画の金額で補います）
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span
+            className="h-2.5 w-2.5 rounded-[2px]"
+            style={{ background: "var(--nb-border)", opacity: 0.6 }}
+          />
+          これから
+        </span>
+      </p>
     </div>
   );
 }
 
-/* ------------------------------------------------------------ 日別の金額 */
+/* ---------------------------------------------------------- そのほかの媒体 */
 
-function DailyTab({
+function OtherMedia({
   state,
   onSaved,
 }: {
   state: CostsState;
   onSaved: () => void;
 }) {
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(() => ({
     day: shiftNumbersDay(todayInJst(), -1),
     medium: "tiktok",
     spend: "",
-  });
+  }));
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const amount = Number(form.spend);
@@ -536,20 +845,30 @@ function DailyTab({
     try {
       await post({ action: "daily", ...body });
       onSaved();
+      return true;
     } catch {
       setFailed(true);
+      return false;
     } finally {
       setBusy(false);
     }
   };
   return (
-    <div className="grid gap-4">
-      <p className="text-sm leading-relaxed text-[var(--nb-text-2)]">
-        エクスポートを置けない媒体は、1日分の金額を入れてください。配信していない日は
-        0 を入れると「実績
-        0円」になります。Xは、エクスポートを置いた日はそちらが優先されます。
-      </p>
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="grid gap-3">
+      <form
+        className="flex flex-wrap items-center gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!valid || busy) return;
+          void send({
+            day: form.day,
+            medium: form.medium,
+            spend: amount,
+          }).then(
+            (ok) => ok && setForm((current) => ({ ...current, spend: "" })),
+          );
+        }}
+      >
         <input
           type="date"
           aria-label="日付"
@@ -570,167 +889,415 @@ function DailyTab({
             </option>
           ))}
         </select>
-        <input
-          inputMode="decimal"
-          aria-label="金額（円）"
-          placeholder="金額（円）"
-          value={form.spend}
-          onChange={(event) => setForm({ ...form, spend: event.target.value })}
-          className={`${field} w-32 text-right tabular-nums`}
-        />
+        <label className="relative">
+          <span className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-[var(--nb-text-3)]">
+            ¥
+          </span>
+          <input
+            inputMode="decimal"
+            aria-label="金額（円）"
+            placeholder="0"
+            value={form.spend}
+            onChange={(event) =>
+              setForm({ ...form, spend: event.target.value })
+            }
+            className={`${field} w-32 pl-6 text-right tabular-nums`}
+          />
+        </label>
         <button
-          type="button"
+          type="submit"
           disabled={!valid || busy}
           className={primaryButton}
-          onClick={() =>
-            void send({ day: form.day, medium: form.medium, spend: amount })
-          }
         >
           {busy ? "保存中..." : "保存する"}
         </button>
-      </div>
+      </form>
+      <p className="text-xs leading-relaxed text-[var(--nb-text-2)]">
+        配信していない日は 0 を入れると「実績
+        0円」になります。Xは、エクスポートを置いた日はそちらが優先されます。
+      </p>
       {failed && (
         <p className="text-sm text-[var(--nb-down)]">保存できませんでした。</p>
       )}
-      <div>
-        <h3 className="text-xs font-bold text-[var(--nb-text-2)]">
-          入っている金額（直近3週間）
-        </h3>
-        {state.daily.length === 0 ? (
-          <p className="mt-1.5 text-xs text-[var(--nb-text-2)]">
-            まだ入っていません。
-          </p>
-        ) : (
-          <ul className="mt-1.5 grid gap-1 text-sm tabular-nums">
-            {state.daily.map((entry) => (
-              <li
-                key={`${entry.day}-${entry.medium}`}
-                className="flex items-center gap-3"
+      {state.daily.length > 0 && (
+        <ul className="grid gap-1 border-t border-[var(--nb-border)] pt-3 text-sm tabular-nums">
+          {state.daily.map((entry) => (
+            <li
+              key={`${entry.day}-${entry.medium}`}
+              className="flex items-center gap-3"
+            >
+              <span className="w-24 text-[var(--nb-text-2)]">
+                {formatNumbersDay(entry.day)}
+              </span>
+              <span className="w-16">
+                {MEDIUM_LABELS[entry.medium] ?? entry.medium}
+              </span>
+              <span className="mr-auto font-bold">
+                {yen(Number(entry.spend_jpy))}
+              </span>
+              <button
+                type="button"
+                disabled={busy}
+                className={quietButton}
+                onClick={() =>
+                  void send({
+                    day: entry.day,
+                    medium: entry.medium,
+                    spend: null,
+                  })
+                }
               >
-                <span className="w-24 text-[var(--nb-text-2)]">
-                  {formatNumbersDay(entry.day)}
-                </span>
-                <span className="w-16">
-                  {MEDIUM_LABELS[entry.medium] ?? entry.medium}
-                </span>
-                <span className="mr-auto font-bold">
-                  {yen(Number(entry.spend_jpy))}
-                </span>
-                <button
-                  type="button"
-                  disabled={busy}
-                  className={quietButton}
-                  onClick={() =>
-                    void send({
-                      day: entry.day,
-                      medium: entry.medium,
-                      spend: null,
-                    })
-                  }
-                >
-                  取り消す
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+                取り消す
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
 
 /* -------------------------------------------------------------- 配信計画 */
 
-function PlanTab({
+const NO_PLAN: number[] = Array.from({ length: 24 }, () => 0);
+/** 棒をなぞって変えるときの刻み (円)。細かい数字は入力欄で打つ。 */
+const DRAW_STEP = 120;
+
+function niceCeil(value: number): number {
+  const unit = value <= 2000 ? 500 : value <= 10000 ? 1000 : 5000;
+  return Math.max(unit, Math.ceil(value / unit) * unit);
+}
+
+/**
+ * 貼り付けた文字から金額を取り出す。表計算からの貼り付け (タブ・改行区切り) では、
+ * 桁区切りのカンマと ¥ を取る。タブも改行も無ければ、空白かカンマで区切る。
+ */
+function parsePastedAmounts(text: string): number[] {
+  const cells = /[\t\n]/.test(text)
+    ? text.split(/[\t\r\n]+/)
+    : text.split(/[\s,、]+/);
+  return cells
+    .map((cell) => cell.replace(/[¥￥,円\s]/g, ""))
+    .filter((cell) => cell !== "")
+    .map(Number)
+    .filter((value) => Number.isFinite(value) && value >= 0);
+}
+
+function PlanEditor({
   state,
   onSaved,
 }: {
   state: CostsState;
   onSaved: () => void;
 }) {
-  // いま有効な X の計画 (開始日がいちばん新しく、今日以前のもの) を初期値にする。
-  const today = todayInJst();
-  const current = state.plan.filter(
-    (row) => row.medium === "x" && row.effective_from <= today,
-  );
-  const latest = current[0]?.effective_from;
-  const initial = Array.from({ length: 24 }, (_, hour) =>
-    String(
-      Number(
-        current.find(
-          (row) => row.effective_from === latest && row.hour === hour,
-        )?.amount_jpy ?? 0,
-      ),
-    ),
-  );
+  const [today] = useState(() => todayInJst());
+  // 登録済みの X の計画を、開始日が新しい順に。
+  const plans = useMemo(() => {
+    const byStart = new Map<string, number[]>();
+    for (const row of state.plan) {
+      if (row.medium !== "x") continue;
+      const hours = byStart.get(row.effective_from) ?? [...NO_PLAN];
+      hours[row.hour] = Number(row.amount_jpy);
+      byStart.set(row.effective_from, hours);
+    }
+    return [...byStart.entries()]
+      .map(([from, hours]) => ({ from, hours }))
+      .sort((a, b) => (a.from < b.from ? 1 : -1));
+  }, [state.plan]);
+  // いま使っている計画 (開始日が今日以前で、いちばん新しいもの)。
+  const current = plans.find((plan) => plan.from <= today) ?? null;
+  const saved = current?.hours ?? NO_PLAN;
+
+  const [values, setValues] = useState<string[]>(() => saved.map(String));
   const [effectiveFrom, setEffectiveFrom] = useState(today);
-  const [hours, setHours] = useState<string[]>(initial);
+  const [hover, setHover] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<"saved" | "failed" | null>(null);
-  const amounts = hours.map((value) => Number(value));
+  const [notice, setNotice] = useState<{
+    tone: "ok" | "ng";
+    text: string;
+  } | null>(null);
+  const drawing = useRef(false);
+  const inputs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const amounts = values.map((value) =>
+    value.trim() === "" ? Number.NaN : Number(value),
+  );
   const valid =
     Boolean(effectiveFrom) &&
-    amounts.every(
-      (value, index) =>
-        hours[index].trim() !== "" && Number.isFinite(value) && value >= 0,
-    );
+    amounts.every((value) => Number.isFinite(value) && value >= 0);
   const total = amounts.reduce(
     (sum, value) => sum + (Number.isFinite(value) ? value : 0),
     0,
   );
+  const savedTotal = saved.reduce((sum, value) => sum + value, 0);
+  const changedFromSaved = amounts.some((value, hour) => value !== saved[hour]);
+  // 縦の目盛り。なぞっている間に動かないよう、登録済みの計画から決める
+  // (それより大きい数字を打ったときだけ広げる)。
+  const scale = Math.max(
+    niceCeil(Math.max(...saved, 800) * 1.25),
+    ...amounts.filter((value) => Number.isFinite(value)),
+  );
+
+  const setHour = (hour: number, value: string) =>
+    setValues((list) =>
+      list[hour] === value
+        ? list
+        : list.map((item, index) => (index === hour ? value : item)),
+    );
+  const hourAt = (event: PointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return Math.min(
+      23,
+      Math.max(0, Math.floor(((event.clientX - rect.left) / rect.width) * 24)),
+    );
+  };
+  const paint = (event: PointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = Math.min(
+      1,
+      Math.max(0, 1 - (event.clientY - rect.top) / rect.height),
+    );
+    const hour = hourAt(event);
+    setHour(hour, String(Math.round((ratio * scale) / DRAW_STEP) * DRAW_STEP));
+    setHover(hour);
+    setNotice(null);
+  };
+
+  const onPaste =
+    (hour: number) => (event: ClipboardEvent<HTMLInputElement>) => {
+      const numbers = parsePastedAmounts(event.clipboardData.getData("text"));
+      // 1 個だけなら、ふつうの貼り付けに任せる。
+      if (numbers.length < 2) return;
+      event.preventDefault();
+      // 24 個ちょうどなら 0 時台から。それ以外は、貼った欄から順に入れる。
+      const start = numbers.length === 24 ? 0 : hour;
+      const count = Math.min(numbers.length, 24 - start);
+      setValues((list) =>
+        list.map((item, index) =>
+          index >= start && index < start + count
+            ? String(numbers[index - start])
+            : item,
+        ),
+      );
+      setNotice({
+        tone: "ok",
+        text: `${count}個の金額を、${start}時台から貼り付けました`,
+      });
+    };
+
+  const scaleAll = (factor: number) => {
+    setValues((list) =>
+      list.map((item) => {
+        const value = Number(item);
+        return item.trim() === "" || !Number.isFinite(value)
+          ? item
+          : String(Math.max(0, Math.round((value * factor) / 10) * 10));
+      }),
+    );
+    setNotice(null);
+  };
+
+  const hoverAmount = hover === null ? null : amounts[hover];
+
   return (
-    <div className="grid gap-4">
-      <p className="text-sm leading-relaxed text-[var(--nb-text-2)]">
-        Xの1日の配信計画を、時間帯ごとの金額（全アカウントの合計・円）で入れてください。実績がまだ入っていない時間帯の広告費を、この金額で補います（画面には「推定」と出ます）。開始日以降、次の計画を登録するまで毎日使われます。
-        {latest
-          ? `いまの計画は ${formatNumbersDay(latest)} からのものです。`
-          : "まだ計画がありません。"}
+    <div className="grid gap-3">
+      <p className="flex min-h-5 flex-wrap items-baseline gap-x-3 text-xs tabular-nums text-[var(--nb-text-2)]">
+        {hover !== null ? (
+          <>
+            <span className="text-sm font-bold text-[var(--nb-text)]">
+              {hover}時台{" "}
+              {Number.isFinite(hoverAmount) ? yen(hoverAmount as number) : "–"}
+            </span>
+            {current && hoverAmount !== saved[hover] && (
+              <span>いまの計画は {yen(saved[hover])}</span>
+            )}
+          </>
+        ) : (
+          <span>
+            棒をなぞると金額を変えられます。下の欄に数字を打つことも、表計算から24個まとめて貼ることもできます。
+          </span>
+        )}
       </p>
-      <div className="flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-[var(--nb-text-2)]">開始日</span>
-          <input
-            type="date"
-            value={effectiveFrom}
-            onChange={(event) => setEffectiveFrom(event.target.value)}
-            className={field}
-          />
-        </label>
-        <p className="text-sm tabular-nums">
-          <span className="text-[var(--nb-text-2)]">1日の合計</span>{" "}
-          <span className="font-bold">{yen(total)}</span>
-        </p>
+
+      {/* 棒グラフ。なぞった位置の高さを、その時間帯の金額にする。 */}
+      <div className="rounded-xl border border-[var(--nb-border)] bg-[var(--nb-bg)] px-3 pb-2 pt-3">
+        <div className="relative pr-11">
+          <span className="pointer-events-none absolute -top-1.5 right-0 text-[10px] tabular-nums text-[var(--nb-text-3)]">
+            {yen(scale)}
+          </span>
+          <span
+            className="pointer-events-none absolute right-0 text-[10px] tabular-nums text-[var(--nb-text-3)]"
+            style={{ top: "calc(50% - 0.45rem)" }}
+          >
+            {yen(scale / 2)}
+          </span>
+          <div className="pointer-events-none absolute left-0 right-11 top-0 border-t border-dashed border-[var(--nb-border)]" />
+          <div className="pointer-events-none absolute left-0 right-11 top-1/2 border-t border-dashed border-[var(--nb-border)]" />
+          <div
+            role="img"
+            aria-label={`配信計画の棒グラフ。1日の合計 ${yen(total)}`}
+            data-plan-chart=""
+            className="relative flex h-44 cursor-crosshair touch-pan-y select-none items-end gap-[3px] border-b border-[var(--nb-border-strong)]"
+            onPointerDown={(event) => {
+              // 指でのスクロールを邪魔しないよう、なぞって描くのはマウスとペンだけ。
+              if (event.pointerType === "touch") {
+                setHover(hourAt(event));
+                return;
+              }
+              event.currentTarget.setPointerCapture(event.pointerId);
+              drawing.current = true;
+              paint(event);
+            }}
+            onPointerMove={(event) => {
+              if (drawing.current) paint(event);
+              else if (event.pointerType !== "touch") setHover(hourAt(event));
+            }}
+            onPointerUp={() => {
+              drawing.current = false;
+            }}
+            onPointerCancel={() => {
+              drawing.current = false;
+            }}
+            onPointerLeave={() => {
+              if (!drawing.current) setHover(null);
+            }}
+          >
+            {amounts.map((value, hour) => {
+              const height = Number.isFinite(value)
+                ? Math.min(100, (value / scale) * 100)
+                : 0;
+              const before = Math.min(100, (saved[hour] / scale) * 100);
+              return (
+                <div key={hour} className="relative h-full flex-1">
+                  <div
+                    className="absolute inset-x-0 bottom-0 rounded-t-[3px]"
+                    style={{
+                      height: `${height}%`,
+                      background:
+                        hover === hour ? "var(--nb-accent)" : accentTint(62),
+                    }}
+                  />
+                  {/* 変える前 (いまの計画) の高さ。変えた時間帯だけ線で残す。 */}
+                  {current && value !== saved[hour] && (
+                    <div
+                      className="absolute inset-x-0 border-t-2 border-[var(--nb-compare)]"
+                      style={{ bottom: `${before}%` }}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="mt-1 flex gap-[3px] pr-11 text-[10px] tabular-nums text-[var(--nb-text-3)]">
+          {amounts.map((_, hour) => (
+            <span key={hour} className="flex-1 text-center">
+              {hour % 3 === 0 ? hour : ""}
+            </span>
+          ))}
+        </div>
       </div>
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {hours.map((value, hour) => (
+
+      <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+        {values.map((value, hour) => (
           <label
             key={hour}
-            className="grid gap-1 text-xs text-[var(--nb-text-2)]"
+            className="relative block rounded-lg border transition-colors focus-within:border-[var(--nb-accent)]"
+            style={{
+              borderColor:
+                hover === hour ? "var(--nb-accent)" : "var(--nb-border-strong)",
+            }}
           >
-            {hour}時台
+            <span className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-[10px] tabular-nums text-[var(--nb-text-3)]">
+              {hour}時
+            </span>
             <input
-              inputMode="decimal"
+              ref={(element) => {
+                inputs.current[hour] = element;
+              }}
+              inputMode="numeric"
+              aria-label={`${hour}時台の金額（円）`}
               value={value}
-              onChange={(event) =>
-                setHours((list) =>
-                  list.map((item, index) =>
-                    index === hour ? event.target.value : item,
-                  ),
-                )
-              }
-              className={`${field} w-full text-right tabular-nums`}
+              onChange={(event) => {
+                setHour(hour, event.target.value);
+                setNotice(null);
+              }}
+              onFocus={(event) => {
+                setHover(hour);
+                event.target.select();
+              }}
+              onBlur={() => setHover(null)}
+              onPaste={onPaste(hour)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                inputs.current[(hour + 1) % 24]?.focus();
+              }}
+              className="h-8 w-full bg-transparent pl-8 pr-2 text-right text-sm tabular-nums text-[var(--nb-text)] outline-none"
             />
           </label>
         ))}
       </div>
-      <div className="flex flex-wrap items-center gap-3">
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className={quietButton}
+          onClick={() => scaleAll(0.9)}
+        >
+          全体を −10%
+        </button>
+        <button
+          type="button"
+          className={quietButton}
+          onClick={() => scaleAll(1.1)}
+        >
+          全体を +10%
+        </button>
+        <button
+          type="button"
+          className={quietButton}
+          disabled={!changedFromSaved}
+          onClick={() => {
+            setValues(saved.map(String));
+            setNotice(null);
+          }}
+        >
+          いまの計画に戻す
+        </button>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-x-5 gap-y-3 border-t border-[var(--nb-border)] pt-3">
+        <div>
+          <p className="text-[11px] font-bold text-[var(--nb-text-2)]">
+            1日の合計
+          </p>
+          <p className="mt-0.5 text-xl font-bold leading-none tabular-nums">
+            {yen(total)}
+          </p>
+          <p className="mt-1 min-h-4 text-[11px] tabular-nums text-[var(--nb-text-2)]">
+            {current && total !== savedTotal
+              ? `いまの計画より ${total > savedTotal ? "+" : "−"}${yen(Math.abs(total - savedTotal))}`
+              : ""}
+          </p>
+        </div>
+        <label className="grid gap-1 text-[11px] font-bold text-[var(--nb-text-2)]">
+          いつから使うか
+          <input
+            type="date"
+            aria-label="計画の開始日"
+            value={effectiveFrom}
+            onChange={(event) => setEffectiveFrom(event.target.value)}
+            className={`${field} font-normal`}
+          />
+        </label>
         <button
           type="button"
           disabled={!valid || busy}
-          className={primaryButton}
+          className={`${primaryButton} ml-auto`}
           onClick={async () => {
             setBusy(true);
-            setResult(null);
+            setNotice(null);
             try {
               await post({
                 action: "plan",
@@ -738,10 +1305,10 @@ function PlanTab({
                 medium: "x",
                 hours: amounts,
               });
-              setResult("saved");
+              setNotice({ tone: "ok", text: "保存しました" });
               onSaved();
             } catch {
-              setResult("failed");
+              setNotice({ tone: "ng", text: "保存できませんでした" });
             } finally {
               setBusy(false);
             }
@@ -749,15 +1316,53 @@ function PlanTab({
         >
           {busy ? "保存中..." : "この計画を保存する"}
         </button>
-        {result === "saved" && (
-          <span className="text-sm font-bold text-[var(--nb-up)]">
-            保存しました
-          </span>
-        )}
-        {result === "failed" && (
-          <span className="text-sm text-[var(--nb-down)]">
-            保存できませんでした。
-          </span>
+      </div>
+      <p
+        role="status"
+        className="min-h-4 text-xs font-bold"
+        style={{
+          color: notice?.tone === "ng" ? "var(--nb-down)" : "var(--nb-up)",
+        }}
+      >
+        {notice?.text ?? (valid ? "" : "金額は 0 以上の数字で入れてください")}
+      </p>
+
+      <div className="border-t border-[var(--nb-border)] pt-3">
+        <h3 className="text-[11px] font-bold text-[var(--nb-text-2)]">
+          登録済みの計画
+        </h3>
+        {plans.length === 0 ? (
+          <p className="mt-1.5 text-xs text-[var(--nb-text-2)]">
+            まだありません。実績が入っていない時間帯の広告費は 0
+            として扱われます。
+          </p>
+        ) : (
+          <ul className="mt-1.5 grid gap-1 text-xs tabular-nums">
+            {plans.slice(0, 5).map((plan) => (
+              <li key={plan.from} className="flex items-center gap-3">
+                <span className="w-28 text-[var(--nb-text-2)]">
+                  {formatNumbersDay(plan.from)} から
+                </span>
+                <span className="font-bold">
+                  {yen(plan.hours.reduce((sum, value) => sum + value, 0))}
+                  <span className="font-normal text-[var(--nb-text-2)]">
+                    {" "}
+                    / 日
+                  </span>
+                </span>
+                {plan.from === current?.from && (
+                  <span className="rounded-full border border-[var(--nb-border-strong)] px-2 py-0.5 text-[10px] font-bold text-[var(--nb-text)]">
+                    いま使っている計画
+                  </span>
+                )}
+                {plan.from > today && (
+                  <span className="text-[10px] text-[var(--nb-text-2)]">
+                    これから
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </div>
