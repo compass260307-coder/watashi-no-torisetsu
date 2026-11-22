@@ -9,6 +9,8 @@ import {
   type ReactNode,
 } from "react";
 
+import Link from "next/link";
+
 import type { NumbersDelta } from "@/lib/internal-numbers";
 
 // 文字は、太さを細かく選べる端末のフォントを先に使う (Mac・iPhone ではヒラギノ)。
@@ -324,5 +326,98 @@ export function RingGauge({
         {children}
       </span>
     </span>
+  );
+}
+
+/** ヘッダーに置く、四角い小さなボタンの形。 */
+export const NAV_BUTTON =
+  "h-9 w-9 items-center justify-center rounded-lg border border-[var(--nb-border)] text-[var(--nb-text)] transition-colors hover:border-[var(--nb-border-strong)] hover:bg-[var(--nb-surface-2)] disabled:pointer-events-none disabled:opacity-30";
+
+/**
+ * 配色の切り替え。icon はヘッダー用 (PC)、wide はページのいちばん下に置く横長のボタン
+ * (スマホではヘッダーに収まらないため)。
+ */
+export function ThemeToggle({
+  theme,
+  onToggle,
+  variant,
+}: {
+  theme: NumbersThemeName;
+  onToggle: () => void;
+  variant: "icon" | "wide";
+}) {
+  if (variant === "wide") {
+    return (
+      <div className="px-4 pt-6 sm:hidden">
+        <button
+          type="button"
+          onClick={onToggle}
+          className="h-11 w-full rounded-xl border border-[var(--nb-border-strong)] text-sm font-bold text-[var(--nb-text)]"
+        >
+          {theme === "dark" ? "明るい配色にする" : "暗い配色にする"}
+        </button>
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={
+        theme === "dark" ? "明るい配色に切り替える" : "暗い配色に切り替える"
+      }
+      title={theme === "dark" ? "明るい配色にする" : "暗い配色にする"}
+      className={`hidden sm:flex ${NAV_BUTTON}`}
+    >
+      <svg
+        aria-hidden
+        width="17"
+        height="17"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.9"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {theme === "dark" ? (
+          <>
+            <circle cx="12" cy="12" r="4" />
+            <path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6" />
+          </>
+        ) : (
+          <path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5a8.5 8.5 0 1 0 10.7 10.7Z" />
+        )}
+      </svg>
+    </button>
+  );
+}
+
+/** 「1日の数字」と「月の推移」の行き来。 */
+export function NumbersNav({ current }: { current: "day" | "month" }) {
+  const items = [
+    { key: "day", label: "1日の数字", href: "/internal/numbers" },
+    { key: "month", label: "月の推移", href: "/internal/numbers/daily" },
+  ] as const;
+  return (
+    <nav
+      aria-label="数値の見方"
+      className="inline-flex rounded-lg border border-[var(--nb-border)] bg-[var(--nb-bg)] p-0.5"
+    >
+      {items.map((item) => (
+        <Link
+          key={item.key}
+          href={item.href}
+          aria-current={item.key === current ? "page" : undefined}
+          className={`whitespace-nowrap rounded-md px-3.5 py-1.5 text-sm font-bold transition-colors ${
+            item.key === current
+              ? "bg-[var(--nb-surface-2)] text-[var(--nb-text)] shadow-[inset_0_0_0_1px_var(--nb-border-strong)]"
+              : "text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
+          }`}
+        >
+          {item.label}
+        </Link>
+      ))}
+    </nav>
   );
 }

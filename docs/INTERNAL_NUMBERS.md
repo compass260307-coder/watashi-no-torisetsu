@@ -12,6 +12,7 @@
 |---|---|
 | 表と集計関数 | `supabase/migrations/` の `20261122140000_internal_numbers_dashboard.sql`、`20261122180000_internal_numbers_snapshots.sql`、`20261122200000_internal_numbers_ad_costs.sql` |
 | 広告費の保存 | `src/app/api/internal/numbers/costs/route.ts`、`src/lib/x-ads-export.ts` |
+| 月の推移 | `src/app/internal/numbers/daily/page.tsx`、`src/components/internal/NumbersDaily.tsx`、`src/app/api/internal/numbers/daily/route.ts`、`supabase/migrations/20261122230000_internal_numbers_daily.sql` |
 | データの入口 | `src/app/api/internal/numbers/route.ts` |
 | 画面 | `src/app/internal/numbers/page.tsx`、`src/components/internal/` |
 | 型と表示用の計算 | `src/lib/internal-numbers.ts` |
@@ -109,8 +110,22 @@ insert into public.internal_dashboard_viewers (email) values ('小文字のメ�
 
 利益は利益ダッシュボードの「参考利益」と同じ: 純売上 − 決済手数料 − サーバー費の概算 (診断 1 件あたり) − AI費の概算 (買い切り・アップグレード 1 件あたり) − 広告費。料率と単価は `internal_numbers_settings` にある (このリポジトリは公開なので、値はファイルに書かない)。CPA は「広告費 ÷ 広告流入の診断数」。
 
+## 月の推移 (日次)
+
+`/internal/numbers/daily` (ヘッダーの「月の推移」)。1 か月分を、月の合計・推移のグラフ・日ごとの表で見る。`?month=YYYY-MM` で月を指定できる。
+
+- **終わった日**: 控え (`metrics_day_snapshots`) から読むだけ (`internal_numbers_daily`、`/api/internal/numbers/daily`)。ここでは何も数え直さない。
+- **控えが無い日**: ページを開いたときに、新しい日から 1 日ずつ数えさせて埋める (既存の `/api/internal/numbers?block=YYYY-MM-DD` → `internal_numbers_compare_day` が数えて控える)。古い日は 1 日 10〜20 秒かかるので、進み具合を出し、途中で止められるようにしている。一度数えた日は、次からすぐ出る。
+- **今日**: 「1日の数字」と同じ入口から今の数字を取り、「途中」として出す。
+- **広告費**: 日ごとに、実績 + 実績が無い時間帯の配信計画。計画で補った分を含む日は「推定」「一部推定」と出す。実績も計画も無い日は「未入力」で、利益と CPA は出さない。
+- **月の合計**: 数字がある日だけを足す。利益と CPA は、広告費も分かる日だけで出し、何日分かを添える。
+- 表の日付を押すと、その日の「1日の数字」に移る (`/internal/numbers?day=YYYY-MM-DD`)。
+
+控えは、直近 7 日は 1 日、それより前は 30 日たつと「1日の数字」を開いたときに数え直される。月の推移はそれを待たずに、ある控えをそのまま出す (友達診断率・シェア率・返金は、あとから少し動く)。
+
 ## まだ入っていないもの
 
+- 週ごとの合計、月どうしの比較
 - 広告費・CPA をグラフや比べる相手に出すこと (今は「採算」の欄で前日と比べるだけ)
 - TikTok など X 以外の媒体の時間別の実績
 - スプレッドシートや `show me` の読み先の切り替え
