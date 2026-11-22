@@ -3,7 +3,11 @@
 // 往復の回数がそのまま待ち時間になる)。
 import { NextResponse, type NextRequest } from "next/server";
 
-import { isValidNumbersDay, type NumbersPayload } from "@/lib/internal-numbers";
+import {
+  isValidNumbersDay,
+  todayInJst,
+  type NumbersPayload,
+} from "@/lib/internal-numbers";
 import { isInternalDashboardViewer } from "@/lib/internal-numbers-access";
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase-server";
@@ -25,6 +29,32 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // block=YYYY-MM-DD: 比べる相手として選んだ、終わった日の 1 日分だけを返す。
+  const blockParam = request.nextUrl.searchParams.get("block");
+  if (blockParam !== null) {
+    if (!isValidNumbersDay(blockParam) || blockParam >= todayInJst()) {
+      return NextResponse.json(
+        { error: "invalid_day" },
+        { status: 400, headers: PRIVATE_HEADERS },
+      );
+    }
+    const { data, error } = await supabaseAdmin.rpc(
+      "internal_numbers_compare_day",
+      { p_day: blockParam, p_locale: "ja" },
+    );
+    if (error || !data) {
+      console.error("[internal-numbers] compare day query failed", {
+        code: error?.code,
+        message: error?.message,
+      });
+      return NextResponse.json(
+        { error: "numbers_unavailable" },
+        { status: 503, headers: PRIVATE_HEADERS },
+      );
+    }
+    return NextResponse.json(data, { headers: PRIVATE_HEADERS });
+  }
+
   const dayParam = request.nextUrl.searchParams.get("day");
   const compareParam = request.nextUrl.searchParams.get("compare");
   if (
@@ -37,11 +67,14 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { data, error } = await supabaseAdmin.rpc("internal_numbers_dashboard", {
-    p_day: dayParam,
-    p_compare_day: compareParam,
-    p_locale: "ja",
-  });
+  const { data, error } = await supabaseAdmin.rpc(
+    "internal_numbers_dashboard",
+    {
+      p_day: dayParam,
+      p_compare_day: compareParam,
+      p_locale: "ja",
+    },
+  );
 
   if (error || !data) {
     console.error("[internal-numbers] dashboard query failed", {
@@ -54,5 +87,7 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return NextResponse.json(data as NumbersPayload, { headers: PRIVATE_HEADERS });
+  return NextResponse.json(data as NumbersPayload, {
+    headers: PRIVATE_HEADERS,
+  });
 }
