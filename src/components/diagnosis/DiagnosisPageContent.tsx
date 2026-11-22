@@ -6,6 +6,7 @@ import { DiagnosisShareBand } from "@/components/diagnosis/DiagnosisShareBand";
 import { QuestionCard } from "@/components/diagnosis/QuestionCard";
 import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader";
 import { InAppBrowserModal } from "@/components/InAppBrowserModal";
+import { hideAnalyzingVeil, showAnalyzingVeil } from "@/lib/analyzing-veil";
 import { ScrollHideHeader } from "@/components/ScrollHideHeader";
 import {
   type DiagnosisCopy,
@@ -558,12 +559,31 @@ export default function DiagnosisPageContent({
     // 先頭へのスクロールは currentPage 変化を見る useEffect に集約。
   };
 
+  const analyzingLoader = (
+    <DiagnosisAnalyzingLoader
+      messages={copy.analyzing.messages}
+      steps={copy.analyzing.steps}
+      messageDurationsMs={copy.analyzing.messageDurationsMs}
+      totalMs={copy.analyzing.minLoadingMs}
+      slides={copy.analyzing.slides}
+      slideDurationsMs={copy.analyzing.slideDurationsMs}
+      slidesLabel={copy.analyzing.slidesLabel}
+      fontFamily={isKorean || isEnglish || isIndonesian ? "inherit" : undefined}
+    />
+  );
+  // 解析待ち画面を「ページ移動をまたいで残る層」に出すか。日本語版だけ
+  // (他の言語は文字の書体をページ側から受け継いでいるため、これまでどおりページ内に出す)。
+  const veilsResult = locale === "ja";
+
   const handleSubmit = async () => {
     if (!isAllComplete || submitting) return;
     // ニックネーム必須 + localStorage 保存 (未入力なら入力欄へスクロールして中断)
     if (!ensureNickname()) return;
     setSubmitError(false);
     setSubmitting(true);
+    // 日本語版は、解析待ち画面をページ移動をまたいで残る層に出す。結果ページへ移動したあと、
+    // 層がふわっと消えて結果ページへつながる (AnalyzingVeilHost)。
+    if (veilsResult) showAnalyzingVeil(analyzingLoader);
 
     const result = diagnose(answers, activeQuestions);
     // Speculation runs alongside the existing 20-second minimum. Never await it
@@ -705,28 +725,24 @@ export default function DiagnosisPageContent({
     } catch {
       // 送信失敗 (ネットワークエラー・非JSONレスポンス等) では途中保存を消さない。
       // 進捗を残したまま質問ページに戻し、エラー表示 + 同じボタンで再送信できるようにする。
+      hideAnalyzingVeil();
       setSubmitting(false);
       setSubmitError(true);
       return;
     }
 
     // ownerToken が返らない = API 側のエラーレスポンス。catch と同様に回答を保持する。
+    hideAnalyzingVeil();
     setSubmitting(false);
     setSubmitError(true);
   };
 
   if (submitting) {
-    return (
-      <DiagnosisAnalyzingLoader
-        messages={copy.analyzing.messages}
-        steps={copy.analyzing.steps}
-        messageDurationsMs={copy.analyzing.messageDurationsMs}
-        totalMs={copy.analyzing.minLoadingMs}
-        slides={copy.analyzing.slides}
-        slideDurationsMs={copy.analyzing.slideDurationsMs}
-        slidesLabel={copy.analyzing.slidesLabel}
-        fontFamily={isKorean || isEnglish || isIndonesian ? "inherit" : undefined}
-      />
+    // 層に出しているあいだ、このページ自体は同じ地色の空の画面にしておく。
+    return veilsResult ? (
+      <div className="min-h-screen flex-1 bg-[#FCFCFC]" aria-busy="true" />
+    ) : (
+      analyzingLoader
     );
   }
 
