@@ -26,13 +26,19 @@ interface FirstQuestionProps {
 // この時間 (画面が見えている状態で) 押されなければ、1問目を小窓で出す。
 const SHOW_QUESTION_AFTER_MS = 5000;
 // 出た直後の押し間違い (ボタンを押そうとして○や背景に触れる) を防ぐ時間。演出が落ち着くまで。
-const TAP_GUARD_MS = 1000;
+const TAP_GUARD_MS = 1100;
+// 出す何ミリ秒前から、見えない状態で用意しておくか。
+const PREPARE_BEFORE_MS = 900;
+const ALICE_SRC = "/mascot/top-question-alice-talk.webp";
 
 // 今までと同じ画面とボタンはそのままに、しばらく押されなければ1問目を小窓 (モーダル) で出す。
 // すぐ押す人には今までどおり、迷っている人には「答えるだけ」の入口を出す。
 export function TopQuestionModal(question: FirstQuestionProps) {
-  const [open, setOpen] = useState(false);
+  // idle: まだ何も置かない / ready: 見えない状態で用意済み / open: 表示中 / closed: 閉じた
+  const [phase, setPhase] = useState<"idle" | "ready" | "open" | "closed">("idle");
   const [guarded, setGuarded] = useState(true);
+  const open = phase === "open";
+  const close = () => setPhase("closed");
 
   useEffect(() => {
     let visibleMs = 0;
@@ -46,13 +52,18 @@ export function TopQuestionModal(question: FirstQuestionProps) {
       } else {
         last = null;
       }
+      // 出す少し前に、見えない状態で組み立てておく (Alice の絵も先に読み込んで展開しておく)。
+      // 出す瞬間の仕事を「印を付けるだけ」にして、最初のコマが引っかからないようにする。
+      if (visibleMs >= SHOW_QUESTION_AFTER_MS - PREPARE_BEFORE_MS) {
+        setPhase((p) => (p === "idle" ? "ready" : p));
+      }
       if (visibleMs < SHOW_QUESTION_AFTER_MS) return;
       // メニューや言語切替など、ほかの小窓を開いている間は割り込まない (閉じたら出す)。
       if (document.querySelector("dialog[open], [aria-modal='true']")) return;
       window.clearInterval(timer);
-      setOpen(true);
+      setPhase((p) => (p === "ready" || p === "idle" ? "open" : p));
       window.setTimeout(() => setGuarded(false), TAP_GUARD_MS);
-    }, 250);
+    }, 100);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -62,7 +73,7 @@ export function TopQuestionModal(question: FirstQuestionProps) {
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") setPhase("closed");
     };
     window.addEventListener("keydown", onKey);
     return () => {
@@ -71,16 +82,26 @@ export function TopQuestionModal(question: FirstQuestionProps) {
     };
   }, [open]);
 
-  if (!open) return null;
+  useEffect(() => {
+    if (phase !== "ready") return;
+    const img = new Image();
+    img.src = ALICE_SRC;
+    img.decode?.().catch(() => {});
+  }, [phase]);
+
+  if (phase === "idle" || phase === "closed") return null;
   // ヒーローの重なり順に閉じ込められないよう、body 直下に出す (ヘッダーの上にも幕がかかる)。
   return createPortal(
     <div
-      role="dialog"
-      aria-modal="true"
+      role={open ? "dialog" : undefined}
+      aria-modal={open ? true : undefined}
+      aria-hidden={open ? undefined : true}
       aria-label="診断の1問目"
-      className="top-question-backdrop fixed inset-0 z-[1000] flex items-center justify-center bg-[#2E2E5C]/45 px-5"
+      className={`top-question-backdrop fixed inset-0 z-[1000] flex items-center justify-center bg-[#2E2E5C]/45 px-5 ${
+        open ? "top-question-open" : "top-question-prep"
+      }`}
       style={guarded ? { pointerEvents: "none" } : undefined}
-      onClick={() => setOpen(false)}
+      onClick={close}
     >
       <div className="top-question-stage relative w-full max-w-[560px] md:max-w-[640px]" onClick={(e) => e.stopPropagation()}>
         <div className="top-question-in relative z-10">
@@ -93,7 +114,7 @@ export function TopQuestionModal(question: FirstQuestionProps) {
             カードより奥 (z-0) に置くので、体の下側はカードに隠れ、ふちの向こうから出てくるように見える。 */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/mascot/top-question-alice-talk.webp"
+          src={ALICE_SRC}
           alt=""
           aria-hidden="true"
           width={515}
@@ -111,7 +132,7 @@ export function TopQuestionModal(question: FirstQuestionProps) {
         <button
           type="button"
           aria-label="閉じる"
-          onClick={() => setOpen(false)}
+          onClick={close}
           className="absolute right-1.5 top-1.5 z-20 flex h-8 w-8 items-center justify-center rounded-full text-[18px] leading-none text-[#B4B4C8] hover:bg-[#2E2E5C]/5"
         >
           ×
