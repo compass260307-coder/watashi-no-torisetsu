@@ -418,10 +418,11 @@ export function buildComparison(
   };
 }
 
-/** 平均は、元になる日が 3 日以上そろってから既定にする (1〜2 日では前日比と変わらない)。 */
-export function defaultComparisonId(payload: NumbersPayload): ComparisonId {
-  return (payload.baseline?.days ?? 0) >= 3 ? "average" : "previous";
-}
+/**
+ * 何も選んでいないときの比べる相手。前日 (2026-11-22 本人の指定)。
+ * 直近 7 日平均などは、画面の「比べる相手」から選ぶ。
+ */
+export const DEFAULT_COMPARISON_ID: ComparisonId = "previous";
 
 /** 画面に並べる順。選んだ相手のうち、いちばん左のものを増減の基準にする。 */
 export function sortComparisonIds(ids: ComparisonId[]): ComparisonId[] {
