@@ -9,7 +9,6 @@ import {
   buildComparison,
   comparisonDay,
   defaultComparisonId,
-  forecastHeadline,
   formatNumbersClock,
   formatNumbersDay,
   formatNumbersValue,
@@ -32,6 +31,8 @@ import {
   NumbersHourlyChart,
   type NumbersChartType,
 } from "./NumbersHourlyChart";
+import { NumbersCostEntry } from "./NumbersCostEntry";
+import { EconomicsCard } from "./NumbersEconomics";
 import {
   FriendFlowCard,
   FunnelCard,
@@ -130,6 +131,7 @@ export function NumbersDashboard() {
   >({});
   const [failedDays, setFailedDays] = useState<Record<string, true>>({});
   const requestedDays = useRef(new Set<string>());
+  const [costEntryOpen, setCostEntryOpen] = useState(false);
   // スマホでは下の内訳を 1 つずつ切り替えて見る (全部並べると縦に長すぎる)。
   const [section, setSection] = useState<SectionKey>("funnel");
   const latestRequest = useRef(0);
@@ -442,6 +444,7 @@ export function NumbersDashboard() {
             onToggleComparison={toggleComparison}
             onAddCustomDay={addCustomDay}
             onRemoveCustomDay={removeCustomDay}
+            onOpenCostEntry={() => setCostEntryOpen(true)}
             section={section}
             onSection={setSection}
             dimmed={stale}
@@ -450,6 +453,13 @@ export function NumbersDashboard() {
           <Skeleton />
         ) : null}
       </div>
+      {costEntryOpen && (
+        <NumbersCostEntry
+          onClose={() => setCostEntryOpen(false)}
+          // 保存したら、裏の数字も取り直す (表示は消さずに差し替える)。
+          onSaved={() => void load(day)}
+        />
+      )}
     </main>
   );
 }
@@ -488,11 +498,9 @@ const SECTIONS: { value: SectionKey; label: string }[] = [
 function Summary({
   payload,
   comparison,
-  forecastBasis,
 }: {
   payload: NumbersPayload;
   comparison: NumbersComparison | null;
-  forecastBasis: NumbersComparison | null;
 }) {
   const { meta, day } = payload;
   if (!comparison) return null;
@@ -548,28 +556,6 @@ function Summary({
         );
       })}
       {meta.is_today ? "ペースです。" : "結果でした。"}
-      {forecastBasis && (
-        <>
-          {" このままなら、今日は"}
-          {parts.map((part, index) => {
-            const forecast = forecastHeadline(
-              part.item,
-              part.value,
-              forecastBasis,
-            );
-            return forecast === null ? null : (
-              <span key={part.item.key}>
-                {index > 0 ? "・" : ""}
-                {part.item.label}{" "}
-                <span className="font-bold tabular-nums text-[var(--nb-text)]">
-                  約{formatNumbersValue(forecast, part.item.kind)}
-                </span>
-              </span>
-            );
-          })}
-          {" で終わる見込みです。"}
-        </>
-      )}
     </p>
   );
 }
@@ -725,6 +711,7 @@ function Body({
   onToggleComparison,
   onAddCustomDay,
   onRemoveCustomDay,
+  onOpenCostEntry,
   section,
   onSection,
   dimmed,
@@ -743,6 +730,7 @@ function Body({
   onToggleComparison: (id: ComparisonId) => void;
   onAddCustomDay: (day: string) => void;
   onRemoveCustomDay: (day: string) => void;
+  onOpenCostEntry: () => void;
   section: SectionKey;
   onSection: (key: SectionKey) => void;
   dimmed: boolean;
@@ -762,13 +750,6 @@ function Body({
     .map((id) => buildComparison(payload, id, extraBlocks))
     .filter((item): item is NumbersComparison => item !== null);
   const comparison = comparisons[0] ?? null;
-  // 着地見込みは、1 日の時間帯の形がいちばん安定している平均を元にする (無ければ前日)。
-  // 0 時台は実績が少なすぎて大きくぶれるので、1 時間たってから出す。
-  const forecastBasis =
-    meta.is_today && meta.elapsed_seconds >= 3600
-      ? (buildComparison(payload, "average") ??
-        buildComparison(payload, "previous"))
-      : null;
   // ファネルや口コミは 1 日分どうしで比べる。基準が平均のときは、最初の応答の比較日を使う。
   const flowCompare = comparison?.block ?? compare;
   const flowLabel = formatNumbersDay(flowCompare.day);
@@ -787,11 +768,7 @@ function Body({
       className={`grid gap-3 transition-opacity duration-200 xl:gap-4 ${dimmed ? "opacity-50" : ""}`}
     >
       <div className="grid gap-3">
-        <Summary
-          payload={payload}
-          comparison={comparison}
-          forecastBasis={forecastBasis}
-        />
+        <Summary payload={payload} comparison={comparison} />
         <ComparisonPicker
           payload={payload}
           selected={selected}
@@ -807,13 +784,14 @@ function Body({
       <KpiRow
         day={day}
         comparison={comparison}
-        forecastBasis={forecastBasis}
         selected={metric.key}
         onSelect={onMetric}
         isToday={meta.is_today}
         currentHour={currentHour}
         nowHours={nowHours}
       />
+
+      <EconomicsCard payload={payload} onOpenEntry={onOpenCostEntry} />
 
       <div className="grid gap-3 xl:grid-cols-12 xl:gap-4">
         <Card

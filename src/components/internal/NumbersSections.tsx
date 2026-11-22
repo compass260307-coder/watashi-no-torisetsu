@@ -3,7 +3,6 @@
 // 社内向け数値画面の各ブロック。受け取った数字を並べるだけで、取得や状態は持たない。
 import {
   HEADLINES,
-  forecastHeadline,
   formatNumbersValue,
   headlineValue,
   numbersDelta,
@@ -37,7 +36,6 @@ const MIN_BASE_FOR_DELTA = 100;
 export function KpiRow({
   day,
   comparison,
-  forecastBasis,
   selected,
   onSelect,
   isToday,
@@ -47,8 +45,6 @@ export function KpiRow({
   day: NumbersDayBlock;
   /** 比べる相手。まだ用意できていないときは null (増減を出さない)。 */
   comparison: NumbersComparison | null;
-  /** 着地見込みの元にする相手。今日の表示で、1 時間以上たってから渡す。 */
-  forecastBasis: NumbersComparison | null;
   selected: HeadlineKey;
   onSelect: (key: HeadlineKey) => void;
   isToday: boolean;
@@ -66,7 +62,6 @@ export function KpiRow({
         const previous = comparison
           ? headlineValue(item, comparison.untilCut)
           : null;
-        const forecast = forecastHeadline(item, value, forecastBasis);
         const active = item.key === selected;
         return (
           <button
@@ -118,17 +113,6 @@ export function KpiRow({
               {comparison
                 ? `${comparison.shortLabel}${isToday ? "の同時刻" : ""} ${formatNumbersValue(previous, item.kind)}`
                 : "比較する数字を用意しています..."}
-            </span>
-            {/* 見込みの行は、出ない指標でも高さを取っておく (カードの高さをそろえる)。 */}
-            <span className="relative mt-0.5 min-h-4 truncate text-xs tabular-nums text-[var(--nb-text-2)]">
-              {forecast !== null && (
-                <>
-                  着地見込み{" "}
-                  <span className="font-bold text-[var(--nb-text)]">
-                    {formatNumbersValue(forecast, item.kind)}
-                  </span>
-                </>
-              )}
             </span>
             <span className="relative mt-2.5 block">
               <NumbersSparkline
