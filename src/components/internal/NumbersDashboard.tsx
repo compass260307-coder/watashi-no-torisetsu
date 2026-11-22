@@ -911,7 +911,6 @@ function Body({
           <HoursCard
             day={day}
             previous={buildComparison(payload, "previous", extraBlocks)}
-            comparison={comparison}
             currentHour={currentHour}
             className="xl:col-span-7"
           />

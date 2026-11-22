@@ -473,15 +473,12 @@ const quiet = (value: number) => (value === 0 ? "text-[var(--nb-text-3)]" : "");
 export function HoursCard({
   day,
   previous,
-  comparison,
   currentHour,
   className,
 }: {
   day: NumbersDayBlock;
-  /** 前日 (同じ時間帯どうしで比べる)。まだ用意できていないときは null。 */
+  /** 前日。同じ時間帯の数字を、そのまま隣に並べる。まだ用意できていないときは null。 */
   previous: NumbersComparison | null;
-  /** 画面の「比べる相手」で選んでいる相手。前日のときは、前日比の列と同じなので出さない。 */
-  comparison: NumbersComparison | null;
   currentHour: number | null;
   className?: string;
 }) {
@@ -489,30 +486,29 @@ export function HoursCard({
   // 新しい時間帯を上に (開いてすぐ直近が見えるように)。
   const rows = day.hours.filter((hour) => hour.h <= last).reverse();
   const peak = Math.max(1, ...rows.map((hour) => hour.diagnoses));
-  const extra = comparison && comparison.id !== "previous" ? comparison : null;
-  const head: { label: string; delta?: boolean }[] = [
+  const head: { label: string; beside?: boolean }[] = [
     { label: "時" },
     { label: "診断数" },
-    { label: "前日比", delta: true },
-    ...(extra ? [{ label: `${extra.shortLabel}比`, delta: true }] : []),
+    { label: "前日", beside: true },
     { label: "広告" },
     { label: "非広告" },
     { label: "純売上" },
-    { label: "前日比", delta: true },
+    { label: "前日", beside: true },
     { label: "買い切り" },
     { label: "課金率" },
     { label: "アップグレード" },
   ];
   const cell =
     "whitespace-nowrap border-b border-[var(--nb-border)] px-3.5 py-3 text-right tabular-nums";
-  // 増減の列は、すぐ左の数字の続きとして読めるよう、左の余白を詰める。
-  const deltaCell = `${cell} pl-0 text-[13px]`;
+  // 前日の数字は、すぐ左の数字の続きとして読めるよう左の余白を詰め、今日の数字より
+  // 一段控えめにする (主役は今日)。
+  const besideCell = `${cell} pl-0 text-[var(--nb-text-2)]`;
   return (
     <Card
       title="時間別"
       hint={
         previous
-          ? `前日比 ＝ ${previous.label.replace(/^前日\s*/, "")} の同じ時間帯との比較。広告 ＝ 流入元が X・TikTok`
+          ? `「前日」は ${previous.label.replace(/^前日\s*/, "")} の同じ時間帯の数字。広告 ＝ 流入元が X・TikTok`
           : "広告 ＝ 流入元が X・TikTok"
       }
       className={className}
@@ -528,7 +524,7 @@ export function HoursCard({
                     scope="col"
                     className={`sticky top-0 z-[1] whitespace-nowrap border-y border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-3.5 py-2.5 text-[13px] font-bold text-[var(--nb-text-2)] ${
                       index === 0 ? "left-0 z-[2] text-left" : "text-right"
-                    } ${column.delta ? "pl-0" : ""}`}
+                    } ${column.beside ? "pl-0" : ""}`}
                   >
                     {column.label}
                   </th>
@@ -539,18 +535,8 @@ export function HoursCard({
             <tbody className="xl:[&>tr:last-child>*]:pb-9">
               {rows.map((hour) => {
                 const live = hour.h === currentHour;
-                // 途中の時間帯は、丸 1 時間ぶんの数字と比べると必ず少なく出るので、増減を出さない。
-                const delta = (
-                  basis: NumbersComparison | null,
-                  key: "diagnoses" | "net",
-                ) =>
-                  live || !basis?.hours[hour.h]
-                    ? null
-                    : numbersDelta(
-                        hour[key],
-                        basis.hours[hour.h][key],
-                        "count",
-                      );
+                // 前日の同じ時間帯 (丸 1 時間ぶん)。途中の時間帯でも、目安としてそのまま出す。
+                const before = previous?.hours[hour.h] ?? null;
                 const rate = ratio(hour.purchases_full, hour.diagnoses);
                 return (
                   <tr key={hour.h} className="hover:bg-[var(--nb-surface-2)]">
@@ -571,14 +557,9 @@ export function HoursCard({
                         {numberFormat.format(hour.diagnoses)}
                       </DataBar>
                     </td>
-                    <td className={deltaCell}>
-                      <DeltaText delta={delta(previous, "diagnoses")} />
+                    <td className={besideCell}>
+                      {before ? numberFormat.format(before.diagnoses) : "–"}
                     </td>
-                    {extra && (
-                      <td className={deltaCell}>
-                        <DeltaText delta={delta(extra, "diagnoses")} />
-                      </td>
-                    )}
                     <td className={`${cell} ${quiet(hour.ad_diagnoses)}`}>
                       {numberFormat.format(hour.ad_diagnoses)}
                     </td>
@@ -590,8 +571,8 @@ export function HoursCard({
                     <td className={`${cell} font-bold ${quiet(hour.net)}`}>
                       {yen(hour.net)}
                     </td>
-                    <td className={deltaCell}>
-                      <DeltaText delta={delta(previous, "net")} />
+                    <td className={besideCell}>
+                      {before ? yen(before.net) : "–"}
                     </td>
                     <td className={`${cell} ${quiet(hour.purchases_full)}`}>
                       {numberFormat.format(hour.purchases_full)}
