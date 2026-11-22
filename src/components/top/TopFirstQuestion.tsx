@@ -9,6 +9,11 @@ import {
   startFirstAnswerVeil,
 } from "@/lib/first-answer-handoff";
 import { phraseWrapJa } from "@/lib/ja-phrase";
+import {
+  measureTopQuestionClosed,
+  measureTopQuestionShown,
+  topMeasureMetadata,
+} from "@/lib/top-question-measure";
 import { track } from "@/lib/track";
 import type { AnswerValue } from "@/lib/types";
 import Link from "next/link";
@@ -46,8 +51,9 @@ export function TopQuestionModal(question: FirstQuestionProps) {
   const open = phase === "open";
   const canTap = () =>
     openedAtRef.current !== null && performance.now() - openedAtRef.current >= TAP_GUARD_MS;
-  const close = () => {
-    if (canTap()) setPhase("closed");
+  const close = (how: "button" | "backdrop" | "escape") => {
+    measureTopQuestionClosed(how);
+    setPhase("closed");
   };
 
   useEffect(() => {
@@ -72,6 +78,7 @@ export function TopQuestionModal(question: FirstQuestionProps) {
       if (document.querySelector("dialog[open], [aria-modal='true']")) return;
       window.clearInterval(timer);
       openedAtRef.current = performance.now();
+      measureTopQuestionShown();
       setPhase((p) => (p === "ready" || p === "idle" ? "open" : p));
     }, 100);
     return () => window.clearInterval(timer);
@@ -85,7 +92,7 @@ export function TopQuestionModal(question: FirstQuestionProps) {
     const root = rootRef.current;
     const stop = (e: Event) => e.preventDefault();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPhase("closed");
+      if (e.key === "Escape") close("escape");
     };
     root?.addEventListener("touchmove", stop, { passive: false });
     root?.addEventListener("wheel", stop, { passive: false });
@@ -119,7 +126,9 @@ export function TopQuestionModal(question: FirstQuestionProps) {
         open ? "top-question-open" : "top-question-prep"
       }`}
       ref={rootRef}
-      onClick={close}
+      onClick={() => {
+        if (canTap()) close("backdrop");
+      }}
     >
       <div className="top-question-stage relative w-full max-w-[560px] md:max-w-[640px]" onClick={(e) => e.stopPropagation()}>
         <div className="top-question-in relative z-10">
@@ -152,7 +161,7 @@ export function TopQuestionModal(question: FirstQuestionProps) {
         <button
           type="button"
           aria-label="閉じる"
-          onClick={() => setPhase("closed")}
+          onClick={() => close("button")}
           className="absolute right-1.5 top-1.5 z-20 flex h-8 w-8 items-center justify-center rounded-full text-[18px] leading-none text-[#B4B4C8] hover:bg-[#2E2E5C]/5"
         >
           ×
@@ -192,7 +201,14 @@ export function TopFirstQuestion({
     setValue(answer);
     saveFirstAnswerHandoff({ questionSet, questionId, answer });
     track("top_cta_clicked", {
-      metadata: { locale: "ja", page: "top", destination: "diagnosis", kind: "first_question", shownAfterMs },
+      metadata: {
+        locale: "ja",
+        page: "top",
+        destination: "diagnosis",
+        kind: "first_question",
+        shownAfterMs,
+        ...topMeasureMetadata(),
+      },
     });
     // 選んだ○に印が付くのを一瞬見せてから、カードを画面に残したまま診断ページへつなぐ。
     window.setTimeout(() => {
