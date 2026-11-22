@@ -83,6 +83,10 @@ export interface AnalyzingSlide {
   //   answer: 友達の30問バーが伸びて、完了スタンプが出る図。
   //   gap:    「自分 / 友達」のギャップ図。badge は最後に出るスタンプ。
   //   entry:  結果ページの下部ナビを模した図。「友達診断」タブを吹き出しで指す。
+  //   welcome: (友達側) 最初のあいさつ。フェルトの絵と紙吹雪。
+  //   questions: (友達側) 質問カード1枚の図。丸を選ぶと回答数が進み、完了スタンプが出る。
+  //   deliver: (友達側) 回答用紙から紙ひこうきが飛んで、本人に届く図。
+  //   results: (友達側) 本人が見られる結果のカードが3枚並ぶ図。
   // face はキャラクターの顔画像 (public/characters/face)。
   visual:
     | {
@@ -137,6 +141,45 @@ export interface AnalyzingSlide {
       }
     | { kind: "answer"; friendLabel: string; friendFace: string; countLabel: string; badge: string }
     | {
+        // 友達側の「ようこそ」画面の1枚目。地色が白い絵を帯になじませて出し、紙吹雪を降らせる。
+        kind: "welcome";
+        image: string;
+      }
+    | {
+        // 友達側の「ようこそ」画面用。質問カード1枚だけの図。丸の1つが選ばれ、
+        // 回答数が total まで進んで完了スタンプが出る。
+        kind: "questions";
+        // 例として出す質問。改行は "\n"。
+        question: string;
+        total: number;
+        // 回答数の後ろに付ける単位 (例: 問)。
+        unit: string;
+        badge: string;
+      }
+    | {
+        // 友達側の「ようこそ」画面用。左の回答用紙から紙ひこうきが飛び、右の本人に届く図。
+        kind: "deliver";
+        // 回答用紙の見出し。
+        sheetLabel: string;
+        recipientName: string;
+        recipientFace: string;
+      }
+    | {
+        // 友達側の「ようこそ」画面用。本人が見られる結果のカードが3枚 (キャラ / 理解度 / ギャップ)
+        // 順に出て、下に「ほかにもある」の札が出る図。
+        kind: "results";
+        // 3枚のカードの見出し (キャラ / 理解度 / ギャップ の順)。
+        labels: [string, string, string];
+        // 1枚目: 友達から見たキャラの顔と一言。
+        face: string;
+        faceColor: string;
+        word: string;
+        // 2枚目: 理解度の数字 (%)。
+        score: number;
+        // 下の札 (例: ほかの結果の名前)。
+        more: string;
+      }
+    | {
         kind: "gap";
         badge: string;
         // 図の中のラベル。省略時は日本語 (自分 / 友達 / 外向性・協調性・開放性)。
@@ -154,6 +197,8 @@ export interface AnalyzingSlide {
         // 「友達診断」タブを指す吹き出し。
         bubble: string;
       };
+  // カードの見出しの前に出す札 (例: "STEP 1")。手順として見せたいスライドだけ指定する。
+  step?: string;
   // 絵を載せる帯の色。
   tint: string;
   // スライドの文は1つだけ。改行は "\n"。highlight に一致する部分だけ色を変える。
