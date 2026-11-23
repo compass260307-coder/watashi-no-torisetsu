@@ -23,6 +23,11 @@ import {
 } from "./thirty-two-types";
 import { LOVE_BY_TYPE_32 } from "./love-by-type-32";
 import { CAREER_BY_TYPE_32 } from "./career-by-type-32";
+import { careerFitItemsFor } from "./career-fit-items-32";
+import { careerRelationsItemsFor } from "./career-relations-items-32";
+import { loveEndureItemsFor } from "./love-endure-items-32";
+import { lovePayoffItemsFor } from "./love-payoff-items-32";
+import type { ResultItem } from "./result-items";
 
 export type DeepDiveTabKey = "love" | "career" | "growth" | "aisho";
 
@@ -43,8 +48,17 @@ export type ResolvedDeepDiveSection = {
    * 登録済みタイプだけ設定され、表示側はこれがあれば body の代わりに見出し付きで描画する。
    * 未登録は undefined = 従来どおり body を単一表示。
    * locked=true のブロックは payoff (救い/ヒント) が未解放。body は "" (payload に載せない)。
+   * items = 本文のあとに並べる項目 (ロック中の見本と同じ並び。lib/result-items)。
+   * 解放済みのブロックにだけ付く (未解放では解決しない)。
    */
-  blocks?: { heading: string; body: string; locked?: boolean }[];
+  blocks?: {
+    heading: string;
+    body: string;
+    locked?: boolean;
+    items?: ResultItem[];
+    /** 項目のあとに置く締めの段落 (従来の文と項目を両方出すとき)。 */
+    after?: string;
+  }[];
   /** ロック中か (課金導線を出すフラグ)。 */
   locked: boolean;
 };
@@ -133,7 +147,7 @@ function buildLoveBlocks(
   typeId: ThirtyTwoTypeId,
   body: string,
   unlocked: boolean,
-): { heading: string; body: string; locked?: boolean }[] | undefined {
+): NonNullable<ResolvedDeepDiveSection["blocks"]> | undefined {
   const split = LOVE_SPLITS[typeId];
   if (!split) return undefined;
   const paras = body.split("\n\n");
@@ -146,7 +160,10 @@ function buildLoveBlocks(
     if (isPayoff && !unlocked) {
       return { heading, body: "", locked: true };
     }
-    return { heading, body: s.join("\n\n") };
+    // payoff は原稿のあとに、ロック中の見本と同じ5項目 (タイプ別) を並べる。
+    return isPayoff
+      ? { heading, body: s.join("\n\n"), items: lovePayoffItemsFor(typeId) }
+      : { heading, body: s.join("\n\n") };
   });
 }
 
@@ -192,6 +209,28 @@ function buildLoveEndure(
   return [p("N"), p("A"), `${p("E")}${p("C")}`, LOVE_ENDURE_CLOSING].join(
     "\n\n",
   );
+}
+
+// 「恋人が密かに我慢していること」「職場の人間関係」は、従来の文 (点数の傾向から組んだ全体像) →
+// つなぎの一文 → タイプ別の項目 → 締め、の順で両方出す (2026-11-23 決定)。
+// つなぎの一文で「ここまでは傾向、ここからはタイプ別」と切り替えを伝え、同じ話の繰り返しに
+// 見えないようにする。締めは項目のあとへ回す。
+const LOVE_ENDURE_BRIDGE =
+  "ここまでは、あなたの傾向から見えること。ここからは、あなたのタイプの恋人に起きやすいことを、4つに分けて見ていきます。";
+// 項目4つ目がタイプ別の「一言」なので、締めでは別のせりふ (「最近どう?」) を重ねない。
+const LOVE_ENDURE_AFTER =
+  "ここまで読んで胸がチクッとしても、大丈夫。相手が黙っているのは、あなたが嫌いだからじゃなく、この関係を壊したくないから。";
+const CAREER_RELATIONS_BRIDGE =
+  "ここまでが、あなたの傾向から見た全体像です。ここからは、あなたのタイプの場合を、4つに分けて具体的に見ていきます。";
+
+function withIntroAndAfter(
+  prose: string,
+  bridge: string,
+  after: string,
+): { body: string; after: string } {
+  // 従来の文の最後の段落 (固定の締め) を外し、つなぎの一文に差し替える。
+  const paras = prose.split("\n\n").slice(0, -1);
+  return { body: [...paras, bridge].join("\n\n"), after };
 }
 
 // キャリア本文を分割する共通見出し (全32タイプ固定・3ブロック / 2026-07-22)。
@@ -247,6 +286,20 @@ function buildCareerRelations(
   );
 }
 
+// タイプ別の項目が登録されているタイプは「従来の文 → つなぎ → 項目 → 締め」を出し、
+// 未登録タイプは従来のルールベースの文だけを出す。どちらも解放済みのときだけ呼ぶ。
+function proseWithItems(
+  heading: string,
+  items: ResultItem[] | undefined,
+  prose: string,
+  bridge: string,
+  after: string,
+): NonNullable<ResolvedDeepDiveSection["blocks"]>[number] {
+  return items
+    ? { heading, items, ...withIntroAndAfter(prose, bridge, after) }
+    : { heading, body: prose };
+}
+
 // キャリア body を共通見出し3ブロックに分割。1ブロック目 (働き方) は無料、
 // 2ブロック目 (合った働き方・避けたほうがいい職場 = 原稿3段落目) と
 // 3ブロック目 (職場の人間関係 = ルールベース) は課金ゲート対象 (恋愛 payoff と同じ)。
@@ -254,20 +307,38 @@ function buildCareerRelations(
 // (フェイルクローズ。表示側はぼかし + 解除カードにする)。
 // 4段落でない原稿 (8タイプフォールバック等) は undefined = 従来どおり単一本文表示。
 function buildCareerBlocks(
+  typeId: ThirtyTwoTypeId,
   body: string,
   scores: Partial<Record<BigFiveDimension, number>>,
   unlocked: boolean,
-): { heading: string; body: string; locked?: boolean }[] | undefined {
+): NonNullable<ResolvedDeepDiveSection["blocks"]> | undefined {
   const paras = body.split("\n\n");
   if (paras.length < 4) return undefined;
-  const gate = (heading: string, text: string) =>
-    unlocked
-      ? { heading, body: text }
-      : { heading, body: "", locked: true as const };
+  const lockedBlock = (heading: string) => ({
+    heading,
+    body: "",
+    locked: true as const,
+  });
   return [
     { heading: CAREER_HEADINGS[0], body: paras.slice(0, 2).join("\n\n") },
-    gate(CAREER_HEADINGS[1], paras[2]),
-    gate(CAREER_RELATIONS_HEADING, buildCareerRelations(scores)),
+    // 「合った働き方」は原稿3段落目 + ロック中の見本と同じ4項目 (登録済みタイプのみ)。
+    unlocked
+      ? {
+          heading: CAREER_HEADINGS[1],
+          body: paras[2],
+          items: careerFitItemsFor(typeId),
+        }
+      : lockedBlock(CAREER_HEADINGS[1]),
+    // 「職場の人間関係」は、従来の文 (傾向の全体像) のあとに、見本と同じ4項目 (タイプ別) を並べる。
+    unlocked
+      ? proseWithItems(
+          CAREER_RELATIONS_HEADING,
+          careerRelationsItemsFor(typeId),
+          buildCareerRelations(scores),
+          CAREER_RELATIONS_BRIDGE,
+          CAREER_RELATIONS_CLOSING,
+        )
+      : lockedBlock(CAREER_RELATIONS_HEADING),
   ];
 }
 
@@ -352,14 +423,20 @@ export function resolveDeepDiveSections(
       if (blocks) {
         blocks.push(
           opts.hasFullAccess
-            ? { heading: LOVE_ENDURE_HEADING, body: buildLoveEndure(scores) }
+            ? proseWithItems(
+                LOVE_ENDURE_HEADING,
+                loveEndureItemsFor(thirtyTwoId),
+                buildLoveEndure(scores),
+                LOVE_ENDURE_BRIDGE,
+                LOVE_ENDURE_AFTER,
+              )
             : { heading: LOVE_ENDURE_HEADING, body: "", locked: true },
         );
       }
       // body は blocks があれば表示に使われないが、フェイルクローズのため公開分だけに絞る。
       const visibleBody = blocks
         ? blocks
-            .filter((b) => !b.locked)
+            .filter((b) => !b.locked && b.body)
             .map((b) => b.body)
             .join("\n\n")
         : section.body;
@@ -375,13 +452,14 @@ export function resolveDeepDiveSections(
     // キャリアも恋愛と同じ共通見出し3ブロック。「働き方」は無料、
     // 「合った働き方・避けたほうがいい職場」「職場の人間関係」は課金ゲート (未解放時はフェイルクローズ)。
     const careerBlocks = buildCareerBlocks(
+      thirtyTwoId,
       section.body,
       scores,
       opts.hasFullAccess,
     );
     const careerVisibleBody = careerBlocks
       ? careerBlocks
-          .filter((b) => !b.locked)
+          .filter((b) => !b.locked && b.body)
           .map((b) => b.body)
           .join("\n\n")
       : section.body;
