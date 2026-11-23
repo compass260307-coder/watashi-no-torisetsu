@@ -123,6 +123,20 @@ insert into public.internal_dashboard_viewers (email) values ('小文字のメ�
 
 控えは、直近 7 日は 1 日、それより前は 30 日たつと「1日の数字」を開いたときに数え直される。月の推移はそれを待たずに、ある控えをそのまま出す (友達診断率・シェア率・返金は、あとから少し動く)。
 
+## 終わった日の先回り集計 (定期実行)
+
+API からの呼び出しは約 8 秒で打ち切られるため、数えるのに時間のかかる日 (イベントの多い日、
+シェアの集計期間が長い日) は、画面を開いたときには数え終わらない。そこで DB の定期実行
+(pg_cron の `internal-numbers-nightly`、毎時 40 分) が `public.metrics_nightly_run(600)` を
+呼び、1 日分ずつ確定しながら次を片づける (SQL: `20261123210000_internal_numbers_nightly.sql`)。
+
+1. イベント (ファネル): 前日を最後まで数える (過去の日はさかのぼらない)
+2. 控え: 前日〜7 日前を 1 日 1 回、32 日前 (シェアの集計期間の終わり) を 1 回。過去の日はさかのぼらない
+
+画面側 (`internal_numbers_block`) は、2 日以上前の日は控えがあれば古さに関係なく控えから出す。
+実行の記録は `metrics_job_runs` に残る (`detail.errors` に失敗した日、`detail.more` が true なら
+時間切れで残した仕事あり)。手で流すときは SQL Editor で `call public.metrics_nightly_run();`。
+
 ## まだ入っていないもの
 
 - 週ごとの合計、月どうしの比較
