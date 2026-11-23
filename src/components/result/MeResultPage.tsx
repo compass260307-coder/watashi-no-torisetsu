@@ -258,8 +258,13 @@ async function MeResultPageContent({
   // プレビューは既定で「解放後」の見た目 (コンテンツ QA 用) だが、?previewLock=1 を付けると
   // 未課金・友達0人の「ロック状態」(ロックカード + ぼかし + 最下部の課金カード) を描画する。
   // → 課金導線/ペイウォールの見た目をローカルで確認する用途。
+  // 本番では、プレビューを必ずロック状態で描画する。クエリは誰でも書き換えられるので、
+  // previewLock の有無で解放後の見た目を出し分けると、課金後に解放される本文が
+  // 購入なしで読めてしまう。解放後の見た目 (コンテンツ QA) は開発環境だけで使う。
   const previewLocked =
-    !acquisition && previewType !== null && sp.previewLock === "1";
+    !acquisition &&
+    previewType !== null &&
+    (sp.previewLock === "1" || process.env.NODE_ENV === "production");
   // ローカル専用の購入後プレビュー。通常の ?previewType は本文確認用のため
   // 商品権利までは付与しないが、専用 dev ルートから previewProduct=full_access
   // を渡した場合だけ、現行 ¥499 完全版を購入済みとして画面全体を再現する。
