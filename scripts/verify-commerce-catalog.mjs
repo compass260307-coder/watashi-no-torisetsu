@@ -96,7 +96,8 @@ const contractChecks = [
     label: "Japanese full access price test shares one assignment between the quote and Checkout, and can be switched off",
     valid:
       read("src/lib/full-access-checkout-server.ts").includes('process.env.FULL_ACCESS_PRICE_TEST !== "off" && Date.now() < PRICE_TEST_END_MS') &&
-      accessProducts.includes('"2026-11-23T00:00:00+09:00" as const') &&
+      accessProducts.includes('export const FULL_ACCESS_PRICE_TEST_END_AT =\n  "2026-11-26T00:00:00+09:00" as const;') &&
+      catalogIncludes("2026-11-26 0:00 JST") &&
       read("src/app/api/checkout/full-access-price/route.ts").includes("resolveJaFullAccessPriceAssignmentForRequest(request, ownerToken)") &&
       checkoutRoute.includes("resolveJaFullAccessPriceAssignment(buyer)") &&
       checkoutRoute.includes('"ja_full_access_checkout_plain_699_v1_20261122"') &&

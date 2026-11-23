@@ -40,6 +40,43 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // fill=YYYY-MM-DD: 月の推移が、まだ控えの無い終わった日を 1 日分だけ数えさせる。
+  // イベント (ファネル) の集計は通さない。月の推移では使わないうえ、イベントの多い
+  // 古い日は 1 時間分を読むだけで制限時間を超え、block= では数え終わらなかった
+  // (2026-11-23 本番で、11/18 以前の日がすべて時間切れ)。控えのイベントは読むたびに
+  // 集計表から付け直すので、ここで通さなくても控えは古くならない。
+  const fillParam = request.nextUrl.searchParams.get("fill");
+  if (fillParam !== null) {
+    if (!isValidNumbersDay(fillParam) || fillParam >= todayInJst()) {
+      return NextResponse.json(
+        { error: "invalid_day" },
+        { status: 400, headers: PRIVATE_HEADERS },
+      );
+    }
+    const dayEnd = new Date(
+      new Date(`${fillParam}T00:00:00+09:00`).getTime() + 86400e3,
+    );
+    const { data, error } = await supabaseAdmin.rpc("internal_numbers_block", {
+      p_day: fillParam,
+      p_cut: dayEnd.toISOString(),
+      p_now: new Date().toISOString(),
+      p_locale: "ja",
+      p_today: todayInJst(),
+      p_deadline: null,
+    });
+    if (error || !data) {
+      console.error("[internal-numbers] fill day query failed", {
+        code: error?.code,
+        message: error?.message,
+      });
+      return NextResponse.json(
+        { error: "numbers_unavailable" },
+        { status: 503, headers: PRIVATE_HEADERS },
+      );
+    }
+    return NextResponse.json({ block: data }, { headers: PRIVATE_HEADERS });
+  }
+
   // block=YYYY-MM-DD: 比べる相手として選んだ、終わった日の 1 日分だけを返す。
   const blockParam = request.nextUrl.searchParams.get("block");
   if (blockParam !== null) {

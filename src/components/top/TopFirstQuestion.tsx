@@ -9,6 +9,11 @@ import {
   startFirstAnswerVeil,
 } from "@/lib/first-answer-handoff";
 import { phraseWrapJa } from "@/lib/ja-phrase";
+import {
+  measureTopQuestionClosed,
+  measureTopQuestionShown,
+  topMeasureMetadata,
+} from "@/lib/top-question-measure";
 import { track } from "@/lib/track";
 import type { AnswerValue } from "@/lib/types";
 import Link from "next/link";
@@ -29,6 +34,8 @@ const SHOW_QUESTION_AFTER_MS = 5000;
 const TAP_GUARD_MS = 1200;
 // 出す何ミリ秒前から、見えない状態で用意しておくか。
 const PREPARE_BEFORE_MS = 900;
+// 出してから何ミリ秒後に診断ページを先読みするか (演出が終わったあと)。
+const PREFETCH_AFTER_OPEN_MS = 2300;
 const ALICE_SRC = "/mascot/top-question-alice-talk.webp";
 
 // 今までと同じ画面とボタンはそのままに、しばらく押されなければ1問目を小窓 (モーダル) で出す。
@@ -36,9 +43,18 @@ const ALICE_SRC = "/mascot/top-question-alice-talk.webp";
 export function TopQuestionModal(question: FirstQuestionProps) {
   // idle: まだ何も置かない / ready: 見えない状態で用意済み / open: 表示中 / closed: 閉じた
   const [phase, setPhase] = useState<"idle" | "ready" | "open" | "closed">("idle");
-  const [guarded, setGuarded] = useState(true);
+  const router = useRouter();
+  const rootRef = useRef<HTMLDivElement>(null);
+  // 小窓を出した時刻。出た直後の押し間違いを防ぐ判定に使う
+  // (状態にすると演出の途中で描き直しが起きるので、時刻を覚えておくだけにする)。
+  const openedAtRef = useRef<number | null>(null);
   const open = phase === "open";
-  const close = () => setPhase("closed");
+  const canTap = () =>
+    openedAtRef.current !== null && performance.now() - openedAtRef.current >= TAP_GUARD_MS;
+  const close = (how: "button" | "backdrop" | "escape") => {
+    measureTopQuestionClosed(how);
+    setPhase("closed");
+  };
 
   useEffect(() => {
     let visibleMs = 0;
@@ -61,26 +77,35 @@ export function TopQuestionModal(question: FirstQuestionProps) {
       // メニューや言語切替など、ほかの小窓を開いている間は割り込まない (閉じたら出す)。
       if (document.querySelector("dialog[open], [aria-modal='true']")) return;
       window.clearInterval(timer);
+      openedAtRef.current = performance.now();
+      measureTopQuestionShown();
       setPhase((p) => (p === "ready" || p === "idle" ? "open" : p));
-      window.setTimeout(() => setGuarded(false), TAP_GUARD_MS);
     }, 100);
     return () => window.clearInterval(timer);
   }, []);
 
   // 開いている間は背景をスクロールさせず、Esc で閉じられるようにする。
+  // body の overflow は触らない (書き換えるとページ全体の配置計算が走り、演出の出だしに重なる)。
+  // 代わりに、小窓の上でのスクロール操作そのものを止める。
   useEffect(() => {
     if (!open) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const root = rootRef.current;
+    const stop = (e: Event) => e.preventDefault();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPhase("closed");
+      if (e.key === "Escape") close("escape");
     };
+    root?.addEventListener("touchmove", stop, { passive: false });
+    root?.addEventListener("wheel", stop, { passive: false });
     window.addEventListener("keydown", onKey);
+    // 診断ページの先読みは、演出が終わってから (読み込みと解析が演出に重ならないように)。
+    const prefetchTimer = window.setTimeout(() => router.prefetch("/diagnosis"), PREFETCH_AFTER_OPEN_MS);
     return () => {
-      document.body.style.overflow = previous;
+      root?.removeEventListener("touchmove", stop);
+      root?.removeEventListener("wheel", stop);
       window.removeEventListener("keydown", onKey);
+      window.clearTimeout(prefetchTimer);
     };
-  }, [open]);
+  }, [open, router]);
 
   useEffect(() => {
     if (phase !== "ready") return;
@@ -100,14 +125,18 @@ export function TopQuestionModal(question: FirstQuestionProps) {
       className={`top-question-backdrop fixed inset-0 z-[1000] flex items-center justify-center bg-[#2E2E5C]/45 px-5 ${
         open ? "top-question-open" : "top-question-prep"
       }`}
-      style={guarded ? { pointerEvents: "none" } : undefined}
-      onClick={close}
+      ref={rootRef}
+      onClick={() => {
+        if (canTap()) close("backdrop");
+      }}
     >
       <div className="top-question-stage relative w-full max-w-[560px] md:max-w-[640px]" onClick={(e) => e.stopPropagation()}>
         <div className="top-question-in relative z-10">
           <TopFirstQuestion
             {...question}
             shownAfterMs={SHOW_QUESTION_AFTER_MS}
+            canAnswer={canTap}
+            prefetchOnMount={false}
           />
         </div>
         {/* カードが出きったあと、カードの裏から Alice がそっと顔を出し、下のカードを指さして話しかける。
@@ -132,7 +161,7 @@ export function TopQuestionModal(question: FirstQuestionProps) {
         <button
           type="button"
           aria-label="閉じる"
-          onClick={close}
+          onClick={() => close("button")}
           className="absolute right-1.5 top-1.5 z-20 flex h-8 w-8 items-center justify-center rounded-full text-[18px] leading-none text-[#B4B4C8] hover:bg-[#2E2E5C]/5"
         >
           ×
@@ -149,22 +178,37 @@ export function TopFirstQuestion({
   questionText,
   shownAfterMs,
   lead,
-}: FirstQuestionProps & { shownAfterMs?: number; lead?: string }) {
+  canAnswer,
+  prefetchOnMount = true,
+}: FirstQuestionProps & {
+  shownAfterMs?: number;
+  lead?: string;
+  canAnswer?: () => boolean;
+  prefetchOnMount?: boolean;
+}) {
   const router = useRouter();
   const [value, setValue] = useState<AnswerValue | undefined>(undefined);
   const cardRef = useRef<HTMLDivElement>(null);
 
   // 答えた直後に待たせないよう、診断ページを先に読み込んでおく。
   useEffect(() => {
-    router.prefetch("/diagnosis");
-  }, [router]);
+    if (prefetchOnMount) router.prefetch("/diagnosis");
+  }, [router, prefetchOnMount]);
 
   const handleAnswer = (answer: AnswerValue) => {
     if (value !== undefined) return; // 二度押しで二重に進まない
+    if (canAnswer && !canAnswer()) return; // 出た直後の押し間違いは受け付けない
     setValue(answer);
     saveFirstAnswerHandoff({ questionSet, questionId, answer });
     track("top_cta_clicked", {
-      metadata: { locale: "ja", page: "top", destination: "diagnosis", kind: "first_question", shownAfterMs },
+      metadata: {
+        locale: "ja",
+        page: "top",
+        destination: "diagnosis",
+        kind: "first_question",
+        shownAfterMs,
+        ...topMeasureMetadata(),
+      },
     });
     // 選んだ○に印が付くのを一瞬見せてから、カードを画面に残したまま診断ページへつなぐ。
     window.setTimeout(() => {

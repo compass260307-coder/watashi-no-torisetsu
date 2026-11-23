@@ -4,6 +4,8 @@ import { createHash } from "node:crypto";
 import type { NextRequest } from "next/server";
 import {
   FULL_ACCESS_PRICE_TEST_END_AT,
+  FULL_ACCESS_PRICE_TEST_PAUSE_END_AT,
+  FULL_ACCESS_PRICE_TEST_PAUSE_START_AT,
   FULL_ACCESS_PRICE_TEST_START_AT,
   FULL_ACCESS_PRICE_TEST_VERSION,
 } from "@/lib/access-products";
@@ -59,6 +61,8 @@ const devPriceTestStartAt =
     : null;
 const PRICE_TEST_START_MS = Date.parse(devPriceTestStartAt ?? FULL_ACCESS_PRICE_TEST_START_AT);
 const PRICE_TEST_END_MS = Date.parse(FULL_ACCESS_PRICE_TEST_END_AT);
+const PRICE_TEST_PAUSE_START_MS = Date.parse(FULL_ACCESS_PRICE_TEST_PAUSE_START_AT);
+const PRICE_TEST_PAUSE_END_MS = Date.parse(FULL_ACCESS_PRICE_TEST_PAUSE_END_AT);
 
 // 終了時刻を過ぎたら、テストは自動で止まる（全員 ¥499）。環境変数でも止められる。
 function priceTestEnabled() {
@@ -72,6 +76,8 @@ export function jaFullAccessPriceAssignmentForUser(
   if (!priceTestEnabled() || !diagnosisCompletedAt) return NOT_ENROLLED;
   const completedMs = Date.parse(diagnosisCompletedAt);
   if (!Number.isFinite(completedMs) || completedMs < PRICE_TEST_START_MS) return NOT_ENROLLED;
+  // 延長の反映をまたいだ1時間に診断した人は対象外（その間は全員 ¥499 を見ている）。
+  if (completedMs >= PRICE_TEST_PAUSE_START_MS && completedMs < PRICE_TEST_PAUSE_END_MS) return NOT_ENROLLED;
   const digest = createHash("sha256").update(`${FULL_ACCESS_PRICE_TEST_VERSION}:${userId}`).digest();
   return { arm: digest[0] % 2 === 0 ? "control" : "test", enrolled: true };
 }
