@@ -280,7 +280,7 @@ export function NumbersCostEntry({
         role="dialog"
         aria-modal="true"
         aria-label="広告費を入れる"
-        className="relative mx-auto flex min-h-full w-full max-w-[1480px] flex-col bg-[var(--nb-bg)] text-[var(--nb-text)] shadow-[0_24px_80px_rgba(0,0,0,0.8)] sm:min-h-0 sm:rounded-2xl sm:border sm:border-[var(--nb-border-strong)]"
+        className="relative mx-auto flex min-h-full w-full max-w-[1480px] flex-col bg-[var(--nb-bg)] text-[var(--nb-text)] shadow-[0_24px_80px_rgba(0,0,0,0.8)] sm:min-h-0 sm:rounded-lg sm:border sm:border-[var(--nb-border-strong)]"
         onDragEnter={(event) => {
           if (!hasFiles(event)) return;
           event.preventDefault();
@@ -402,7 +402,7 @@ export function NumbersCostEntry({
         {dragging && (
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-20 grid place-items-center border-2 border-dashed border-[var(--nb-accent)] sm:rounded-2xl"
+            className="pointer-events-none absolute inset-0 z-20 grid place-items-center border-2 border-dashed border-[var(--nb-accent)] sm:rounded-lg"
             style={{
               background: "color-mix(in srgb, var(--nb-bg) 82%, transparent)",
             }}
@@ -426,7 +426,7 @@ function DropZone({
 }) {
   return (
     <label
-      className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-xl border border-dashed px-4 py-7 text-center transition-colors hover:bg-[var(--nb-surface-2)]"
+      className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-md border border-dashed px-4 py-7 text-center transition-colors hover:bg-[var(--nb-surface-2)]"
       style={{
         borderColor: dragging ? "var(--nb-accent)" : "var(--nb-border-strong)",
         background: dragging ? accentTint(10) : undefined,
@@ -480,7 +480,7 @@ function ImportList({
       {items.map((item) => (
         <li
           key={item.id}
-          className="rounded-xl border border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-3.5 py-3"
+          className="rounded-md border border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-3.5 py-3"
         >
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
             {item.status === "saved" ? (
@@ -1126,7 +1126,7 @@ function PlanEditor({
       </p>
 
       {/* 棒グラフ。なぞった位置の高さを、その時間帯の金額にする。 */}
-      <div className="rounded-xl border border-[var(--nb-border)] bg-[var(--nb-bg)] px-3 pb-2 pt-3">
+      <div className="rounded-md border border-[var(--nb-border)] bg-[var(--nb-bg)] px-3 pb-2 pt-3">
         <div className="relative pr-11">
           <span className="pointer-events-none absolute -top-1.5 right-0 text-[13px] tabular-nums text-[var(--nb-text-3)]">
             {yen(scale)}

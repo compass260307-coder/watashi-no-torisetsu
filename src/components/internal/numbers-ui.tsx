@@ -42,15 +42,15 @@ export const NUMBERS_THEMES: Record<NumbersThemeName, CSSProperties> = {
     fontFamily: FONT_FAMILY,
   } as CSSProperties,
   light: {
-    "--nb-bg": "#f2f4f6",
+    "--nb-bg": "#f7f9f9",
     "--nb-surface": "#ffffff",
-    "--nb-surface-2": "#eef1f4",
-    "--nb-border": "#e0e4e9",
-    "--nb-border-strong": "#c3cad2",
+    "--nb-surface-2": "#f7f9f9",
+    "--nb-border": "#e6eaec",
+    "--nb-border-strong": "#cfd9de",
     "--nb-text": "#0f1419",
-    "--nb-text-2": "#45505b",
-    "--nb-text-3": "#687480",
-    "--nb-accent": "#1883d0",
+    "--nb-text-2": "#536471",
+    "--nb-text-3": "#8b98a5",
+    "--nb-accent": "#1d9bf0",
     "--nb-compare": "#7a838c",
     "--nb-up": "#00845a",
     "--nb-down": "#d42a36",
@@ -83,18 +83,14 @@ export function Card({
 }) {
   return (
     <section
-      className={`flex min-w-0 flex-col overflow-hidden rounded-2xl border border-[var(--nb-border)] bg-[var(--nb-surface)] ${className}`}
+      className={`flex min-w-0 flex-col overflow-hidden rounded-lg border border-[var(--nb-border)] bg-[var(--nb-surface)] ${className}`}
     >
       {title && (
-        <header className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 pb-4 pt-5 sm:px-6">
-          <div className="mr-auto min-w-0">
-            <h2 className="text-lg font-bold leading-tight text-[var(--nb-text)]">
-              {title}
-            </h2>
-            {hint && (
-              <p className="mt-1 text-sm text-[var(--nb-text-2)]">{hint}</p>
-            )}
-          </div>
+        <header className="flex min-h-12 flex-wrap items-center gap-x-3 gap-y-2 border-b border-[var(--nb-border)] px-4 py-2.5 sm:px-5">
+          <h2 className="mr-auto flex min-w-0 items-center gap-1.5 text-[15px] font-bold leading-tight text-[var(--nb-text)]">
+            {title}
+            {hint && <InfoTip text={hint} />}
+          </h2>
           {action}
         </header>
       )}
@@ -103,7 +99,40 @@ export function Card({
   );
 }
 
-/** 増減。色だけに頼らず、向きの記号も付ける。 */
+/**
+ * 見出しの横の小さな「i」。説明は常に出さず、指を置いたとき・押したときだけ出す
+ * (説明文が画面中に並ぶと、数字より文字が目に入るため)。
+ */
+export function InfoTip({ text }: { text: string }) {
+  return (
+    <span className="group/tip relative inline-flex">
+      <button
+        type="button"
+        aria-label={text}
+        className="flex h-4 w-4 items-center justify-center rounded-full border border-[var(--nb-border-strong)] text-[10px] font-bold leading-none text-[var(--nb-text-3)] hover:text-[var(--nb-text)] focus:text-[var(--nb-text)]"
+      >
+        i
+      </button>
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute left-1/2 top-6 z-20 hidden w-max max-w-[18rem] -translate-x-1/2 rounded-md bg-[var(--nb-text)] px-2.5 py-1.5 text-[13px] font-medium leading-snug text-[var(--nb-bg)] group-focus-within/tip:block group-hover/tip:block"
+      >
+        {text}
+      </span>
+    </span>
+  );
+}
+
+/** 増減の色。 */
+export function deltaColor(delta: NumbersDelta): string {
+  return delta.direction === "up"
+    ? "var(--nb-up)"
+    : delta.direction === "down"
+      ? "var(--nb-down)"
+      : "var(--nb-text-2)";
+}
+
+/** 増減。符号つきの数字を色で出す (塗りつぶしの札にはしない)。 */
 export function DeltaBadge({
   delta,
   size = "md",
@@ -112,39 +141,29 @@ export function DeltaBadge({
   size?: "sm" | "md";
 }) {
   if (!delta) return null;
-  const color =
-    delta.direction === "up"
-      ? "var(--nb-up)"
-      : delta.direction === "down"
-        ? "var(--nb-down)"
-        : "var(--nb-text-2)";
-  const label =
-    delta.direction === "up"
-      ? "増加"
-      : delta.direction === "down"
-        ? "減少"
-        : "変わらず";
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full font-bold tabular-nums ${
-        size === "sm" ? "px-1.5 py-px text-[13px]" : "px-2 py-0.5 text-sm"
-      }`}
-      style={{
-        color,
-        background: `color-mix(in srgb, ${color} 14%, transparent)`,
-      }}
+      className={`whitespace-nowrap font-semibold tabular-nums ${size === "sm" ? "text-[13px]" : "text-sm"}`}
+      style={{ color: deltaColor(delta) }}
     >
-      <span aria-hidden className="text-[0.75em] leading-none">
+      <span className="sr-only">
         {delta.direction === "up"
-          ? "▲"
+          ? "増加 "
           : delta.direction === "down"
-            ? "▼"
-            : "■"}
+            ? "減少 "
+            : "変わらず "}
       </span>
-      <span className="sr-only">{label}</span>
-      {delta.text}
+      {signed(delta)}
     </span>
   );
+}
+
+/** "37.3%" → "+37.3%"、減少は "−3.3%" (表示の文字は、向きに合わせて符号を付ける)。 */
+function signed(delta: NumbersDelta): string {
+  const text = delta.text.replace(/^[+\-−]/, "");
+  if (delta.direction === "up") return `+${text}`;
+  if (delta.direction === "down") return `−${text}`;
+  return text;
 }
 
 /**
@@ -153,34 +172,7 @@ export function DeltaBadge({
  */
 export function DeltaText({ delta }: { delta: NumbersDelta | null }) {
   if (!delta) return <span className="text-[var(--nb-text-3)]">–</span>;
-  const color =
-    delta.direction === "up"
-      ? "var(--nb-up)"
-      : delta.direction === "down"
-        ? "var(--nb-down)"
-        : "var(--nb-text-2)";
-  return (
-    <span
-      className="inline-flex items-center gap-1 whitespace-nowrap font-bold tabular-nums"
-      style={{ color }}
-    >
-      <span aria-hidden className="text-[0.7em] leading-none">
-        {delta.direction === "up"
-          ? "▲"
-          : delta.direction === "down"
-            ? "▼"
-            : "■"}
-      </span>
-      <span className="sr-only">
-        {delta.direction === "up"
-          ? "増加"
-          : delta.direction === "down"
-            ? "減少"
-            : "変わらず"}
-      </span>
-      {delta.text}
-    </span>
-  );
+  return <DeltaBadge delta={delta} size="sm" />;
 }
 
 /** 2 択・3 択の切り替え。 */
@@ -199,7 +191,7 @@ export function Segmented<T extends string>({
     <div
       role="group"
       aria-label={label}
-      className="inline-flex rounded-lg border border-[var(--nb-border)] bg-[var(--nb-bg)] p-0.5"
+      className="inline-flex overflow-hidden rounded-md border border-[var(--nb-border-strong)]"
     >
       {options.map((option) => (
         <button
@@ -207,10 +199,10 @@ export function Segmented<T extends string>({
           type="button"
           aria-pressed={option.value === value}
           onClick={() => onChange(option.value)}
-          className={`rounded-md px-3 py-1 text-sm font-bold transition-colors ${
+          className={`border-l border-[var(--nb-border-strong)] px-3 py-1 text-[13px] font-semibold transition-colors first:border-l-0 ${
             option.value === value
-              ? "bg-[var(--nb-surface-2)] text-[var(--nb-text)] shadow-[inset_0_0_0_1px_var(--nb-border-strong)]"
-              : "text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
+              ? "bg-[var(--nb-text)] text-[var(--nb-bg)]"
+              : "bg-[var(--nb-surface)] text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
           }`}
         >
           {option.label}
@@ -331,7 +323,7 @@ export function RingGauge({
 
 /** ヘッダーに置く、四角い小さなボタンの形。 */
 export const NAV_BUTTON =
-  "h-9 w-9 items-center justify-center rounded-lg border border-[var(--nb-border)] text-[var(--nb-text)] transition-colors hover:border-[var(--nb-border-strong)] hover:bg-[var(--nb-surface-2)] disabled:pointer-events-none disabled:opacity-30";
+  "h-9 w-9 items-center justify-center rounded-md border border-[var(--nb-border)] text-[var(--nb-text)] transition-colors hover:border-[var(--nb-border-strong)] hover:bg-[var(--nb-surface-2)] disabled:pointer-events-none disabled:opacity-30";
 
 /**
  * 配色の切り替え。icon はヘッダー用 (PC)、wide はページのいちばん下に置く横長のボタン
@@ -352,7 +344,7 @@ export function ThemeToggle({
         <button
           type="button"
           onClick={onToggle}
-          className="h-11 w-full rounded-xl border border-[var(--nb-border-strong)] text-sm font-bold text-[var(--nb-text)]"
+          className="h-11 w-full rounded-md border border-[var(--nb-border-strong)] text-sm font-bold text-[var(--nb-text)]"
         >
           {theme === "dark" ? "明るい配色にする" : "暗い配色にする"}
         </button>
@@ -402,17 +394,17 @@ export function NumbersNav({ current }: { current: "day" | "month" }) {
   return (
     <nav
       aria-label="数値の見方"
-      className="inline-flex rounded-lg border border-[var(--nb-border)] bg-[var(--nb-bg)] p-0.5"
+      className="flex items-stretch gap-5"
     >
       {items.map((item) => (
         <Link
           key={item.key}
           href={item.href}
           aria-current={item.key === current ? "page" : undefined}
-          className={`whitespace-nowrap rounded-md px-3.5 py-1.5 text-sm font-bold transition-colors ${
+          className={`flex items-center whitespace-nowrap border-b-2 py-2 text-[15px] font-semibold transition-colors ${
             item.key === current
-              ? "bg-[var(--nb-surface-2)] text-[var(--nb-text)] shadow-[inset_0_0_0_1px_var(--nb-border-strong)]"
-              : "text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
+              ? "border-[var(--nb-accent)] text-[var(--nb-text)]"
+              : "border-transparent text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
           }`}
         >
           {item.label}

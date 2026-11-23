@@ -244,7 +244,7 @@ export function NumbersHourlyChart({
                 x2="0"
                 y2="1"
               >
-                <stop offset="0" stopColor={ACCENT} stopOpacity="0.26" />
+                <stop offset="0" stopColor={ACCENT} stopOpacity="0.1" />
                 <stop offset="1" stopColor={ACCENT} stopOpacity="0" />
               </linearGradient>
             </defs>
@@ -632,85 +632,6 @@ function LegendMark({
         strokeWidth={2}
         strokeDasharray={dash ? "4 3" : undefined}
         strokeLinecap="round"
-      />
-    </svg>
-  );
-}
-
-/** 指標カードの中に置く、軸のない小さな線グラフ (累計の推移)。 */
-export function NumbersSparkline({
-  metric,
-  hours,
-  compareHours,
-  currentHour,
-  nowHours,
-}: Pick<Props, "metric" | "hours" | "currentHour" | "nowHours"> & {
-  /** 増減の基準にしている相手。無いときは表示日の線だけ。 */
-  compareHours: HeadlineHour[] | null;
-}) {
-  const lastHour = currentHour ?? 23;
-  const values = headlineSeries(metric, hours, "cumulative", lastHour);
-  const compareValues: (number | null)[] = compareHours
-    ? headlineSeries(metric, compareHours, "cumulative", 23)
-    : hours.map(() => null);
-  const max = Math.max(
-    1e-9,
-    ...values.map((v) => v ?? 0),
-    ...compareValues.map((v) => v ?? 0),
-  );
-  const gradientId = useId();
-  const W = 100;
-  const H = 30;
-  const path = (series: (number | null)[], forDay: boolean) => {
-    const points: string[] = [];
-    if (!metric.denominator && series[0] !== null) points.push(`0,${H}`);
-    series.forEach((value, h) => {
-      if (value === null) return;
-      const end =
-        forDay && h === currentHour && nowHours !== null ? nowHours : h + 1;
-      points.push(
-        `${((end / 24) * W).toFixed(2)},${(H - (value / max) * (H - 3)).toFixed(2)}`,
-      );
-    });
-    return points.join(" ");
-  };
-  const dayPoints = path(values, true);
-  return (
-    <svg
-      aria-hidden
-      viewBox={`0 0 ${W} ${H}`}
-      preserveAspectRatio="none"
-      className="block h-8 w-full"
-    >
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0" stopColor={ACCENT} stopOpacity="0.3" />
-          <stop offset="1" stopColor={ACCENT} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      {/* 面を塗るのは件数と金額だけ。率と単価は 0 からの量ではないので塗らない。 */}
-      {dayPoints && !metric.denominator && (
-        <polygon
-          points={`${dayPoints.split(" ")[0].split(",")[0]},${H} ${dayPoints} ${dayPoints.split(" ").at(-1)?.split(",")[0]},${H}`}
-          fill={`url(#${gradientId})`}
-        />
-      )}
-      <polyline
-        points={path(compareValues, false)}
-        fill="none"
-        stroke={COMPARISON_STYLES[0].color}
-        strokeWidth={1.25}
-        vectorEffect="non-scaling-stroke"
-        opacity={0.7}
-      />
-      <polyline
-        points={dayPoints}
-        fill="none"
-        stroke={ACCENT}
-        strokeWidth={2}
-        strokeLinejoin="round"
-        strokeLinecap="round"
-        vectorEffect="non-scaling-stroke"
       />
     </svg>
   );
