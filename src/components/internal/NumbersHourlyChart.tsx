@@ -223,7 +223,7 @@ export function NumbersHourlyChart({
             width={width}
             height={height}
             role="img"
-            aria-label={`${metric.label}の${cumulative ? "累計" : "時間別"}グラフ。${[dayLabel, ...compared.map((c) => c.label)].join("、")}。数値は「時間別」の表にあります。`}
+            aria-label={`${metric.label}の${cumulative ? "累計" : "時間別"}グラフ。${[dayLabel, ...compared.map((c) => c.label)].join("、")}。数値は「時間帯別」の表にあります。`}
             className="block select-none"
           >
             <defs>

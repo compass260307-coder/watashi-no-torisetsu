@@ -466,7 +466,7 @@ export function NumbersDaily() {
             )}
             <MonthSummary rows={rows} today={data.today} />
             <Card
-              title={`${metric.label}の推移`}
+              title={`${metric.label}トレンド`}
               hint={metric.hint}
               action={
                 <div
@@ -957,7 +957,7 @@ function DailyTable({
   const ordered = [...rows].reverse();
   return (
     <Card
-      title="日ごとの数字"
+      title="日別実績"
       hint="日付を押すと、その日の詳しい数字に移ります。広告費の「推定」は、配信計画の金額で補った分を含む日です"
     >
       <div className="overflow-x-auto">

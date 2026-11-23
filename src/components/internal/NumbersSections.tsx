@@ -546,7 +546,7 @@ export function HoursCard({
   const besideCell = `${cell} pl-0 text-[var(--nb-text-2)]`;
   return (
     <Card
-      title="時間別"
+      title="時間帯別"
       hint={
         previous
           ? `「前日」は ${previous.label.replace(/^前日\s*/, "")} の同じ時間帯の数字。広告 ＝ 流入元が X・TikTok`
@@ -682,7 +682,7 @@ export function SourcesCard({
     "whitespace-nowrap border-b border-[var(--nb-border)] px-3.5 py-3 text-right tabular-nums";
   return (
     <Card
-      title="流入元"
+      title="流入経路"
       hint="売上は、その日に診断した人の購入額"
       className={className}
     >
@@ -840,7 +840,7 @@ export function SocialCards({
   ];
   return (
     <Card
-      title="口コミ"
+      title="口コミ・シェア"
       hint="友達診断率とシェア率は、診断のあと日がたつほど増えます"
       className={className}
     >
