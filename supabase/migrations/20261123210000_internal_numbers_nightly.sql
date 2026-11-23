@@ -10,9 +10,9 @@
 --
 -- ここでは DB の定期実行 (pg_cron) が、毎時 40 分に次をまとめて片づける。API の制限は
 -- 受けない。1 回の実行は 10 分まで (1 日分ずつ確定する)。終わらなかった分は次の実行が続きをやる。
---   1. イベント (ファネル): 前日と、直近 7 日で数え終わっていない日 (それより前は読む量が多く、DB の負荷になるため数えない)を最後まで数える
+--   1. イベント (ファネル): 前日を最後まで数える (過去の日はさかのぼらない)
 --   2. 控え: 前日〜7 日前 (友達診断・シェアがまだ動く) を 1 日 1 回、32 日前 (シェアの
---      集計期間が終わる日) を 1 回、控えの無い日 (直近 62 日) を数える
+--      集計期間が終わる日) を 1 回数える。過去の日はさかのぼらない
 -- 画面側は、2 日以上前の日は控えがあれば必ず控えから出す (その場では数え直さない)。
 --
 -- 数え方は変えていない。
@@ -130,10 +130,10 @@ declare
   v_day date;
   v_t timestamptz := clock_timestamp();
 begin
-  -- 1. イベント (ファネル)。前日を先に、残りは新しい日から。直近 7 日 (古い日は元のイベントの行数が多く、まとめて読むと DB の負荷になる)。
+  -- 1. イベント (ファネル)。前日だけ (過去の日はさかのぼらない。古い日は元のイベントの行数が多く、まとめて読むと DB の負荷になる)。
   select d::date
     into v_day
-    from generate_series(v_today - 1, v_today - 7, interval '-1 day') as d
+    from generate_series(v_today - 1, v_today - 1, interval '-1 day') as d
    where not (('events:' || d::date) = any (p_skip))
      and not exists (
        select 1 from metrics_event_days as e
@@ -177,10 +177,6 @@ begin
       union all
       -- 32 日前: シェアの集計期間 (31 日) が終わったあと 1 回。
       select v_today - 32, 1
-      union all
-      -- 控えの無い日 (直近 62 日)。
-      select d::date, 2
-        from generate_series(v_today - 8, v_today - 62, interval '-1 day') as d
     ) as t
     left join metrics_day_snapshots as s
       on s.day = t.day and s.locale = c_locale
