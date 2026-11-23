@@ -5,12 +5,24 @@ import { PaywallOverlay } from "@/components/result/PaywallModal";
 
 const CHARACTER_SRC = "/characters/cut/jellyfish_N.webp";
 
+// どこから宝箱を開いたか。主役のカード（いま開けようとしたもの）がこれで変わる。
+const ENTRIES = [
+  ["love_payoff_card", "本文の鍵: 恋愛の続き"],
+  ["career_fit_card", "本文の鍵: 合う働き方"],
+  ["moshimo_card", "本文の鍵: もしも"],
+  ["sticky_bar", "上部バー・ページ末尾のカード"],
+  ["nav_locked_hoshiyomi", "下部ナビの鍵: Alice"],
+  ["nav_aisho_locked", "下部ナビの鍵: 相性"],
+  ["nav_locked_tarot", "下部ナビの鍵: タロット"],
+] as const;
+
 // ローカル専用: 計測・Checkoutは実行しない（previewMode）。
 export function FullAccessTreasurePreviewClient() {
   const [run, setRun] = useState(0);
   const [open, setOpen] = useState(false);
   // 価格テスト（2026-11-22〜）のどちらの群の値札を見るか。
   const [arm, setArm] = useState<"control" | "test">("control");
+  const [entry, setEntry] = useState<string>(ENTRIES[0][0]);
   function openOverlay(resetCoupon: boolean) {
     if (resetCoupon) {
       try {
@@ -43,6 +55,18 @@ export function FullAccessTreasurePreviewClient() {
             </button>
           ))}
         </div>
+        <label className="block text-left text-[12px] font-black text-[#2E2E5C]">
+          どこから開いたか
+          <select
+            value={entry}
+            onChange={(event) => setEntry(event.target.value)}
+            className="mt-1 w-full rounded-xl border-2 border-[#2E2E5C] bg-white px-3 py-2 text-[13px] font-bold text-[#2E2E5C]"
+          >
+            {ENTRIES.map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </label>
         <button
           type="button"
           onClick={() => openOverlay(true)}
@@ -67,6 +91,7 @@ export function FullAccessTreasurePreviewClient() {
           group="sea"
           returnTo="me"
           previewMode
+          ctaSource={entry}
           treasurePreviewArm={arm}
           onClose={() => setOpen(false)}
         />

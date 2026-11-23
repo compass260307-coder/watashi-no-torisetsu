@@ -11,6 +11,7 @@ import {
   jaFullAccessOfferForQuote,
   type JaFullAccessPriceArm,
 } from "@/lib/full-access-pricing";
+import { DIAGNOSIS_COUNT_SNAPSHOT } from "@/lib/proof-stats";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
 import type { FullAccessQuoteState } from "@/lib/use-full-access-quote";
@@ -41,57 +42,100 @@ function saveCouponReceived() {
   }
 }
 
-// 課金カード（FULL_ACCESS_SELF_UNLOCKS）と同じ7つの解放内容を、同じ順で見せる。
+// 課金カード（FULL_ACCESS_SELF_UNLOCKS）と同じ7つの解放内容。
 // 絵は宝箱の世界観にそろえて、サイトの羊毛フェルトの絵（背景透過）を使う。
-function fullAccessBenefits(): TreasureBenefit[] {
-  return [
-    {
-      label: "特典①",
-      title: "診断結果の続き9セクション",
-      body: "恋愛・キャリアの深掘りから、周りから見た印象まで、ロック中の結果をすべて読めます",
-      // 星の錠前が外れて9枚のカードが飛び出す絵。全員に同じ絵を出す。
-      image: "/result-upgrade/benefit-sections.webp",
-    },
-    {
-      label: "特典②",
-      title: "16ページ以上の専用電子書籍",
-      body: "あなたの性格や特徴を一冊に。保存・印刷して、いつでも読み返せます",
-      image: "/result-upgrade/benefit-book.webp",
-    },
-    {
-      label: "特典③",
-      title: "専属占い師Aliceとのチャット",
-      body: "あなたの性格や星を理解したAliceが、恋愛・仕事・人間関係の悩みに答えます",
-      image: "/result-upgrade/benefit-line-chat.webp",
-    },
-    {
-      label: "特典④",
-      title: "Aliceの占いをすべて解放",
-      body: "西洋占星術の「運命の設計図」と、恋愛・仕事・人間関係を占うタロット",
-      image: "/mascot/unmei-hero-alice-transparent.png",
-    },
-    {
-      label: "特典⑤",
-      title: "相性診断をすべて解放",
-      body: "恋愛・友情・仕事での相性から、すれ違いやすいポイントまで読み解けます",
-      image: "/result-upgrade/benefit-aisho.webp",
-    },
-    {
-      label: "特典⑥",
-      title: "2人目以降の友達診断結果",
-      body: "友達から見たキャラ・性格のギャップ・恋愛傾向まで、友達ごとの結果をすべて読めます",
-      image: "/result-upgrade/benefit-friends.webp",
-    },
-    {
-      label: "特典⑦",
-      title: "みんなから見た分析レポート",
-      body: "友達の回答をまとめた他己分析PDF。回答が増えるたびに何度でも更新できます",
-      image: "/result-upgrade/benefit-friends-report.webp",
-    },
-  ];
+type FullAccessBenefitKey = "sections" | "book" | "chat" | "fortune" | "aisho" | "friends" | "report";
+
+const FULL_ACCESS_BENEFITS: readonly (Omit<TreasureBenefit, "label"> & { key: FullAccessBenefitKey })[] = [
+  {
+    key: "sections",
+    title: "自己診断結果のすべてを解放",
+    body: "恋愛・キャリアの深掘りから、周りから見た印象まで、ロック中の9セクションをすべて読めます",
+    // 星の錠前が外れて9枚のカードが飛び出す絵。全員に同じ絵を出す。
+    image: "/result-upgrade/benefit-sections.webp",
+  },
+  {
+    key: "book",
+    title: "16ページ以上の専用電子書籍",
+    body: "あなたの性格や特徴を一冊に。保存・印刷して、いつでも読み返せます",
+    image: "/result-upgrade/benefit-book.webp",
+  },
+  {
+    key: "chat",
+    title: "専属占い師Aliceとのチャット",
+    body: "あなたの性格や星を理解したAliceが、恋愛・仕事・人間関係の悩みに答えます",
+    image: "/result-upgrade/benefit-line-chat.webp",
+  },
+  {
+    key: "fortune",
+    title: "Aliceの占いをすべて解放",
+    body: "西洋占星術の「運命の設計図」と、恋愛・仕事・人間関係を占うタロット",
+    image: "/mascot/unmei-hero-alice-transparent.png",
+  },
+  {
+    key: "aisho",
+    title: "相性診断をすべて解放",
+    body: "恋愛・友情・仕事での相性から、すれ違いやすいポイントまで読み解けます",
+    image: "/result-upgrade/benefit-aisho.webp",
+  },
+  {
+    key: "friends",
+    title: "2人目以降の友達診断結果",
+    body: "友達から見たキャラ・性格のギャップ・恋愛傾向まで、友達ごとの結果をすべて読めます",
+    image: "/result-upgrade/benefit-friends.webp",
+  },
+  {
+    key: "report",
+    title: "みんなから見た分析レポート",
+    body: "友達の回答をまとめた他己分析PDF。回答が増えるたびに何度でも更新できます",
+    image: "/result-upgrade/benefit-friends-report.webp",
+  },
+];
+
+// 鍵つきの本文から来た人には、先頭のカード（自己診断結果のすべてを解放）の説明を、押した鍵の中身に合わせる。
+// 言葉は、それぞれの鍵のカードの「ここから先には、〜が書かれています。」に合わせる。
+const SECTION_HERO_BODIES: Readonly<Record<string, string>> = {
+  love_payoff_card: "あなたの恋愛の続きも、ぜんぶ読めます",
+  love_endure_card: "恋人が言えずにいる気持ちも、ぜんぶ読めます",
+  career_fit_card: "あなたに合う働き方と避けたい職場も、ぜんぶ読めます",
+  career_relations_card: "職場の人間関係のつくり方も、ぜんぶ読めます",
+  scene_caution_card: "シーン別のつまずきポイントも、ぜんぶ読めます",
+  moshimo_card: "予想外の瞬間に出るあなたの本性も、ぜんぶ読めます",
+  friend_dislike_card: "友達から誤解されやすいポイントも、ぜんぶ読めます",
+  relations_card: "周りの人が言えずにいることも、ぜんぶ読めます",
+  caution_lock_card: "残りの注意点と対処法も、ぜんぶ読めます",
+};
+
+// 下部ナビ・ハンバーガーメニューの鍵から来た人には、その機能を先頭にする。
+const NAV_HERO_KEYS: Readonly<Record<string, FullAccessBenefitKey>> = {
+  nav_locked_hoshiyomi: "chat",
+  nav_locked_aisho: "aisho",
+  nav_aisho_locked: "aisho",
+  nav_locked_tarot: "fortune",
+  nav_locked_unmei: "fortune",
+};
+
+const BENEFIT_NUMBERS = ["①", "②", "③", "④", "⑤", "⑥", "⑦"] as const;
+
+/**
+ * 7つの解放内容を、その人が開けようとしたもの（導線 ctaSource から決める）を先頭にして返す。
+ * 導線が分からないとき・ページ全体の解除（上部バー、ページ末尾のカード）のときは「自己診断結果のすべてを解放」を先頭にする。
+ * 「特典①〜⑦」の番号は、並べ替えたあとの順に振る。
+ */
+function fullAccessBenefits(ctaSource: string | undefined): TreasureBenefit[] {
+  const heroKey: FullAccessBenefitKey = (ctaSource && NAV_HERO_KEYS[ctaSource]) || "sections";
+  const sectionBody = ctaSource ? SECTION_HERO_BODIES[ctaSource] : undefined;
+  const hero = FULL_ACCESS_BENEFITS.find((benefit) => benefit.key === heroKey) ?? FULL_ACCESS_BENEFITS[0];
+  const rest = FULL_ACCESS_BENEFITS.filter((benefit) => benefit !== hero);
+  return [sectionBody ? { ...hero, body: sectionBody } : hero, ...rest].map((benefit, index) => ({
+    label: `特典${BENEFIT_NUMBERS[index]}`,
+    title: benefit.title,
+    body: benefit.body,
+    image: benefit.image,
+  }));
 }
 
-function fullAccessOffer(): TreasureOffer {
+function fullAccessOffer(ctaSource: string | undefined): TreasureOffer {
   return {
     dialogLabel: "Aliceからのプレゼント",
     lead: ["診断してくれた", "あなたへのプレゼント"],
@@ -99,8 +143,11 @@ function fullAccessOffer(): TreasureOffer {
     couponLabel: (couponJpy) => `リリース記念 ¥${couponJpy.toLocaleString("ja-JP")} OFFクーポン（完全版に使えます）`,
     offerSummary: (priceJpy, count) =>
       `クーポンを使うと、完全版が ${priceJpy.toLocaleString("ja-JP")}円。次の${count}つがすべて解放されます。`,
-    benefits: fullAccessBenefits(),
+    benefits: fullAccessBenefits(ctaSource),
     benefitStyle: "stack",
+    // 先頭はその人が開けようとしたもの。勝手に次へ回さず、本人が指で送る。
+    autoRotate: false,
+    priceLayout: "row",
   };
 }
 
@@ -138,7 +185,7 @@ export function FullAccessTreasure({
     (previewMode ? null : jaFullAccessOfferForQuote(priceState?.quote)) ?? jaFullAccessOfferForArm(previewArm));
   // 同じタブで受け取り済みなら、宝箱を開け直させずに値札と特典から見せる。
   const [startAt] = useState<"chest" | "offer">(() => (fullAccessCouponReceived() ? "offer" : "chest"));
-  const [offer] = useState(() => fullAccessOffer());
+  const [offer] = useState(() => fullAccessOffer(ctaSource));
   // 課金カードと同じ dedup キーで paywall_viewed を1回だけ送る（モーダルを開いた時点＝従来と同じ時点）。
   useEffect(() => {
     if (previewMode) return;
@@ -176,7 +223,9 @@ export function FullAccessTreasure({
       priceJpy={priceOffer.saleAmount}
       offer={offer}
       startAt={startAt}
-      dismissLabel="閉じる"
+      backLabel="戻る"
+      // 課金カードの信頼行と同じ文言・同じ数字（無料診断の累計完了者数）。
+      trustNote={`${DIAGNOSIS_COUNT_SNAPSHOT}人以上のお客様から信頼されています`}
       purchaseCta={
         <FullAccessCta
           ownerToken={ownerToken}
@@ -189,8 +238,9 @@ export function FullAccessTreasure({
           placement="modal"
           previewMode={previewMode}
           priceState={priceState}
-          accentColor="#A87322"
-          shadowColor="#7F5518"
+          // 紺と金の舞台の中でいちばん目に入るよう、エメラルドにする（2026-11-23 本人が色の見比べから選択）。
+          accentColor="linear-gradient(180deg, #3FAE78 0%, #2E8A5B 100%)"
+          shadowColor="#1F6441"
         >
           全ての機能をアンロック
         </FullAccessCta>
