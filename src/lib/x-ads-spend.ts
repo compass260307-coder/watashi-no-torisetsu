@@ -204,6 +204,16 @@ export async function syncXAdsSpend({
     }
   }
 
+  // 保存する記号の広告費がすべて 0 円なら保存しない。読み取りの不具合で実績 0 円を
+  // 書くと、配信計画の推定が消えて利益が大きく出てしまうため。
+  const totalToSave = [...byCode.values()]
+    .flat()
+    .reduce((sum, row) => sum + row.spend, 0);
+  if (byCode.size > 0 && totalToSave <= 0) {
+    report.errors.push("all_zero_not_saved");
+    return report;
+  }
+
   if (!dryRun) {
     for (const [code, rows] of byCode) {
       const { data, error } = await supabaseAdmin.rpc("ad_spend_replace", {
