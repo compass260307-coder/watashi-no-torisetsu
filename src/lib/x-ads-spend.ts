@@ -8,10 +8,12 @@ import { supabaseAdmin } from "./supabase-server";
 import {
   X_ADS_PLACEMENTS,
   XAdsApiError,
-  fetchXAdsAccountHourly,
+  fetchXAdsCampaignsHourly,
   listXAdsAccounts,
+  listXAdsActiveCampaigns,
   listXAdsCampaigns,
   xAdsCredentials,
+  type XAdsPlacement,
 } from "./x-ads-api";
 import { accountCodeFromCampaignNames } from "./x-ads-export";
 
@@ -36,6 +38,8 @@ export interface XAdsSyncAccountReport {
   code: string | null;
   currency: string | null;
   campaigns: number;
+  /** 期間中に配信のあったキャンペーンの数。 */
+  activeCampaigns: number;
   /** 取った期間の広告費の合計 (円)。 */
   spend: number;
   /** 保存しなかった理由。保存したら null。 */
@@ -135,6 +139,7 @@ export async function syncXAdsSpend({
       code: null,
       currency: null,
       campaigns: 0,
+      activeCampaigns: 0,
       spend: 0,
       skipped: null,
     };
@@ -151,13 +156,32 @@ export async function syncXAdsSpend({
       const spendMicro = new Array<number>(hours).fill(0);
       const impressions = new Array<number>(hours).fill(0);
       const clicks = new Array<number>(hours).fill(0);
-      for (const placement of X_ADS_PLACEMENTS) {
+      // 期間中に配信のあったキャンペーンと、その配信面だけを問い合わせる。
+      const active = await listXAdsActiveCampaigns(
+        account.id,
+        start,
+        end,
+        credentials,
+      );
+      entry.activeCampaigns = active.length;
+      const placements = X_ADS_PLACEMENTS.filter((placement) =>
+        active.some(
+          (item) => !item.placements || item.placements.includes(placement),
+        ),
+      );
+      for (const placement of placements) {
+        const ids = active
+          .filter(
+            (item) => !item.placements || item.placements.includes(placement),
+          )
+          .map((item) => item.entity_id);
         try {
-          const series = await fetchXAdsAccountHourly(
+          const series = await fetchXAdsCampaignsHourly(
             account.id,
+            ids,
             start,
             end,
-            placement,
+            placement as XAdsPlacement,
             credentials,
           );
           for (let i = 0; i < hours; i += 1) {

@@ -124,6 +124,30 @@ export async function listXAdsCampaigns(
 
 /** 配信面。X と X Audience Platform の両方に出る広告は、配信面ごとに別に問い合わせる。 */
 export const X_ADS_PLACEMENTS = ["ALL_ON_TWITTER", "PUBLISHER_NETWORK"] as const;
+export type XAdsPlacement = (typeof X_ADS_PLACEMENTS)[number];
+
+export interface XAdsActiveEntity {
+  entity_id: string;
+  placements?: string[];
+}
+
+/**
+ * 期間中に配信のあったキャンペーン。統計はこの分だけ問い合わせる (アカウントには数百の
+ * キャンペーンがあり、全部を問い合わせると利用回数の上限に近づくため)。
+ */
+export async function listXAdsActiveCampaigns(
+  accountId: string,
+  start: string,
+  end: string,
+  credentials: XAdsCredentials,
+): Promise<XAdsActiveEntity[]> {
+  const body: { data?: XAdsActiveEntity[] } = await xAdsGet(
+    `/stats/accounts/${encodeURIComponent(accountId)}/active_entities`,
+    { entity: "CAMPAIGN", start_time: start, end_time: end },
+    credentials,
+  );
+  return body.data ?? [];
+}
 
 export interface XAdsHourlyMetrics {
   /** 1 時間ごとの値。先頭が start の時間帯。 */
@@ -134,55 +158,63 @@ export interface XAdsHourlyMetrics {
 
 type MetricSeries = (number | null)[] | null | undefined;
 
-const seriesAt = (series: MetricSeries, index: number) =>
-  Number(series?.[index] ?? 0) || 0;
+/** 1 回の統計の問い合わせに入れられるキャンペーンの数。 */
+export const X_ADS_MAX_ENTITY_IDS = 20;
 
 /**
- * アカウント全体の、時間別の広告費・表示回数・クリック数 (同期の統計)。
- * start・end は正時 (UTC の ISO 文字列)。期間は 7 日まで。
+ * キャンペーンの、時間別の広告費・表示回数・クリック数の合計 (同期の統計)。
+ * アカウント全体 (entity=ACCOUNT) では広告費が返ってこないため、キャンペーン単位で
+ * 取って足す (2026-11-24 本番の応答で確認)。start・end は正時、期間は 7 日まで。
  */
-export async function fetchXAdsAccountHourly(
+export async function fetchXAdsCampaignsHourly(
   accountId: string,
+  campaignIds: string[],
   start: string,
   end: string,
-  placement: (typeof X_ADS_PLACEMENTS)[number],
+  placement: XAdsPlacement,
   credentials: XAdsCredentials,
 ): Promise<XAdsHourlyMetrics> {
-  const body: {
-    time_series_length?: number;
-    data: {
-      id_data: {
-        metrics: {
-          billed_charge_local_micro?: MetricSeries;
-          impressions?: MetricSeries;
-          clicks?: MetricSeries;
-        };
+  const length = Math.round((Date.parse(end) - Date.parse(start)) / 3_600_000);
+  const total: XAdsHourlyMetrics = {
+    spendMicro: new Array<number>(length).fill(0),
+    impressions: new Array<number>(length).fill(0),
+    clicks: new Array<number>(length).fill(0),
+  };
+  for (let i = 0; i < campaignIds.length; i += X_ADS_MAX_ENTITY_IDS) {
+    const ids = campaignIds.slice(i, i + X_ADS_MAX_ENTITY_IDS);
+    const body: {
+      data?: {
+        id_data?: {
+          metrics?: {
+            billed_charge_local_micro?: MetricSeries;
+            impressions?: MetricSeries;
+            clicks?: MetricSeries;
+          };
+        }[];
       }[];
-    }[];
-  } = await xAdsGet(
-    `/stats/accounts/${encodeURIComponent(accountId)}`,
-    {
-      entity: "ACCOUNT",
-      entity_ids: accountId,
-      start_time: start,
-      end_time: end,
-      granularity: "HOUR",
-      metric_groups: "BILLING,ENGAGEMENT",
-      placement,
-    },
-    credentials,
-  );
-  const length =
-    body.time_series_length ??
-    Math.round((Date.parse(end) - Date.parse(start)) / 3_600_000);
-  const metrics = body.data?.[0]?.id_data?.[0]?.metrics ?? {};
-  const spendMicro: number[] = [];
-  const impressions: number[] = [];
-  const clicks: number[] = [];
-  for (let i = 0; i < length; i += 1) {
-    spendMicro.push(seriesAt(metrics.billed_charge_local_micro, i));
-    impressions.push(seriesAt(metrics.impressions, i));
-    clicks.push(seriesAt(metrics.clicks, i));
+    } = await xAdsGet(
+      `/stats/accounts/${encodeURIComponent(accountId)}`,
+      {
+        entity: "CAMPAIGN",
+        entity_ids: ids.join(","),
+        start_time: start,
+        end_time: end,
+        granularity: "HOUR",
+        metric_groups: "BILLING,ENGAGEMENT",
+        placement,
+      },
+      credentials,
+    );
+    for (const entity of body.data ?? []) {
+      for (const segment of entity.id_data ?? []) {
+        const metrics = segment.metrics ?? {};
+        for (let h = 0; h < length; h += 1) {
+          total.spendMicro[h] += Number(metrics.billed_charge_local_micro?.[h] ?? 0) || 0;
+          total.impressions[h] += Number(metrics.impressions?.[h] ?? 0) || 0;
+          total.clicks[h] += Number(metrics.clicks?.[h] ?? 0) || 0;
+        }
+      }
+    }
   }
-  return { spendMicro, impressions, clicks };
+  return total;
 }
