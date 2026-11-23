@@ -58,8 +58,18 @@ export type TreasureOffer = {
   /** 値札から特典スライドへ移ったときに読み上げる説明。 */
   offerSummary: (priceJpy: number, benefitCount: number) => string;
   benefits: readonly TreasureBenefit[];
-  /** deck: 回るカード（既定） / stack: 積み重ねて合計額を見せてから回るカードへ。 */
+  /**
+   * deck: 回るカード（既定） /
+   * stack: 先頭の特典（その人が開けようとしたもの）を1枚だけ先に見せ、そこへ残りが加わって合計額を出してから、回るカードへ。
+   */
   benefitStyle?: "deck" | "stack";
+  /** false にすると、特典カードを自動では回さない（指で動かす・タップで次へ、だけにする）。既定は true。 */
+  autoRotate?: boolean;
+  /**
+   * 値札の中の値段の並べ方。"row" は、もとの値段（小さく・取り消し線）と支払う値段（大きく）を横一列に並べる。
+   * 省略時は従来どおり、もとの値段を左上に小さく置く。
+   */
+  priceLayout?: "row";
 };
 
 const BENEFITS: readonly TreasureBenefit[] = [
@@ -173,6 +183,13 @@ type Props = {
   dismissLabel?: string;
   /** 値札と特典を見せたとき（課金カードの表示計測用）。 */
   onOfferShown?: () => void;
+  /**
+   * 指定すると、左上に戻るボタン（矢印だけの小さな丸。この文言は読み上げ用）をどの場面でも出し、購入ボタンの下の「あとで決める」は出さない。
+   * 宝箱を開ける前・クーポンを受け取る前は onDismiss、値札と特典の画面では onClose を呼ぶ。
+   */
+  backLabel?: string;
+  /** 購入ボタンの下、返金保証の行の次に出す一言（例: 「◯人以上のお客様から信頼されています」）。backLabel を指定したときだけ出る。 */
+  trustNote?: string;
 };
 
 /**
@@ -191,6 +208,8 @@ export function ResultUpgradeTreasure({
   startAt = "chest",
   dismissLabel = "あとで開ける",
   onOfferShown,
+  backLabel,
+  trustNote,
 }: Props) {
   const [reducedMotion] = useState(prefersReducedMotion);
   const [phase, setPhase] = useState<Phase>(startAt === "offer" ? "offer" : reducedMotion ? "idle" : "intro");
@@ -337,7 +356,21 @@ export function ResultUpgradeTreasure({
       aria-modal="true"
       aria-label={offer.dialogLabel}
     >
-      {!opened && (
+      {backLabel ? (
+        (phase === "intro" || phase === "idle" || phase === "open" || phase === "offer") && (
+          <button
+            ref={phase === "offer" ? laterRef : undefined}
+            type="button"
+            className={styles.back}
+            aria-label={backLabel}
+            onClick={() => (phase === "offer" ? closeLater() : onDismissRef.current())}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M15 5l-7 7 7 7" />
+            </svg>
+          </button>
+        )
+      ) : !opened && (
         <button type="button" className={styles.close} onClick={() => onDismissRef.current()}>
           {dismissLabel}
         </button>
@@ -444,7 +477,7 @@ export function ResultUpgradeTreasure({
       )}
       {pricing && (
         <div
-          className={`${styles.priceTag} ${stuck && !reducedMotion ? styles.tagShake : ""} ${phase === "offer" || phase === "closing" ? styles.priceTagOffer : ""}`}
+          className={`${styles.priceTag} ${offer.priceLayout === "row" ? styles.priceTagRow : ""} ${stuck && !reducedMotion ? styles.tagShake : ""} ${phase === "offer" || phase === "closing" ? styles.priceTagOffer : ""}`}
           role="img"
           aria-label={`通常価格 ${listPriceJpy.toLocaleString("ja-JP")}円が、クーポンで ${priceJpy.toLocaleString("ja-JP")}円`}
         >
@@ -548,19 +581,35 @@ export function ResultUpgradeTreasure({
               priceJpy={priceJpy}
               reducedMotion={reducedMotion}
               skipIntro={startAt === "offer"}
+              autoRotate={offer.autoRotate ?? true}
             />
           ) : (
-            <BenefitDeck reducedMotion={reducedMotion} benefits={offer.benefits} />
+            <BenefitDeck reducedMotion={reducedMotion} benefits={offer.benefits} autoRotate={offer.autoRotate ?? true} />
           )}
           <div className={styles.offerBottom}>
             <div className={styles.offerCta}>{purchaseCta}</div>
-            <div className={styles.offerLinks}>
-              <button ref={laterRef} type="button" className={styles.offerLater} onClick={closeLater}>
-                あとで決める
-              </button>
-              <span aria-hidden="true">・</span>
-              <span>買い切り・30日間の返金保証つき</span>
-            </div>
+            {backLabel ? (
+              <div className={styles.offerNotes}>
+                <p className={styles.offerGuarantee}>買い切り・30日間の返金保証つき</p>
+                {trustNote && (
+                  <p className={styles.offerTrust}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
+                      <path d="M9 12l2 2 4-4" />
+                    </svg>
+                    {trustNote}
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className={styles.offerLinks}>
+                <button ref={laterRef} type="button" className={styles.offerLater} onClick={closeLater}>
+                  あとで決める
+                </button>
+                <span aria-hidden="true">・</span>
+                <span>買い切り・30日間の返金保証つき</span>
+              </div>
+            )}
           </div>
         </>
       ) : (
@@ -638,18 +687,23 @@ function BenefitFace({ benefit, compact = false }: { benefit: TreasureBenefit; c
   );
 }
 
-// 特典カードが1枚ずつ飛んできて積み重なる位置（毎回同じ見た目にするため固定値）。
-const STACK_GAP_MS = 190;
-const STACK_SETTLE_MS = 520;
-const STACK_TOTAL_HOLD_MS = 1500;
-const STACK_POSES = [
-  { rot: -9, dx: -18, dy: 14, fromX: -140, fromRot: -40 },
-  { rot: 7, dx: 16, dy: 6, fromX: 150, fromRot: 35 },
-  { rot: -4, dx: -8, dy: -4, fromX: -120, fromRot: -28 },
-  { rot: 10, dx: 20, dy: -10, fromX: 140, fromRot: 42 },
-  { rot: -7, dx: -14, dy: -2, fromX: -150, fromRot: -36 },
-  { rot: 4, dx: 8, dy: -8, fromX: 120, fromRot: 30 },
-  { rot: -1, dx: 0, dy: -4, fromX: 0, fromRot: -12 },
+// 先頭の特典（その人が開けようとしたもの）を1枚だけ見せておく時間。このあと残りのカードが加わる。
+const STACK_HERO_HOLD_MS = 1300;
+// 残りのカードは1枚ずつ、加わったと分かる間隔で入る。カードが着くたびに「＋1」「＋2」…と数える。
+const STACK_GAP_MS = 200;
+const STACK_LAND_MS = 340;
+// 最後の1枚が着いて「＋6」になってから、合計を出すまでの間。
+const STACK_SETTLE_MS = 750;
+const STACK_TOTAL_HOLD_MS = 1400;
+// 残りのカードが、先頭のカードの後ろへ左右に扇のように広がって加わる位置（毎回同じ見た目にするため固定値）。
+// 左右交互に、外側から内側へ入る。1枚ずつ見えるよう、広めに開く。
+const STACK_FAN_POSES = [
+  { rot: -18, dx: -78, dy: 16, fromX: -170, fromRot: -44 },
+  { rot: 18, dx: 78, dy: 16, fromX: 170, fromRot: 44 },
+  { rot: -12, dx: -54, dy: 0, fromX: -150, fromRot: -36 },
+  { rot: 12, dx: 54, dy: 0, fromX: 150, fromRot: 36 },
+  { rot: -6, dx: -28, dy: -10, fromX: -120, fromRot: -28 },
+  { rot: 6, dx: 28, dy: -10, fromX: 120, fromRot: 28 },
 ] as const;
 
 function buzz(pattern: number | number[]) {
@@ -657,43 +711,51 @@ function buzz(pattern: number | number[]) {
 }
 
 /**
- * 特典カードがバッと積み重なり「◯つ全部で ¥499」を押したあと、回る特典スライドに変わる。
+ * はじめに先頭の特典（その人が開けようとしたもの）のカードが1枚だけ出る。
+ * そこへ残りのカードが1枚ずつ後ろから扇のように加わり（加わるたびに「＋1」…「＋6」と数える）、
+ * 「◯つ全部で ¥499」を押したあと、回る特典スライドに変わる。
  */
 function BenefitStack({
   benefits,
   priceJpy,
   reducedMotion,
   skipIntro,
+  autoRotate,
 }: {
   benefits: readonly TreasureBenefit[];
   priceJpy: number;
   reducedMotion: boolean;
   skipIntro: boolean;
+  autoRotate: boolean;
 }) {
   const instant = reducedMotion || skipIntro;
   const count = benefits.length;
-  const [step, setStep] = useState<"stacking" | "total" | "deck">(instant ? "deck" : "stacking");
+  const [step, setStep] = useState<"hero" | "joining" | "total" | "deck">(instant ? "deck" : "hero");
+  // 先頭のカードに加わった枚数（「＋1」〜「＋6」の表示用）。
+  const [added, setAdded] = useState(0);
 
   useEffect(() => {
     if (instant) return;
     const timers: number[] = [];
-    for (let i = 0; i < count; i++) {
-      timers.push(window.setTimeout(() => buzz(8), i * STACK_GAP_MS + 380));
+    timers.push(window.setTimeout(() => buzz(14), 380));
+    timers.push(window.setTimeout(() => setStep("joining"), STACK_HERO_HOLD_MS));
+    for (let i = 0; i < count - 1; i++) {
+      timers.push(window.setTimeout(() => { setAdded(i + 1); buzz(8); }, STACK_HERO_HOLD_MS + i * STACK_GAP_MS + STACK_LAND_MS));
     }
-    const stacked = count * STACK_GAP_MS + STACK_SETTLE_MS;
-    timers.push(window.setTimeout(() => { setStep("total"); buzz([18, 40, 28]); }, stacked));
-    timers.push(window.setTimeout(() => setStep("deck"), stacked + STACK_TOTAL_HOLD_MS));
+    const allAdded = STACK_HERO_HOLD_MS + (count - 2) * STACK_GAP_MS + STACK_LAND_MS + STACK_SETTLE_MS;
+    timers.push(window.setTimeout(() => { setStep("total"); buzz([18, 40, 28]); }, allAdded));
+    timers.push(window.setTimeout(() => setStep("deck"), allAdded + STACK_TOTAL_HOLD_MS));
     return () => timers.forEach((timer) => window.clearTimeout(timer));
   }, [count, instant]);
 
   if (step === "deck") {
-    return <BenefitDeck reducedMotion={reducedMotion} benefits={benefits} />;
+    return <BenefitDeck reducedMotion={reducedMotion} benefits={benefits} autoRotate={autoRotate} />;
   }
   return (
     <div className={styles.stackArea}>
       <div className={`${styles.stackPile} ${step === "total" ? styles.stackPileDone : ""}`} aria-hidden="true">
-        {benefits.map((benefit, i) => {
-          const pose = STACK_POSES[i % STACK_POSES.length];
+        {step !== "hero" && benefits.slice(1).map((benefit, i) => {
+          const pose = STACK_FAN_POSES[i % STACK_FAN_POSES.length];
           return (
             <div
               key={benefit.label}
@@ -714,6 +776,21 @@ function BenefitStack({
             </div>
           );
         })}
+        <div className={`${styles.stackHero} ${step === "hero" ? styles.stackHeroSolo : ""}`}>
+          <span className={`${styles.benefitCard} ${styles.stackFace}`}>
+            <BenefitFace benefit={benefits[0]} compact />
+          </span>
+        </div>
+        {/* カードが1枚加わるたびに「＋1」「＋2」…と数える札。数字は刺しゅうの絵。 */}
+        {step === "joining" && added > 0 && (
+          <div key={added} className={styles.stackPlus}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="5" strokeLinecap="round">
+              <path d="M12 4v16M4 12h16" />
+            </svg>
+            {/* eslint-disable-next-line @next/next/no-img-element -- 刺しゅうの数字を1文字ずつ差し替えるため、最適化を通さない素の画像にする */}
+            <img src={glyphSrc(String(added))} alt="" />
+          </div>
+        )}
       </div>
       {step === "total" && (
         <div className={styles.totalStamp} role="img" aria-label={`${count}つ全部で ${priceJpy.toLocaleString("ja-JP")}円`}>
@@ -763,10 +840,13 @@ function BenefitDeck({
   reducedMotion,
   inline = false,
   benefits = BENEFITS,
+  autoRotate = true,
 }: {
   reducedMotion: boolean;
   inline?: boolean;
   benefits?: readonly TreasureBenefit[];
+  /** false のときは自動では回さない（指で動かす・タップで次へ、だけ）。 */
+  autoRotate?: boolean;
 }) {
   const [index, setIndex] = useState(0);
   // 指で動かしている量（カード何枚ぶんか。正の値で次のカードが正面に来る）。動かしていないときは null。
@@ -777,10 +857,10 @@ function BenefitDeck({
   const dragging = drag !== null;
   useEffect(() => {
     // 指で動かしている間は自動で回さない。離すと、そこからまた数え直す。
-    if (reducedMotion || dragging) return;
+    if (!autoRotate || reducedMotion || dragging) return;
     const timer = window.setInterval(() => setIndex((value) => (value + 1) % count), BENEFIT_ROTATE_MS);
     return () => window.clearInterval(timer);
-  }, [count, index, reducedMotion, dragging]);
+  }, [autoRotate, count, index, reducedMotion, dragging]);
 
   const wrap = (value: number) => ((value % count) + count) % count;
   const offset = drag ?? 0;

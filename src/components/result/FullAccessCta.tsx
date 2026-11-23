@@ -85,9 +85,9 @@ export function FullAccessCta({
   compact?: boolean;
   /** ローカルUI確認用。CTAを押しても計測・Checkoutを実行しない。 */
   previewMode?: boolean;
-  /** 結果グループに合わせたCTA色。未指定時は従来のネイビー。 */
+  /** 結果グループに合わせたCTA色（単色、またはグラデーション）。未指定時は従来のネイビー。 */
   accentColor?: string;
-  /** CTA下辺の立体影。accentColor と組で指定する。 */
+  /** CTA下辺の立体影。accentColor と組で指定する（accentColor をグラデーションにするときは必ず指定する）。 */
   shadowColor?: string;
   priceState?: FullAccessQuoteState;
 }) {
@@ -111,7 +111,7 @@ export function FullAccessCta({
         : "/diagnosis");
   const themedButtonStyle: CSSProperties | undefined = accentColor
     ? {
-        backgroundColor: accentColor,
+        background: accentColor,
         boxShadow: `0 4px 0 ${shadowColor ?? accentColor}`,
       }
     : undefined;
