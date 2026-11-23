@@ -514,8 +514,8 @@ type SectionKey = "funnel" | "hours" | "sources" | "social";
 
 const SECTIONS: { value: SectionKey; label: string }[] = [
   { value: "funnel", label: "ファネル" },
-  { value: "hours", label: "時間別" },
-  { value: "sources", label: "流入元" },
+  { value: "hours", label: "時間帯別" },
+  { value: "sources", label: "流入経路" },
   { value: "social", label: "友達・口コミ" },
 ];
 
