@@ -66,6 +66,9 @@ import {
 } from "@/lib/character-image";
 import { DeepDiveSections } from "@/components/result/DeepDiveSections";
 import { resolveDeepDiveSections } from "@/lib/deep-dive-resolve";
+import { cautionCopingItemsFor } from "@/lib/caution-coping-items-32";
+import { ResultItemGrid } from "@/components/result/ResultItemGrid";
+import { CAUTION_COPING_DECOY_ITEMS } from "@/lib/result-item-decoys";
 import { buildMoshimoScenes } from "@/lib/moshimo-resolve";
 import { MoshimoScenes } from "@/components/result/MoshimoScenes";
 import {
@@ -832,6 +835,7 @@ async function MeResultPageContent({
   const partTwo = acquisition
     ? {
         ...partTwoRaw,
+        dislikableTitles: undefined,
         likable: partTwoRaw.likable.map(personalize),
         weapons:
           partTwoRaw.weapons?.map((it) => ({
@@ -840,7 +844,10 @@ async function MeResultPageContent({
             body: personalize(it.body),
           })) ?? null,
       }
-    : partTwoRaw;
+    : publicPreview
+      ? // 公開のタイプ別ページは鍵つきブロックを出さないので、題名も送らない。
+        { ...partTwoRaw, dislikableTitles: undefined }
+      : partTwoRaw;
   const deepDiveSectionsRaw = isEnglish
     ? buildEnDeepDiveSections(t32, stored, partTwoUnlocked)
     : isKorean
@@ -1705,6 +1712,12 @@ async function MeResultPageContent({
               paragraphs.length > 1 &&
               !acquisition &&
               !publicPreview;
+            // 「残りの注意点と対処法」のタイプ別6項目 (日本語のみ)。ロック中に敷いている見本
+            // (下のデコイ) と同じ見出し。解放済みのときだけ解決する (フェイルクローズ)。
+            const cautionCopingItems =
+              cautionAllVisible && locale === "ja"
+                ? cautionCopingItemsFor(t32)
+                : undefined;
             return (
               <section
                 className={`mt-16 ${publicPreview ? "mb-0" : "mb-14"}`}
@@ -1770,6 +1783,17 @@ async function MeResultPageContent({
                   // (課金コンテンツは無いものとして扱う)
                   <SceneCautionTeaser locale={locale} />
                 )}
+                {/* 解放後の「残りの注意点と対処法」。ロック中に見えていた6つの見出しに、
+                    タイプ別の答えを並べる (見出しのスタイルはロック時と同じ)。
+                    獲得モード (/share) は未解放扱いなので、ここは出ない。 */}
+                {cautionCopingItems && (
+                  <div className="mt-10 px-1">
+                    <h3 className="mb-3 text-[20px] font-black text-[#2E2E5C]">
+                      残りの注意点と対処法
+                    </h3>
+                    <ResultItemGrid items={cautionCopingItems} />
+                  </div>
+                )}
                 {/* 続きの注意点 (2段落目以降) のロック。本文はレンダリングすらしない
                     (フェイルクローズ)。⑤嫌われやすい性格と同じ見せ方: 枠なしの
                     デコイ本文をスマホ1カラム・PC2カラムでぼかして敷き、中央に解除カードを
@@ -1781,56 +1805,59 @@ async function MeResultPageContent({
                       {isEnglish ? "More patterns and practical guidance" : isKorean ? "남은 주의점과 대처법" : isIndonesian ? "Pola lain dan panduan praktis" : "残りの注意点と対処法"}
                     </h3>
                     <div className="relative">
-                    <div
-                      aria-hidden="true"
-                      className="pointer-events-none grid select-none grid-cols-1 gap-x-10 gap-y-4 px-1 py-2 blur-[3px] md:grid-cols-2"
-                    >
-                      {(isEnglish
-                        ? [
-                            { title: "When you take on too much", body: "Notice the first signal that your capacity is running low." },
-                            { title: "When your standards become pressure", body: "Separate what truly matters from what only feels urgent." },
-                            { title: "When you need to say no", body: "A clear boundary can protect a relationship better than silent resentment." },
-                            { title: "When you need support", body: "Ask for one specific kind of help before the situation becomes heavy." },
-                            { title: "When you put yourself last", body: "Reserve time for recovery before the rest of the calendar fills it." },
-                            { title: "When care loses its balance", body: "Give your closest relationships the same attention you offer everyone else." },
-                          ]
-                        : isKorean
-                        ? [
-                            { title: "혼자 너무 많이 떠안지 않는 법", body: "전부 혼자 짊어지기 전에 한 가지만 다른 사람에게 맡기는 연습부터 시작해요." },
-                            { title: "‘내가 해야 해’를 다시 보는 법", body: "맡은 역할을 세어 보고 정말 나 아니면 안 되는 일만 남겨요." },
-                            { title: "지치기 전 신호를 찾는 법", body: "한계에 닿기 조금 전에 나타나는 신호를 미리 정해 두는 것이 요령이에요." },
-                            { title: "관계를 해치지 않고 거절하는 법", body: "어색해지지 않게 ‘오늘은 어려워요’라고 전하는 방법이 있어요." },
-                            { title: "나를 뒤로 미루지 않는 요령", body: "일정의 맨 앞에 나를 위한 시간을 먼저 넣어 두세요." },
-                            { title: "다정함을 나누는 방향 바로잡기", body: "다른 사람을 챙기느라 가까운 사람에게 소홀해지지는 않았는지 돌아봐요." },
-                          ]
-                        : isIndonesian
-                        ? [
-                            { title: "Saat Anda mengambil terlalu banyak tanggung jawab", body: "Kenali tanda pertama bahwa kapasitas Anda mulai menipis." },
-                            { title: "Saat standar berubah menjadi tekanan", body: "Pisahkan hal yang benar-benar penting dari yang hanya terasa mendesak." },
-                            { title: "Saat Anda perlu berkata tidak", body: "Batas yang jelas dapat melindungi hubungan lebih baik daripada rasa kesal yang dipendam." },
-                            { title: "Saat Anda membutuhkan dukungan", body: "Mintalah satu bentuk bantuan yang spesifik sebelum keadaan terasa terlalu berat." },
-                            { title: "Saat Anda selalu menaruh diri terakhir", body: "Sisihkan waktu untuk pulih sebelum kalender kembali penuh." },
-                            { title: "Saat perhatian kehilangan keseimbangan", body: "Berikan hubungan terdekat perhatian yang sama seperti yang Anda berikan kepada orang lain." },
-                          ]
-                        : [
-                            { title: "抱え込みすぎの手放し方", body: "ぜんぶ自分で背負う前に、ひとつだけ人に預ける練習から始めます。" },
-                            { title: "「私がやらなきゃ」の見直し方", body: "役割を数えて、本当にあなたでないと困るものだけを残します。" },
-                            { title: "疲れる前のサインの見つけ方", body: "限界の少し手前に出る合図を、先に決めておくのがコツです。" },
-                            { title: "関係を壊さない断り方", body: "気まずくならずに「今日はむり」を伝える言い方があります。" },
-                            { title: "自分を後回しにしないコツ", body: "予定のいちばん最初に、自分の時間を入れてしまいます。" },
-                            { title: "優しさの配分の直し方", body: "近い人にこそ雑になりがちな、優しさの向きを整えます。" },
-                          ]
-                      ).map((decoy) => (
-                        <div key={decoy.title}>
-                          <p className="mb-1 text-[16px] font-black text-[#2E2E5C]/55">
-                            {decoy.title}
-                          </p>
-                          <p className="body-gothic text-[15px] leading-[1.55] text-[#1A1A1A]/45">
-                            {decoy.body}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+                    {locale === "ja" ? (
+                      /* 日本語: 課金後と同じ形・同じ量の見本 (見出し + 結論の一行 + 本文)。 */
+                      <div
+                        aria-hidden="true"
+                        className="pointer-events-none select-none px-1 py-2 opacity-60 blur-[3px]"
+                      >
+                        <ResultItemGrid items={CAUTION_COPING_DECOY_ITEMS} />
+                      </div>
+                    ) : (
+                      <div
+                        aria-hidden="true"
+                        className="pointer-events-none grid select-none grid-cols-1 gap-x-10 gap-y-4 px-1 py-2 blur-[3px] md:grid-cols-2"
+                      >
+                        {(isEnglish
+                          ? [
+                              { title: "When you take on too much", body: "Notice the first signal that your capacity is running low." },
+                              { title: "When your standards become pressure", body: "Separate what truly matters from what only feels urgent." },
+                              { title: "When you need to say no", body: "A clear boundary can protect a relationship better than silent resentment." },
+                              { title: "When you need support", body: "Ask for one specific kind of help before the situation becomes heavy." },
+                              { title: "When you put yourself last", body: "Reserve time for recovery before the rest of the calendar fills it." },
+                              { title: "When care loses its balance", body: "Give your closest relationships the same attention you offer everyone else." },
+                            ]
+                          : isKorean
+                          ? [
+                              { title: "혼자 너무 많이 떠안지 않는 법", body: "전부 혼자 짊어지기 전에 한 가지만 다른 사람에게 맡기는 연습부터 시작해요." },
+                              { title: "‘내가 해야 해’를 다시 보는 법", body: "맡은 역할을 세어 보고 정말 나 아니면 안 되는 일만 남겨요." },
+                              { title: "지치기 전 신호를 찾는 법", body: "한계에 닿기 조금 전에 나타나는 신호를 미리 정해 두는 것이 요령이에요." },
+                              { title: "관계를 해치지 않고 거절하는 법", body: "어색해지지 않게 ‘오늘은 어려워요’라고 전하는 방법이 있어요." },
+                              { title: "나를 뒤로 미루지 않는 요령", body: "일정의 맨 앞에 나를 위한 시간을 먼저 넣어 두세요." },
+                              { title: "다정함을 나누는 방향 바로잡기", body: "다른 사람을 챙기느라 가까운 사람에게 소홀해지지는 않았는지 돌아봐요." },
+                            ]
+                          : isIndonesian
+                          ? [
+                              { title: "Saat Anda mengambil terlalu banyak tanggung jawab", body: "Kenali tanda pertama bahwa kapasitas Anda mulai menipis." },
+                              { title: "Saat standar berubah menjadi tekanan", body: "Pisahkan hal yang benar-benar penting dari yang hanya terasa mendesak." },
+                              { title: "Saat Anda perlu berkata tidak", body: "Batas yang jelas dapat melindungi hubungan lebih baik daripada rasa kesal yang dipendam." },
+                              { title: "Saat Anda membutuhkan dukungan", body: "Mintalah satu bentuk bantuan yang spesifik sebelum keadaan terasa terlalu berat." },
+                              { title: "Saat Anda selalu menaruh diri terakhir", body: "Sisihkan waktu untuk pulih sebelum kalender kembali penuh." },
+                              { title: "Saat perhatian kehilangan keseimbangan", body: "Berikan hubungan terdekat perhatian yang sama seperti yang Anda berikan kepada orang lain." },
+                            ]
+                          : []
+                        ).map((decoy) => (
+                          <div key={decoy.title}>
+                            <p className="mb-1 text-[16px] font-black text-[#2E2E5C]/55">
+                              {decoy.title}
+                            </p>
+                            <p className="body-gothic text-[15px] leading-[1.55] text-[#1A1A1A]/45">
+                              {decoy.body}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     <div className="absolute inset-0 flex items-center justify-center px-4">
                       <div className="result-themed-lock-card relative w-[84%] max-w-[320px] rounded-xl border border-[#E3E6F5] border-t-[3px] border-t-[#5B5BEF] bg-white/95 px-4 pb-5 pt-7 text-center shadow-[0_12px_36px_rgba(46,46,92,0.18)] backdrop-blur-sm md:w-full md:max-w-[420px] md:px-6 md:pb-9 md:pt-10">
                         <span className="result-themed-lock-badge absolute -top-4 left-1/2 flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full bg-[#5B5BEF] text-white">

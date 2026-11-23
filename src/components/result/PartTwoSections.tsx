@@ -18,6 +18,7 @@ import type { ContentItem } from "@/lib/mutual-result-content";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
 import { RelationLockGrid } from "@/components/result/RelationLockGrid";
 import type { AppResultLocale } from "@/i18n/result";
+import { DISLIKABLE_DECOY_BODIES } from "@/lib/result-item-decoys";
 
 // 最初の🔒ブロックに重ねる解除カードの id (後続🔒ブロックの解除ボタンのアンカー先)。
 export const PART_TWO_LOCK_ID = "part2-lock";
@@ -165,7 +166,31 @@ const ID_DECOY_ITEMS: ContentItem[] = [
   { title: "Sulit meminta bantuan", body: "Teman mungkin berharap Anda mengatakan lebih awal bahwa Anda membutuhkan dukungan." },
 ];
 
-function DummyCards({ rows, locale }: { rows: number; locale: AppResultLocale }) {
+function DummyCards({
+  rows,
+  locale,
+  titles,
+}: {
+  rows: number;
+  locale: AppResultLocale;
+  /** タイプ別の本物の題名 (日本語のみ)。あれば課金後と同じ組版で、題名 + 説明をぼかして敷く。 */
+  titles?: string[];
+}) {
+  if (titles && titles.length > 0) {
+    return (
+      <div
+        aria-hidden="true"
+        className="pointer-events-none select-none px-1 py-2 opacity-60 blur-[3px]"
+      >
+        <WarnList
+          items={titles.map((title, i) => ({
+            title,
+            body: DISLIKABLE_DECOY_BODIES[i % DISLIKABLE_DECOY_BODIES.length],
+          }))}
+        />
+      </div>
+    );
+  }
   const decoyItems = locale === "en" ? EN_DECOY_ITEMS : locale === "id" ? ID_DECOY_ITEMS : locale === "ko" ? KO_DECOY_ITEMS : DECOY_ITEMS;
   return (
     <div
@@ -375,7 +400,11 @@ export function PartTwoSections({
              その中央へコンパクトな解除カードを重ねる。 */
           <div className="relative overflow-hidden rounded-2xl">
             <div aria-hidden="true">
-              <DummyCards rows={8} locale={locale} />
+              <DummyCards
+                rows={8}
+                locale={locale}
+                titles={data.dislikableTitles}
+              />
             </div>
             {/* 自己診断＋PDFの解除カード。後続🔒ブロックのアンカー先。 */}
             <div
