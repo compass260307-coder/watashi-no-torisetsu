@@ -76,7 +76,7 @@ async function fetchToday(): Promise<NumbersPayload> {
 
 /** 終わった 1 日分を数えさせて受け取る (DB 側で控えにも残る)。 */
 async function fetchBlock(day: string): Promise<NumbersDayBlock> {
-  const response = await fetch(`/api/internal/numbers?block=${day}`, {
+  const response = await fetch(`/api/internal/numbers?fill=${day}`, {
     cache: "no-store",
     credentials: "same-origin",
   });
