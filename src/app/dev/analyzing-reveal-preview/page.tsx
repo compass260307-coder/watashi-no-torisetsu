@@ -6,10 +6,11 @@ import { AnalyzingRevealPreview } from "./preview";
 //   解析待ち画面を本番と同じ層 (AnalyzingVeilHost) に出し、待ち時間のあと、見本データの
 //   結果ページ (/me/x?previewType=...) へ移動する。待機画面が2秒かけて消える様子を見られる。
 //   ?wait=20 で本番と同じ20秒、指定なしは確認しやすい8秒。
+//   ?type=solo-hedgehog__R のように、移動先の見本のタイプを選べる (指定なしは earnest-elephant__N)。
 export default async function AnalyzingRevealPreviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ wait?: string | string[] }>;
+  searchParams: Promise<{ wait?: string | string[]; type?: string | string[] }>;
 }) {
   if (process.env.NODE_ENV !== "development") notFound();
 
@@ -17,5 +18,10 @@ export default async function AnalyzingRevealPreviewPage({
   const wait = Number(typeof params.wait === "string" ? params.wait : "");
   const waitSeconds = Number.isFinite(wait) && wait >= 2 && wait <= 60 ? wait : 8;
 
-  return <AnalyzingRevealPreview waitMs={waitSeconds * 1000} />;
+  const type =
+    typeof params.type === "string" && /^[a-z-]+__[NR]$/.test(params.type)
+      ? params.type
+      : "earnest-elephant__N";
+
+  return <AnalyzingRevealPreview waitMs={waitSeconds * 1000} previewType={type} />;
 }
