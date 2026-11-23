@@ -137,6 +137,20 @@ API からの呼び出しは約 8 秒で打ち切られるため、数えるの�
 実行の記録は `metrics_job_runs` に残る (`detail.errors` に失敗した日、`detail.more` が true なら
 時間切れで残した仕事あり)。手で流すときは SQL Editor で `call public.metrics_nightly_run();`。
 
+## X 広告費の自動取り込み (X Ads API)
+
+Vercel Cron (`/api/cron/x-ads-spend`、毎時 20 分) が X Ads API から、直近 3 日 (JST の 0 時から、
+いまの時間帯の手前まで) の時間別の広告費・表示回数・クリック数を取り直し、`ad_spend_replace` で
+`ad_spend_hourly` を上書きする。広告費は 3 日ほど見込みの値で、あとから少し動くため。
+
+- 鍵: Vercel の環境変数 `X_ADS_CONSUMER_KEY` `X_ADS_CONSUMER_SECRET` `X_ADS_ACCESS_TOKEN`
+  `X_ADS_ACCESS_TOKEN_SECRET` (OAuth 1.0a、アプリ `torisetsu-ads-reporting`、Standard Access)
+- アカウント記号: xlsx の取り込みと同じく、キャンペーン名 (`MMDD_PULSE24h_{記号}{単価}_...`) で
+  いちばん多い記号。`ad_accounts` に無い記号、通貨が JPY でないアカウントは保存しない
+- 配信面: `ALL_ON_TWITTER` と `PUBLISHER_NETWORK` を足す (後者を断られたら X 本体だけ)
+- 確かめ方: 許可リストの人がログインして `GET /api/internal/numbers/x-ads` (保存しない試し)、
+  `POST` で 1 回保存
+
 ## まだ入っていないもの
 
 - 週ごとの合計、月どうしの比較
