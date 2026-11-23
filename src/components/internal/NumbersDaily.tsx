@@ -322,10 +322,10 @@ export function NumbersDaily() {
       style={NUMBERS_THEMES[theme]}
       data-theme={theme}
     >
-      <header className="sticky top-0 z-30 border-b border-[var(--nb-border)] bg-[color-mix(in_srgb,var(--nb-bg)_82%,transparent)] backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-[var(--nb-border)] bg-[var(--nb-surface)]">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-6 xl:px-8">
           <div className="mr-auto flex min-w-0 items-center gap-3">
-            <h1 className="text-lg font-bold leading-tight tracking-tight">
+            <h1 className="text-[17px] font-bold leading-tight tracking-tight">
               数値
             </h1>
             <div className="hidden sm:block">
@@ -358,7 +358,7 @@ export function NumbersDaily() {
             </button>
             <p
               aria-live="polite"
-              className="min-w-[7.5rem] text-center text-base font-bold tabular-nums"
+              className="min-w-[7.5rem] text-center text-[15px] font-semibold tabular-nums"
             >
               {year}年{monthIndex}月
             </p>
@@ -392,7 +392,7 @@ export function NumbersDaily() {
             onClick={() => show(shownMonth)}
             disabled={loading}
             aria-busy={loading}
-            className="flex h-9 min-w-9 items-center justify-center gap-2 rounded-lg bg-[var(--nb-text)] px-2.5 text-base font-bold text-[var(--nb-bg)] transition-opacity hover:opacity-90 disabled:opacity-70 sm:min-w-[6.5rem] sm:px-4"
+            className="flex h-9 min-w-9 items-center justify-center gap-2 rounded-md bg-[var(--nb-text)] px-2.5 text-sm font-semibold text-[var(--nb-bg)] transition-opacity hover:opacity-90 disabled:opacity-70 sm:min-w-[6.5rem] sm:px-4"
           >
             <svg
               aria-hidden
@@ -425,7 +425,7 @@ export function NumbersDaily() {
         {status === "not_installed" && (
           <p
             role="alert"
-            className="rounded-2xl border border-[var(--nb-border-strong)] bg-[var(--nb-surface)] px-5 py-6 text-base leading-relaxed"
+            className="rounded-lg border border-[var(--nb-border-strong)] bg-[var(--nb-surface)] px-5 py-6 text-base leading-relaxed"
           >
             月の推移を出すための準備（データベースへのSQLの追加）が、まだ済んでいません。
           </p>
@@ -433,7 +433,7 @@ export function NumbersDaily() {
         {status === "error" && (
           <p
             role="alert"
-            className="rounded-2xl border border-[var(--nb-down)] bg-[var(--nb-surface)] px-5 py-6 text-base leading-relaxed"
+            className="rounded-lg border border-[var(--nb-down)] bg-[var(--nb-surface)] px-5 py-6 text-base leading-relaxed"
           >
             数字を取得できませんでした。
             <button
@@ -466,13 +466,13 @@ export function NumbersDaily() {
             )}
             <MonthSummary rows={rows} today={data.today} />
             <Card
-              title={`${metric.label}の推移`}
+              title={`${metric.label}トレンド`}
               hint={metric.hint}
               action={
                 <div
                   role="tablist"
                   aria-label="グラフに出す項目"
-                  className="flex flex-wrap gap-1 rounded-lg border border-[var(--nb-border)] bg-[var(--nb-bg)] p-0.5"
+                  className="flex flex-wrap overflow-hidden rounded-md border border-[var(--nb-border-strong)]"
                 >
                   {METRICS.map((item) => (
                     <button
@@ -481,10 +481,10 @@ export function NumbersDaily() {
                       role="tab"
                       aria-selected={item.key === metric.key}
                       onClick={() => setMetricKey(item.key)}
-                      className={`rounded-md px-3 py-1.5 text-sm font-bold transition-colors ${
+                      className={`border-l border-[var(--nb-border-strong)] px-3 py-1 text-[13px] font-semibold transition-colors first:border-l-0 ${
                         item.key === metric.key
-                          ? "bg-[var(--nb-surface-2)] text-[var(--nb-text)] shadow-[inset_0_0_0_1px_var(--nb-border-strong)]"
-                          : "text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
+                          ? "bg-[var(--nb-text)] text-[var(--nb-bg)]"
+                          : "bg-[var(--nb-surface)] text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
                       }`}
                     >
                       {item.label}
@@ -524,12 +524,12 @@ function DailySkeleton() {
         {Array.from({ length: 6 }, (_, index) => (
           <div
             key={index}
-            className="h-28 rounded-2xl border border-[var(--nb-border)] bg-[var(--nb-surface)]"
+            className="h-28 rounded-lg border border-[var(--nb-border)] bg-[var(--nb-surface)]"
           />
         ))}
       </div>
-      <div className="h-80 rounded-2xl border border-[var(--nb-border)] bg-[var(--nb-surface)]" />
-      <div className="h-96 rounded-2xl border border-[var(--nb-border)] bg-[var(--nb-surface)]" />
+      <div className="h-80 rounded-lg border border-[var(--nb-border)] bg-[var(--nb-surface)]" />
+      <div className="h-96 rounded-lg border border-[var(--nb-border)] bg-[var(--nb-surface)]" />
     </div>
   );
 }
@@ -558,11 +558,11 @@ function FillNotice({
   // すべて数え終わって失敗も無ければ、知らせは出さない。
   if (finished && failed === 0) return null;
   const button =
-    "h-9 shrink-0 rounded-lg border border-[var(--nb-border-strong)] px-3.5 text-sm font-bold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)]";
+    "h-9 shrink-0 rounded-md border border-[var(--nb-border-strong)] px-3.5 text-[13px] font-semibold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)]";
   return (
     <div
       role="status"
-      className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-2xl border border-[var(--nb-border-strong)] bg-[var(--nb-surface)] px-5 py-4"
+      className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-lg border border-[var(--nb-border-strong)] bg-[var(--nb-surface)] px-5 py-4"
     >
       <div className="mr-auto min-w-0">
         <p className="text-base font-bold">
@@ -580,9 +580,9 @@ function FillNotice({
               }`}
         </p>
         {!finished && (
-          <div className="mt-3 h-2 max-w-xl rounded-full bg-[var(--nb-surface-2)]">
+          <div className="mt-3 h-1 max-w-xl bg-[var(--nb-surface-2)]">
             <div
-              className="h-full rounded-full bg-[var(--nb-accent)] transition-[width] duration-500 ease-out"
+              className="h-full bg-[var(--nb-accent)] transition-[width] duration-500 ease-out"
               style={{ width: `${(done / total) * 100}%` }}
             />
           </div>
@@ -651,12 +651,18 @@ function MonthSummary({
     {
       label: "利益",
       value: hasCost ? signedYen(total.profit) : "–",
-      tone: hasCost
-        ? total.profit < 0
-          ? "var(--nb-down)"
-          : "var(--nb-up)"
-        : undefined,
-      note: hasCost ? `広告費が分かる ${total.costDays} 日分` : "",
+      // 広告費が推定を含むときは色を付けない (推定の利益を確かな黒字・赤字に見せない)。
+      tone:
+        hasCost && total.costPlan <= 0
+          ? total.profit < 0
+            ? "var(--nb-down)"
+            : "var(--nb-up)"
+          : undefined,
+      note: !hasCost
+        ? ""
+        : total.costPlan > 0
+          ? `推定を含む・${total.costDays} 日分`
+          : `${total.costDays} 日分`,
     },
     {
       label: "CPA",
@@ -666,28 +672,27 @@ function MonthSummary({
   ];
   return (
     <section aria-label="月の合計">
-      <p className="mb-3 text-sm text-[var(--nb-text-2)]">
-        月の合計（数字がある{" "}
-        <span className="font-bold text-[var(--nb-text)]">{total.days}</span>{" "}
-        日分{includesToday ? "。今日の途中までを含みます" : ""}）
+      <p className="mb-2 text-[13px] text-[var(--nb-text-2)]">
+        月の合計 ・ {total.days} 日分
+        {includesToday ? "（今日の途中までを含む）" : ""}
       </p>
-      <dl className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6 xl:gap-5">
+      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[var(--nb-border)] bg-[var(--nb-border)] md:grid-cols-3 xl:grid-cols-6">
         {tiles.map((tile) => (
           <div
             key={tile.label}
-            className="min-w-0 rounded-2xl border border-[var(--nb-border)] bg-[var(--nb-surface)] px-4 py-4 xl:px-6 xl:py-5"
+            className="min-w-0 bg-[var(--nb-surface)] px-4 pb-4 pt-3.5 xl:px-5"
           >
-            <dt className="text-base font-bold text-[var(--nb-text)]">
+            <dt className="text-[13px] font-semibold text-[var(--nb-text-2)]">
               {tile.label}
             </dt>
-            <dd className="mt-3">
+            <dd className="mt-1.5">
               <span
-                className="block whitespace-nowrap text-[1.5rem] font-bold leading-none tracking-tight tabular-nums sm:text-[1.75rem] xl:text-[2.125rem]"
+                className="block whitespace-nowrap text-[1.5rem] font-semibold leading-none tracking-tight tabular-nums xl:text-[1.75rem]"
                 style={{ color: tile.tone ?? "var(--nb-text)" }}
               >
                 {tile.value}
               </span>
-              <span className="mt-2 block min-h-5 text-sm leading-snug tabular-nums text-[var(--nb-text-2)]">
+              <span className="mt-2 block min-h-5 text-[13px] leading-snug tabular-nums text-[var(--nb-text-2)]">
                 {tile.note}
               </span>
             </dd>
@@ -892,7 +897,7 @@ function DailyChart({
       )}
       {hovered && hover !== null && (
         <div
-          className="pointer-events-none absolute top-2 z-10 rounded-xl border border-[var(--nb-border-strong)] bg-[var(--nb-surface)] px-3.5 py-2.5 text-sm shadow-lg"
+          className="pointer-events-none absolute top-2 z-10 rounded-md border border-[var(--nb-border-strong)] bg-[var(--nb-surface)] px-3 py-2 text-[13px] shadow-sm"
           style={{
             left: Math.min(
               Math.max(8, pad.left + slot * (hover + 0.5) - 80),
@@ -950,14 +955,14 @@ function DailyTable({
     "シェア率",
   ];
   const cell =
-    "whitespace-nowrap border-b border-[var(--nb-border)] px-3.5 py-3 text-right tabular-nums";
+    "whitespace-nowrap border-b border-[var(--nb-border)] px-3.5 py-2.5 text-right tabular-nums";
   const first =
-    "sticky left-0 whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-surface)] px-3.5 py-3 text-left font-bold tabular-nums";
+    "sticky left-0 whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-surface)] px-3.5 py-2.5 text-left font-semibold tabular-nums";
   // 新しい日を上に。
   const ordered = [...rows].reverse();
   return (
     <Card
-      title="日ごとの数字"
+      title="日別実績"
       hint="日付を押すと、その日の詳しい数字に移ります。広告費の「推定」は、配信計画の金額で補った分を含む日です"
     >
       <div className="overflow-x-auto">
@@ -968,7 +973,7 @@ function DailyTable({
                 <th
                   key={label}
                   scope="col"
-                  className={`whitespace-nowrap border-y border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-3.5 py-2.5 text-sm font-bold text-[var(--nb-text-2)] ${
+                  className={`whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-3.5 py-2 text-[13px] font-semibold text-[var(--nb-text-2)] ${
                     index === 0 ? "sticky left-0 z-[1] text-left" : "text-right"
                   }`}
                 >
@@ -993,7 +998,7 @@ function DailyTable({
                     {formatNumbersDay(row.day)}
                   </Link>
                   {isToday && (
-                    <span className="ml-2 rounded-full border border-[var(--nb-border-strong)] px-1.5 py-px text-[13px] font-normal text-[var(--nb-text-2)]">
+                    <span className="ml-2 rounded-sm border border-[var(--nb-border-strong)] px-1 py-px text-[13px] leading-none font-normal text-[var(--nb-text-2)]">
                       途中
                     </span>
                   )}
@@ -1024,10 +1029,10 @@ function DailyTable({
               return (
                 <tr key={row.day} className="hover:bg-[var(--nb-surface-2)]">
                   {date}
-                  <td className={`${cell} font-bold`}>
+                  <td className={`${cell} font-semibold`}>
                     {numberFormat.format(row.amounts.diagnoses)}
                   </td>
-                  <td className={`${cell} font-bold ${quiet(row.amounts.net)}`}>
+                  <td className={`${cell} font-semibold ${quiet(row.amounts.net)}`}>
                     {signedYen(row.amounts.net)}
                   </td>
                   <td
@@ -1060,10 +1065,11 @@ function DailyTable({
                     )}
                   </td>
                   <td
-                    className={`${cell} font-bold`}
+                    className={`${cell} font-semibold`}
                     style={{
+                      // 広告費が推定を含む日は色を付けない (推定の利益を確かな黒字・赤字に見せない)。
                       color:
-                        profit === null
+                        profit === null || row.costPlan > 0
                           ? undefined
                           : profit < 0
                             ? "var(--nb-down)"

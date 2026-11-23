@@ -56,6 +56,7 @@ export function EconomicsCard({
       : spent.actual > 0 || costs.day.has_actual
         ? { label: "一部推定", tone: "var(--nb-text-2)" }
         : { label: "推定（配信計画）", tone: "var(--nb-text-2)" };
+  const estimated = basis.label !== "実績";
   // 一部のアカウントの分しか入っていないと、広告費が少なく出る。気づけるように知らせる。
   const partialAccounts =
     costs.day.accounts_with_actual > 0 &&
@@ -75,9 +76,12 @@ export function EconomicsCard({
       value: now?.profit ?? null,
       format: signedYen,
       before: before ? signedYen(before.profit) : null,
-      // 赤字・黒字は、符号に加えて色でも分かるようにする。
-      tone: now
-        ? now.profit < 0
+      // 赤字・黒字は、符号に加えて色でも分かるようにする。広告費が推定を含むときは
+      // 色を付けない (推定の利益を、確かな黒字・赤字のように見せないため)。
+      tone: now && estimated
+        ? undefined
+        : now
+          ? now.profit < 0
           ? "var(--nb-down)"
           : "var(--nb-up)"
         : undefined,
@@ -102,21 +106,15 @@ export function EconomicsCard({
       action={
         <div className="flex flex-wrap items-center gap-2">
           <span
-            className="rounded-full border px-2.5 py-1 text-sm font-bold"
-            style={{
-              color: basis.tone,
-              borderColor:
-                basis.label === "実績"
-                  ? "color-mix(in srgb, var(--nb-up) 45%, transparent)"
-                  : "var(--nb-border-strong)",
-            }}
+            className="text-[13px] font-semibold"
+            style={{ color: basis.tone }}
           >
             広告費: {basis.label}
           </span>
           <button
             type="button"
             onClick={onOpenEntry}
-            className="h-8 rounded-lg border border-[var(--nb-border-strong)] px-3 text-sm font-bold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)]"
+            className="h-8 rounded-md border border-[var(--nb-border-strong)] px-3 text-[13px] font-semibold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)]"
           >
             広告費を入れる
           </button>
@@ -127,23 +125,26 @@ export function EconomicsCard({
         {cells.map((cell) => (
           <div
             key={cell.label}
-            className="min-w-0 bg-[var(--nb-surface)] px-4 py-5 sm:px-6"
+            className="min-w-0 bg-[var(--nb-surface)] px-4 py-4 sm:px-5"
           >
-            <dt className="text-base font-bold text-[var(--nb-text)]">
+            <dt className="flex items-baseline gap-2 text-[13px] font-semibold text-[var(--nb-text)]">
               {cell.label}
+              {estimated && cell.label !== "広告費" && now && (
+                <span className="font-normal text-[var(--nb-text-3)]">推定</span>
+              )}
             </dt>
-            <dd className="mt-3">
+            <dd className="mt-2">
               <span
-                className="text-[2rem] font-bold leading-none tracking-tight tabular-nums xl:text-[2.5rem]"
+                className="text-[1.75rem] font-semibold leading-none tracking-tight tabular-nums"
                 style={{ color: cell.tone ?? "var(--nb-text)" }}
               >
                 <AnimatedNumber value={cell.value} format={cell.format} />
               </span>
-              <span className="mt-2 block min-h-5 truncate text-sm tabular-nums text-[var(--nb-text-2)]">
+              <span className="mt-2 block min-h-5 truncate text-[13px] tabular-nums text-[var(--nb-text-2)]">
                 {cell.before !== null ? (
                   <>
                     {compareNote}{" "}
-                    <span className="font-bold text-[var(--nb-text)]">
+                    <span className="text-[var(--nb-text)]">
                       {cell.before}
                     </span>
                   </>
@@ -153,14 +154,14 @@ export function EconomicsCard({
                   ""
                 )}
               </span>
-              <span className="mt-0.5 block min-h-4 truncate text-sm tabular-nums text-[var(--nb-text-2)]">
+              <span className="mt-0.5 block min-h-4 truncate text-[13px] tabular-nums text-[var(--nb-text-2)]">
                 {cell.extra}
               </span>
             </dd>
           </div>
         ))}
       </dl>
-      <p className="border-t border-[var(--nb-border)] px-4 py-3 text-sm leading-relaxed tabular-nums text-[var(--nb-text-2)] sm:px-5">
+      <p className="border-t border-[var(--nb-border)] px-4 py-2.5 text-[13px] leading-relaxed tabular-nums text-[var(--nb-text-2)] sm:px-5">
         {now && spent ? (
           <>
             純売上 {signedYen(day.until_cut.net)} − 手数料 {signedYen(now.fee)}{" "}
@@ -175,7 +176,7 @@ export function EconomicsCard({
               </span>
             )}
             {partialAccounts && (
-              <span className="ml-2 font-bold text-[var(--nb-down)]">
+              <span className="ml-2 font-semibold text-[var(--nb-down)]">
                 ※実績が入っているのは {costs.day.accounts_with_actual}
                 アカウントです（直近7日は {costs.day.accounts_recent}
                 アカウントに実績があります）

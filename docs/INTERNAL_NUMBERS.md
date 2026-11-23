@@ -123,6 +123,34 @@ insert into public.internal_dashboard_viewers (email) values ('小文字のメ�
 
 控えは、直近 7 日は 1 日、それより前は 30 日たつと「1日の数字」を開いたときに数え直される。月の推移はそれを待たずに、ある控えをそのまま出す (友達診断率・シェア率・返金は、あとから少し動く)。
 
+## 終わった日の先回り集計 (定期実行)
+
+API からの呼び出しは約 8 秒で打ち切られるため、数えるのに時間のかかる日 (イベントの多い日、
+シェアの集計期間が長い日) は、画面を開いたときには数え終わらない。そこで DB の定期実行
+(pg_cron の `internal-numbers-nightly`、毎時 40 分) が `public.metrics_nightly_run(600)` を
+呼び、1 日分ずつ確定しながら次を片づける (SQL: `20261123210000_internal_numbers_nightly.sql`)。
+
+1. イベント (ファネル): 前日を最後まで数える (過去の日はさかのぼらない)
+2. 控え: 前日〜7 日前を 1 日 1 回、32 日前 (シェアの集計期間の終わり) を 1 回。過去の日はさかのぼらない
+
+画面側 (`internal_numbers_block`) は、2 日以上前の日は控えがあれば古さに関係なく控えから出す。
+実行の記録は `metrics_job_runs` に残る (`detail.errors` に失敗した日、`detail.more` が true なら
+時間切れで残した仕事あり)。手で流すときは SQL Editor で `call public.metrics_nightly_run();`。
+
+## X 広告費の自動取り込み (X Ads API)
+
+Vercel Cron (`/api/cron/x-ads-spend`、毎時 20 分) が X Ads API から、直近 3 日 (JST の 0 時から、
+いまの時間帯の手前まで) の時間別の広告費・表示回数・クリック数を取り直し、`ad_spend_replace` で
+`ad_spend_hourly` を上書きする。広告費は 3 日ほど見込みの値で、あとから少し動くため。
+
+- 鍵: Vercel の環境変数 `X_ADS_CONSUMER_KEY` `X_ADS_CONSUMER_SECRET` `X_ADS_ACCESS_TOKEN`
+  `X_ADS_ACCESS_TOKEN_SECRET` (OAuth 1.0a、アプリ `torisetsu-ads-reporting`、Standard Access)
+- アカウント記号: xlsx の取り込みと同じく、キャンペーン名 (`MMDD_PULSE24h_{記号}{単価}_...`) で
+  いちばん多い記号。`ad_accounts` に無い記号、通貨が JPY でないアカウントは保存しない
+- 配信面: `ALL_ON_TWITTER` と `PUBLISHER_NETWORK` を足す (後者を断られたら X 本体だけ)
+- 確かめ方: 許可リストの人がログインして `GET /api/internal/numbers/x-ads` (保存しない試し)、
+  `POST` で 1 回保存
+
 ## まだ入っていないもの
 
 - 週ごとの合計、月どうしの比較

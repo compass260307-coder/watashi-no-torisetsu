@@ -394,6 +394,13 @@ input[type="reset"]:active {
   }
 }
 
+/* 自己診断の発表演出 (ResultRevealStage) のあいだ、結果ページ本体の名前と絵を隠しておく。
+   演出側の名前と絵が同じ位置に着地した瞬間に、この目印を外して本体と入れ替える。 */
+html[data-result-reveal="on"] [data-result-hero-name],
+html[data-result-reveal="on"] [data-result-hero-image] {
+  opacity: 0;
+}
+
 /* 友達診断の「ようこそ」画面の終わり: 少しふくらみながら透けて消え、裏の質問画面が現れる。
    長さは FriendDiagnosisPage.tsx の WELCOME_LEAVE_MS と同じにする。 */
 @keyframes friend-welcome-leave {

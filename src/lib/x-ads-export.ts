@@ -227,6 +227,16 @@ export function detectXAdsAccount(rows: XAdsExportRow[]): {
   return { code: best?.[0] ?? null, unmatchedCampaigns: unmatched.size };
 }
 
+/**
+ * キャンペーン名の一覧から、アカウント記号を決める (いちばん多い記号)。
+ * X Ads API から取ったキャンペーン名にも使う。1 つも読み取れなければ null。
+ */
+export function accountCodeFromCampaignNames(names: string[]): string | null {
+  return detectXAdsAccount(
+    names.map((campaignName) => ({ campaignName }) as XAdsExportRow),
+  ).code;
+}
+
 /** あるタイムゾーンでの「その時刻」が、UTC の何ミリ秒かを返す。夏時間も考慮する。 */
 function zonedTimeToUtc(wallTime: string, timeZone: string): number {
   const [date, clock] = wallTime.split(" ");

@@ -1,6 +1,7 @@
 "use client";
 
 import friendsWaiting from "../../../public/empty-states/tako-friends-waiting-felt.png";
+import { TakoEmptyInviteHeader } from "@/components/result/TakoEmptyInviteHeader";
 // /tako 友達タブ (2026-07-18 1人完結モデル):
 //   友達1人ごとに独立した結果シートができ、名前タブで切り替える。
 //   平均 (みんなの目) は廃止。パネル本体はサーバで全員ぶん描画済みを props で受け取り、
@@ -86,18 +87,6 @@ export function TakoFriendTabs({
   const isJaEmptyInvite = !isEn && !isId && tabs.length === 0;
   // 日本語だけの友達0人カード (2026-11-19 にレイアウトを作り直したもの)。
   const isJaOnlyEmptyInvite = isJaEmptyInvite && !isKo;
-  // 日本語・友達0人カードの「結果の見本を見る」リンク。
-  const demoLink = demoHref ? (
-    <Link
-      href={demoHref}
-      className="-ml-2 mt-1 inline-flex items-center gap-0.5 rounded-full px-2 py-1 text-[13px] font-black text-[#5B5BEF] hover:bg-[#F4F4FF]"
-    >
-      結果の見本を見る
-      <svg viewBox="0 0 20 20" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        <path d="m8 5 5 5-5 5" />
-      </svg>
-    </Link>
-  ) : null;
   const [idx, setIdx] = useState(0);
   // 友達0人の空状態では、共有パネルをクリック不要で最初から開く
   // (計測で、ページ到達者の79%が招待UIに触れずに離脱していたため)。
@@ -633,35 +622,11 @@ export function TakoFriendTabs({
               }
             >
               {isJaOnlyEmptyInvite ? (
-                // 日本語・友達0人: 左寄せ。見出し・説明の右の空きいっぱいにイラストを出す。
-                // 文字の行は折り返さず、イラストが残りの幅に合わせて伸縮する (上限 160px / sm 以上 180px)。
-                <div className="text-left">
-                  {/* 見出しと見本リンクを1列にまとめ、イラストと上下中央でそろえる (カード上部を詰めるため) */}
-                  <div className="flex items-center gap-3">
-                    <div className="shrink-0">
-                      <h2
-                        id="tako-invite-dialog-title"
-                        className="whitespace-nowrap text-[clamp(22px,7vw,26px)] font-black leading-[1.3] text-[#2E2E5C] md:text-[28px]"
-                      >
-                        友達から見た
-                        <br className="sm:hidden" />
-                        あなたは？
-                      </h2>
-                      {demoLink}
-                    </div>
-                    <div className="flex min-w-0 flex-1 justify-end">
-                      <Image
-                        src={friendsWaiting}
-                        alt=""
-                        aria-hidden="true"
-                        width={1402}
-                        height={1122}
-                        sizes="(min-width: 640px) 180px, 40vw"
-                        className="h-auto w-full max-w-[160px] select-none sm:max-w-[180px]"
-                      />
-                    </div>
-                  </div>
-                </div>
+                // 日本語・友達0人。自己診断結果ページの招待カードでも同じものを使う。
+                <TakoEmptyInviteHeader
+                  titleId="tako-invite-dialog-title"
+                  demoHref={demoHref}
+                />
               ) : isJaEmptyInvite ? (
                 // 韓国語・友達0人: 見出しは横幅いっぱいの1行、その下に説明文 (左) と絵 (右) を並べる。
                 <>

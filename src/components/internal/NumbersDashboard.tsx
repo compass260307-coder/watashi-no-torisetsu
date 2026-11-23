@@ -12,10 +12,8 @@ import {
   formatNumbersClock,
   formatNumbersDay,
   formatNumbersValue,
-  headlineValue,
   isNumbersCatchingUp,
   isValidNumbersDay,
-  numbersDelta,
   shiftNumbersDay,
   sortComparisonIds,
   todayInJst,
@@ -271,7 +269,7 @@ export function NumbersDashboard() {
   const stale = loading && payload !== null;
   const live = payload?.meta.is_today === true && status === "ready";
   const navButton =
-    "flex h-9 w-9 items-center justify-center rounded-lg border border-[var(--nb-border)] text-[var(--nb-text)] transition-colors hover:border-[var(--nb-border-strong)] hover:bg-[var(--nb-surface-2)] disabled:pointer-events-none disabled:opacity-30";
+    "flex h-9 w-9 items-center justify-center rounded-md border border-[var(--nb-border)] text-[var(--nb-text)] transition-colors hover:border-[var(--nb-border-strong)] hover:bg-[var(--nb-surface-2)] disabled:pointer-events-none disabled:opacity-30";
 
   return (
     <main
@@ -279,11 +277,11 @@ export function NumbersDashboard() {
       style={NUMBERS_THEMES[theme]}
       data-theme={theme}
     >
-      <header className="sticky top-0 z-30 border-b border-[var(--nb-border)] bg-[color-mix(in_srgb,var(--nb-bg)_82%,transparent)] backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-[var(--nb-border)] bg-[var(--nb-surface)]">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-6 xl:px-8">
           {/* スマホでは見出しと時刻を縦に重ね、日付の操作と更新ボタンを同じ行に収める。 */}
           <div className="mr-auto flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
-            <h1 className="text-lg font-bold leading-tight tracking-tight">
+            <h1 className="text-[17px] font-bold leading-tight tracking-tight">
               数値
             </h1>
             <div className="hidden sm:block">
@@ -297,7 +295,7 @@ export function NumbersDashboard() {
                 <>
                   <span
                     aria-hidden
-                    className={`h-2 w-2 shrink-0 rounded-full ${live ? "animate-pulse" : ""}`}
+                    className="h-1.5 w-1.5 shrink-0 rounded-full"
                     style={{
                       background: live
                         ? "var(--nb-up)"
@@ -325,7 +323,7 @@ export function NumbersDashboard() {
               <button
                 type="button"
                 onClick={() => show(null)}
-                className="h-9 rounded-lg border border-[var(--nb-border)] px-3 text-base font-bold transition-colors hover:border-[var(--nb-border-strong)] hover:bg-[var(--nb-surface-2)]"
+                className="h-9 rounded-md border border-[var(--nb-border)] px-3 text-sm font-semibold transition-colors hover:border-[var(--nb-border-strong)] hover:bg-[var(--nb-surface-2)]"
               >
                 今日
               </button>
@@ -364,7 +362,7 @@ export function NumbersDashboard() {
                   const value = event.target.value;
                   if (value) show(value >= today ? null : value);
                 }}
-                className="h-9 w-[7.4rem] rounded-lg border border-[var(--nb-border)] bg-transparent px-1.5 text-sm tabular-nums sm:w-[8.6rem] sm:px-2 sm:text-base text-[var(--nb-text)] transition-colors hover:border-[var(--nb-border-strong)] sm:w-auto sm:px-2.5"
+                className="h-9 w-[7.4rem] rounded-md border border-[var(--nb-border)] bg-transparent px-1.5 text-sm tabular-nums sm:w-[8.6rem] sm:px-2 sm:text-base text-[var(--nb-text)] transition-colors hover:border-[var(--nb-border-strong)] sm:w-auto sm:px-2.5"
               />
             </label>
             <button
@@ -402,7 +400,7 @@ export function NumbersDashboard() {
             onClick={() => show(day)}
             disabled={busy}
             aria-busy={busy}
-            className="flex h-9 min-w-9 items-center justify-center gap-2 rounded-lg bg-[var(--nb-text)] px-2.5 text-base font-bold text-[var(--nb-bg)] transition-opacity hover:opacity-90 disabled:opacity-70 sm:min-w-[6.5rem] sm:px-4"
+            className="flex h-9 min-w-9 items-center justify-center gap-2 rounded-md bg-[var(--nb-text)] px-2.5 text-sm font-semibold text-[var(--nb-bg)] transition-opacity hover:opacity-90 disabled:opacity-70 sm:min-w-[6.5rem] sm:px-4"
           >
             <svg
               aria-hidden
@@ -436,7 +434,7 @@ export function NumbersDashboard() {
         {status === "error" && (
           <div
             role="alert"
-            className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-[color-mix(in_srgb,var(--nb-down)_45%,transparent)] bg-[color-mix(in_srgb,var(--nb-down)_10%,transparent)] px-4 py-3 text-base"
+            className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-[color-mix(in_srgb,var(--nb-down)_45%,transparent)] bg-[color-mix(in_srgb,var(--nb-down)_10%,transparent)] px-4 py-3 text-base"
           >
             <span className="mr-auto">
               数字を取得できませんでした。
@@ -445,7 +443,7 @@ export function NumbersDashboard() {
             <button
               type="button"
               onClick={() => show(day)}
-              className="rounded-lg border border-[color-mix(in_srgb,var(--nb-down)_45%,transparent)] px-3 py-1.5 font-bold"
+              className="rounded-md border border-[color-mix(in_srgb,var(--nb-down)_45%,transparent)] px-3 py-1.5 font-semibold"
             >
               もう一度試す
             </button>
@@ -491,7 +489,7 @@ export function NumbersDashboard() {
 
 function Skeleton() {
   const block =
-    "animate-pulse rounded-2xl border border-[var(--nb-border)] bg-[var(--nb-surface)]";
+    "animate-pulse rounded-lg border border-[var(--nb-border)] bg-[var(--nb-surface)]";
   return (
     <div aria-hidden className="grid gap-3 xl:gap-4">
       <div className="grid grid-cols-2 gap-3 md:grid-cols-5 xl:gap-4">
@@ -514,78 +512,12 @@ type SectionKey = "funnel" | "hours" | "sources" | "social";
 
 const SECTIONS: { value: SectionKey; label: string }[] = [
   { value: "funnel", label: "ファネル" },
-  { value: "hours", label: "時間別" },
-  { value: "sources", label: "流入元" },
+  { value: "hours", label: "時間帯別" },
+  { value: "sources", label: "流入経路" },
   { value: "social", label: "友達・口コミ" },
 ];
 
-/** 今日 (または表示日) の状況を、比べる相手に対して 1〜2 文で言う。 */
-function Summary({
-  payload,
-  comparison,
-}: {
-  payload: NumbersPayload;
-  comparison: NumbersComparison | null;
-}) {
-  const { meta, day } = payload;
-  if (!comparison) return null;
-  const parts = HEADLINES.filter(
-    (item) => item.key === "diagnoses" || item.key === "net",
-  ).map((item) => {
-    const value = headlineValue(item, day.until_cut);
-    const delta = numbersDelta(
-      value,
-      headlineValue(item, comparison.untilCut),
-      item.kind,
-    );
-    return { item, value, delta };
-  });
-  if (parts.some((part) => part.delta === null)) return null;
-  // 文の途中は「多く」、文末は「多い」。
-  const word = (direction: "up" | "down" | "flat", last: boolean) =>
-    direction === "up"
-      ? last
-        ? "多い"
-        : "多く"
-      : direction === "down"
-        ? last
-          ? "少ない"
-          : "少なく"
-        : "";
-  return (
-    <p className="text-lg leading-relaxed text-[var(--nb-text)] sm:text-xl">
-      {comparison.label}と比べて、
-      {parts.map((part, index) => {
-        const last = index === parts.length - 1;
-        const direction = part.delta?.direction ?? "flat";
-        return (
-          <span key={part.item.key}>
-            {part.item.label}は{" "}
-            <span
-              className="whitespace-nowrap font-bold tabular-nums"
-              style={{
-                color:
-                  direction === "up"
-                    ? "var(--nb-up)"
-                    : direction === "down"
-                      ? "var(--nb-down)"
-                      : "var(--nb-text)",
-              }}
-            >
-              {direction === "flat"
-                ? "ほぼ同じ"
-                : `${part.delta?.text} ${word(direction, last)}`}
-            </span>
-            {last ? "" : direction === "flat" ? "で、" : "、"}
-          </span>
-        );
-      })}
-      {meta.is_today ? "ペースです。" : "結果でした。"}
-    </p>
-  );
-}
-
-/** 比べる相手を選ぶ。最大 2 つ。いちばん左で選んでいるものが、増減と要約の基準になる。 */
+/** 比べる相手を選ぶ。最大 2 つ。いちばん左で選んでいるものが、増減の基準になる。 */
 function ComparisonPicker({
   payload,
   selected,
@@ -638,8 +570,8 @@ function ComparisonPicker({
       aria-label="比べる相手"
       className="flex flex-wrap items-center gap-1.5"
     >
-      <span className="mr-1 text-sm font-bold text-[var(--nb-text-2)]">
-        比べる相手
+      <span className="mr-1.5 text-[13px] text-[var(--nb-text-2)]">
+        比較
       </span>
       {options.map((option) => {
         const on = selected.includes(option.id);
@@ -651,10 +583,10 @@ function ComparisonPicker({
         return (
           <span
             key={option.id}
-            className={`inline-flex items-center rounded-full border text-sm transition-colors ${
+            className={`inline-flex items-center rounded-md border text-[13px] transition-colors ${
               on
-                ? "border-[var(--nb-border-strong)] bg-[var(--nb-surface-2)] text-[var(--nb-text)]"
-                : "border-[var(--nb-border)] text-[var(--nb-text-2)] hover:border-[var(--nb-border-strong)] hover:text-[var(--nb-text)]"
+                ? "border-[var(--nb-text)] bg-[var(--nb-surface)] text-[var(--nb-text)]"
+                : "border-[var(--nb-border-strong)] bg-[var(--nb-surface)] text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
             } ${!on && full ? "opacity-40" : ""}`}
           >
             <button
@@ -667,12 +599,12 @@ function ComparisonPicker({
                   : undefined
               }
               onClick={() => onToggle(option.id)}
-              className="flex items-center gap-1.5 py-1.5 pl-3 pr-3 font-bold disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 py-1 pl-2.5 pr-2.5 font-semibold disabled:cursor-not-allowed"
             >
               {on && (
                 <span
                   aria-hidden
-                  className={`h-2 w-2 rounded-full ${loading ? "animate-pulse" : ""}`}
+                  className={`h-0.5 w-3 ${loading ? "animate-pulse" : ""}`}
                   style={{
                     background: failed
                       ? "var(--nb-down)"
@@ -693,7 +625,7 @@ function ComparisonPicker({
                 type="button"
                 aria-label={`${option.label} を候補から外す`}
                 onClick={() => onRemove(option.removable as string)}
-                className="-ml-2 py-1.5 pl-1 pr-2.5 text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
+                className="-ml-1.5 py-1 pl-1 pr-2 text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
               >
                 ×
               </button>
@@ -701,8 +633,8 @@ function ComparisonPicker({
           </span>
         );
       })}
-      <label className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[var(--nb-border-strong)] py-1 pl-3 pr-1.5 text-sm text-[var(--nb-text-2)]">
-        <span className="font-bold">日付を足す</span>
+      <label className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-[var(--nb-border-strong)] py-0.5 pl-2.5 pr-1.5 text-[13px] text-[var(--nb-text-2)]">
+        <span className="font-semibold">＋ 日付</span>
         <input
           type="date"
           value=""
@@ -714,7 +646,7 @@ function ComparisonPicker({
               onAdd(value);
             }
           }}
-          className="h-6 w-[7.6rem] rounded-full bg-transparent px-1 text-sm tabular-nums text-[var(--nb-text)]"
+          className="h-6 w-[7.6rem] bg-transparent px-1 text-[13px] tabular-nums text-[var(--nb-text)]"
         />
       </label>
     </div>
@@ -790,10 +722,9 @@ function Body({
 
   return (
     <div
-      className={`grid gap-4 transition-opacity duration-200 xl:gap-5 ${dimmed ? "opacity-50" : ""}`}
+      className={`grid gap-4 transition-opacity duration-200 ${dimmed ? "opacity-60" : ""}`}
     >
-      <div className="grid gap-3">
-        <Summary payload={payload} comparison={comparison} />
+      <div>
         <ComparisonPicker
           payload={payload}
           selected={selected}
@@ -812,8 +743,6 @@ function Body({
         selected={metric.key}
         onSelect={onMetric}
         isToday={meta.is_today}
-        currentHour={currentHour}
-        nowHours={nowHours}
       />
 
       <EconomicsCard payload={payload} onOpenEntry={onOpenCostEntry} />
@@ -860,7 +789,7 @@ function Body({
         </div>
         {lastFull && (
           <div className="mt-auto border-t border-[var(--nb-border)] sm:flex sm:items-stretch">
-            <p className="whitespace-nowrap px-4 pt-3 text-sm font-bold text-[var(--nb-text-2)] sm:flex sm:shrink-0 sm:items-center sm:px-5 sm:pt-0">
+            <p className="whitespace-nowrap px-4 pt-3 text-[13px] font-semibold text-[var(--nb-text-2)] sm:flex sm:shrink-0 sm:items-center sm:px-5 sm:pt-0">
               直近1時間（{lastFull.h}時台）
             </p>
             <dl className="grid flex-1 grid-cols-3 sm:divide-x sm:divide-[var(--nb-border)] sm:border-l sm:border-[var(--nb-border)]">
@@ -886,13 +815,13 @@ function Body({
                 },
               ].map((item) => (
                 <div key={item.label} className="min-w-0 px-4 py-3 sm:px-5">
-                  <dt className="text-sm text-[var(--nb-text-2)]">
+                  <dt className="text-[13px] text-[var(--nb-text-2)]">
                     {item.label}
                   </dt>
                   <dd className="mt-0.5 tabular-nums">
-                    <span className="text-lg font-bold">{item.now}</span>
+                    <span className="text-base font-semibold">{item.now}</span>
                     {item.before !== null && comparison && (
-                      <span className="block truncate text-sm text-[var(--nb-text-2)] sm:ml-2 sm:inline">
+                      <span className="block truncate text-[13px] text-[var(--nb-text-2)] sm:ml-2 sm:inline">
                         {comparison.shortLabel} {item.before}
                       </span>
                     )}
@@ -916,7 +845,7 @@ function Body({
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-12 xl:gap-5">
+      <div className="grid gap-4 xl:grid-cols-12">
         <div className={only("funnel")}>
           <FunnelCard
             day={day}

@@ -102,6 +102,7 @@ import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import { TakoAttentionOnResult } from "@/components/result/TakoAttentionOnResult";
 import { TakoBubbleReplayTrigger } from "@/components/result/TakoBubbleReplayTrigger";
+import { ResultInviteCard } from "@/components/result/ResultInviteCard";
 import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
 import { PreferredLocaleSync } from "@/components/result/PreferredLocaleSync";
 import TopHeader from "@/components/top/TopHeader";
@@ -2009,6 +2010,33 @@ async function MeResultPageContent({
           // 自己診断結果ページからの流入は、導線を問わず全て宝箱にする (2026-11-20 指示)。
           treasureEntry
         />
+        {/* 一番下まで読んだ人に、友達診断ページと同じ招待カードを1回だけ開く (2026-11-23)。
+            日本語・未課金・友達の回答がまだ無い本人だけ。出す条件の続きは ResultInviteCard 側。
+            ローカルでは ?previewType=...&previewLock=1&inviteCard=1 で確認できる
+            (inviteCardDelay=秒 で待ち時間を変えられる)。 */}
+        {locale === "ja" &&
+          (isOwnedResult
+            ? Boolean(inviteCode) &&
+              friendEvalCount === 0 &&
+              !fullAccessPaid &&
+              !premiumBundlePaid
+            : process.env.NODE_ENV === "development" &&
+              previewType !== null &&
+              sp.inviteCard === "1") && (
+            <ResultInviteCard
+              ownerToken={token}
+              inviteCode={inviteCode || "preview"}
+              inviteUrl={`${SITE_URL}/friend/${encodeURIComponent(inviteCode || "preview")}`}
+              // 友達診断ページの招待カードと同じ見本 (本人のタイプで作る・友達1人分)。
+              demoHref={`/tako/preview?previewType=${encodeURIComponent(t32)}&friends=1&fromPreview=1&demo=1`}
+              previewMode={!isOwnedResult}
+              previewDelayMs={
+                !isOwnedResult && typeof sp.inviteCardDelay === "string"
+                  ? Math.max(0, Number(sp.inviteCardDelay) || 0) * 1000
+                  : undefined
+              }
+            />
+          )}
       </>
     )}
     {/* 結果を読み終えた人向けの末尾CTA帯 (シェア帯直上)。16P の「テストを再度受ける」

@@ -77,7 +77,9 @@ export function ResultHero({
   const hasFullBleedImage = Boolean(fullBleedImageSrc);
 
   return (
+    // data-result-hero* は、診断直後の発表演出 (ResultRevealStage) が名前・絵の位置と色を読むための目印。
     <div
+      data-result-hero=""
       className={`relative mx-[calc(50%-50vw)] w-screen overflow-hidden ${
         hasFullBleedImage ? "md:min-h-[640px]" : ""
       }`}
@@ -166,6 +168,7 @@ export function ResultHero({
             {/* 型名はページの主見出し。見た目は据え置きで <h1> にし、見出し構造/a11y/SEO を満たす。
                 weight は Noto Sans JP の実配信ウェイト (400/700) に合わせ 700 (2026-09-04)。 */}
             <h1
+              data-result-hero-name=""
               className={hasFullBleedImage
                 ? "whitespace-normal break-words font-bold leading-[1.25] text-white [overflow-wrap:anywhere]"
                 : "whitespace-nowrap font-bold leading-[1.04] text-white"}
@@ -183,6 +186,7 @@ export function ResultHero({
           </div>
           {/* OCEAN コード行 */}
           <div
+            data-result-hero-code=""
             className={`mt-1.5 md:mt-2 flex items-baseline justify-center gap-1.5 ${
               twoColumn ? "md:justify-start" : ""
             }`}
@@ -208,6 +212,7 @@ export function ResultHero({
         {/* キャラ画像 */}
         {!hasFullBleedImage && (
           <div
+            data-result-hero-image=""
             className={`max-w-[640px] mx-auto ${heroPullClass} md:mt-0 md:max-w-[560px] ${
               twoColumn ? "md:flex-1" : ""
             }`}
