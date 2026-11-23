@@ -25,6 +25,7 @@ import {
   type ContentItem,
 } from "./mutual-result-content";
 import { perceivedByType32 } from "./thirty-two-content/perceived-by-type-32";
+import { dislikableFor } from "./dislikable-by-type-32";
 
 export type RelationView = {
   /** 関係ラベル (友達/恋人/家族/上司・先輩)。 */
@@ -43,8 +44,14 @@ export type ResolvedPartTwo = {
   weapons: ContentItem[] | null;
   /** 好かれやすい性格 (軸由来の文章・段落配列)。無料 = 未解放でも返す。 */
   likable: string[];
-  /** 嫌われやすい性格 (6カード)。🔒 null = 未解放 (本文を解決しない)。 */
+  /** 嫌われやすい性格 (タイプ別8項目。未登録タイプは旧6項目)。🔒 null = 未解放 (本文を解決しない)。 */
   dislikable: ContentItem[] | null;
+  /**
+   * 嫌われやすい性格の題名だけ (日本語)。未課金のとき、鍵の後ろにぼかして敷く。
+   * 「もしもの時」の場面名・「言えずにいること」の関係名と同じ扱いで、題名は見せ、
+   * 本文は見せない。未登録タイプ・他言語は undefined (従来の共通の見本に戻る)。
+   */
+  dislikableTitles?: string[];
   /** 関係別の見られ方 (友達/恋人/家族/上司)。🔒 null = 未解放。 */
   relations: RelationView[] | null;
   /** シーン別の注意点 (③あなたの注意点の直下)。🔒 null = 未解放。 */
@@ -303,11 +310,18 @@ export function resolvePartTwo(
   const perceived =
     perceivedByType32[thirtyTwoId] ?? PERCEIVED_BY_TYPE[sixteenId] ?? null;
 
+  const dislikableByType = dislikableFor(thirtyTwoId);
+
   return {
     weapons: perceived ? varyWeapons(perceived.strengths) : null,
+    dislikableTitles: dislikableByType?.map((it) => it.title),
     likable: buildLikable(scores),
-    dislikable:
-      opts.unlocked && perceived ? varyDislikable(perceived.surprises) : null,
+    // タイプ別に書いた8項目 (dislikable-by-type-32) を優先。未登録タイプだけ、従来どおり
+    // 「意外な一面」6項目 + 定型の一文にフォールバックする。
+    dislikable: opts.unlocked
+      ? (dislikableByType ??
+        (perceived ? varyDislikable(perceived.surprises) : null))
+      : null,
     relations: opts.unlocked ? buildRelations(scores) : null,
     sceneCautions: opts.unlocked ? buildSceneCautions(scores) : null,
     gapTeaser,

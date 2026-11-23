@@ -19,6 +19,13 @@ import type {
   ResolvedDeepDiveSection,
 } from "@/lib/deep-dive-resolve";
 import { PaywallScrollButton } from "@/components/result/PaywallScrollButton";
+import { ResultItemGrid } from "@/components/result/ResultItemGrid";
+import {
+  CAREER_FIT_DECOY_ITEMS,
+  CAREER_RELATIONS_DECOY_ITEMS,
+  LOVE_ENDURE_DECOY_ITEMS,
+  LOVE_PAYOFF_DECOY_ITEMS,
+} from "@/lib/result-item-decoys";
 import type { AppResultLocale } from "@/i18n/result";
 
 // ※「みんなの目」(他己) は /tako/[token] へ移設。ここは自己深掘りのみ。
@@ -51,95 +58,10 @@ const LOCK_COLORS: Record<string, string> = {
   love: "#F2C14E",
 };
 
-// ロック時に後ろへ透かすダミー本文 (デコイ)。★実際の payoff 本文ではない
-// (本物はサーバでフェイルクローズ済み・payload に載っていない)。どのタイプでも成立する
-// 汎用の恋愛アドバイス調。見出し+本文を多数並べ「裏にたくさん続いている」感を出す。
-const LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
-  {
-    heading: "「与える」をひと休みする日",
-    body: "たまには何もしないで、ただ隣にいる時間をつくってみて。それだけで伝わるものがある。",
-  },
-  {
-    heading: "好かれようとしすぎない",
-    body: "がんばって尽くさなくても、あなたの存在そのものに安心してくれる人はちゃんといる。",
-  },
-  {
-    heading: "ほしいものを言葉にする",
-    body: "察してもらうのを待つより、「こうしてくれると嬉しい」と先に伝えてみる練習を。",
-  },
-  {
-    heading: "見返りを求める自分を責めない",
-    body: "返してほしいと思うのは自然なこと。それはあなたが本気で向き合っている証拠。",
-  },
-  {
-    heading: "相手の沈黙を怖がらない",
-    body: "連絡が少ない日があっても、それはあなたへの気持ちが減ったわけじゃない。",
-  },
-];
-
-// 「恋人が密かに我慢していること」ロック用デコイ。★本文ではない (未解放時のみ
-// 表示するティザー)。どのタイプでも成立する「恋人が言えずにいること」の汎用調で、
-// 本人を傷つけない「愛されるクセ」トーンに揃える。
-const LOVE_ENDURE_DECOY_ITEMS: { heading: string; body: string }[] = [
-  {
-    heading: "「大丈夫だよ」の本当の意味",
-    body: "恋人の口グセの裏には、あなたに言えずに飲み込んだ気持ちが隠れていることがある。",
-  },
-  {
-    heading: "我慢が溜まりやすい場面",
-    body: "あなたのタイプの恋人が、いちばん黙って耐えやすい瞬間には共通点がある。",
-  },
-  {
-    heading: "言われる前に気づきたいサイン",
-    body: "我慢が限界に近づいた恋人が出す、小さな前兆を見逃さないために。",
-  },
-  {
-    heading: "我慢を信頼に変える一言",
-    body: "先回りのひと言があるだけで、二人の関係は驚くほど軽くなる。",
-  },
-];
-
-// 「あなたに合った働き方・避けたほうがいい職場」ロック用デコイ
-// (★本文ではない。本物はサーバでフェイルクローズ済み)。
-const CAREER_FIT_DECOY_ITEMS: { heading: string; body: string }[] = [
-  {
-    heading: "ゼロから立ち上げる仕事",
-    body: "決まった正解のない場所で、自分の判断で形にしていく働き方が向いている可能性。",
-  },
-  {
-    heading: "チームの舵取り役",
-    body: "前に立つか、支えるか。あなたの性格が活きるポジションには傾向がある。",
-  },
-  {
-    heading: "深く潜る専門職",
-    body: "ひとつの領域を極めていく働き方と、広く器用にこなす働き方、合うのはどっちか。",
-  },
-  {
-    heading: "エネルギーを削る職場の共通点",
-    body: "あなたのやる気をじわじわ削る環境には、はっきりした共通点がある。",
-  },
-];
-
-// 「職場の人間関係」ロック用デコイ (★本文ではない)。
-const CAREER_RELATIONS_DECOY_ITEMS: { heading: string; body: string }[] = [
-  {
-    heading: "あなたに合う距離感",
-    body: "近づきすぎず、離れすぎず。あなたが一番ラクでいられる距離には型がある。",
-  },
-  {
-    heading: "頼まれごとの線の引き方",
-    body: "断れずに抱え込む前に、あなたの性格に合った断り方を知っておきたい。",
-  },
-  {
-    heading: "合わない人との並走のコツ",
-    body: "どうしても合わないあの人と、消耗せずに一緒に働くための距離のとり方。",
-  },
-  {
-    heading: "周りが密かに助かっている部分",
-    body: "あなたが思っているより、チームはあなたのあの動きに支えられている。",
-  },
-];
-
+// ロック時に後ろへ透かす見本 (デコイ)。★課金後の本文ではない (本物はサーバでフェイルクローズ
+// 済み・payload に載っていない)。
+// 日本語は lib/result-item-decoys の「見出し + 結論の一行 + 本文」(課金後と同じ形・同じ量) を使う。
+// 他言語は従来どおり「見出し + 1行」で、このファイルに置いている。
 const EN_LOVE_DECOY_ITEMS: { heading: string; body: string }[] = [
   { heading: "Letting care feel effortless", body: "Closeness can deepen even when you are not trying to earn it." },
   { heading: "Saying what you need", body: "Clear wishes give the other person a real chance to care for you well." },
@@ -278,6 +200,8 @@ const KO_CAREER_RELATIONS_DECOY_ITEMS: { heading: string; body: string }[] = [
   },
 ];
 
+type DecoyItem = { heading: string; lead?: string; body: string };
+
 // 深掘りの課金ゲートブロックのロック表示 (恋愛 payoff /「恋人が密かに我慢していること」/
 // キャリアの「合った働き方・避けたほうがいい職場」「職場の人間関係」で共用)。
 // ぼかしたダミー本文の上に解除カードを重ねる (嫌われやすい性格ブロックと同じ構図)。
@@ -289,30 +213,42 @@ function LockedBlock({
   source,
   locale,
 }: {
-  decoyItems: { heading: string; body: string }[];
+  decoyItems: DecoyItem[];
   cardCopy: ReactNode;
   source: string;
   locale: AppResultLocale;
 }) {
+  // lead つきの見本 (日本語) は、課金後と同じ部品で組んでからぼかす。
+  const fullItems = decoyItems.filter(
+    (it): it is DecoyItem & { lead: string } => typeof it.lead === "string",
+  );
   return (
     <div className="relative overflow-hidden rounded-2xl">
-      {/* 後ろに透けるダミー本文 (高さの土台・デコイ)。多数の見出し+本文でボリュームを出し、
-          カードの上下からはみ出させる。PC は2カラムで敷き詰め「量がある」見え方に。本文ではない。 */}
-      <div
-        aria-hidden="true"
-        className="select-none grid grid-cols-1 gap-x-10 gap-y-4 px-1 py-2 blur-[3px] md:grid-cols-2"
-      >
-        {decoyItems.map((it, i) => (
-          <div key={i}>
-            <p className="mb-1 text-[16px] font-black text-[#2E2E5C]/55">
-              {it.heading}
-            </p>
-            <p className="body-gothic text-[15px] leading-[1.55] text-[#1A1A1A]/45">
-              {it.body}
-            </p>
-          </div>
-        ))}
-      </div>
+      {/* 後ろに透ける見本 (高さの土台・デコイ)。本文ではない。 */}
+      {fullItems.length === decoyItems.length ? (
+        <div
+          aria-hidden="true"
+          className="select-none px-1 py-2 opacity-60 blur-[3px]"
+        >
+          <ResultItemGrid items={fullItems} />
+        </div>
+      ) : (
+        <div
+          aria-hidden="true"
+          className="select-none grid grid-cols-1 gap-x-10 gap-y-4 px-1 py-2 blur-[3px] md:grid-cols-2"
+        >
+          {decoyItems.map((it, i) => (
+            <div key={i}>
+              <p className="mb-1 text-[16px] font-black text-[#2E2E5C]/55">
+                {it.heading}
+              </p>
+              <p className="body-gothic text-[15px] leading-[1.55] text-[#1A1A1A]/45">
+                {it.body}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
       {/* 中央の解除カード。スマホは参考UIに合わせて画面幅の約8割・低めの高さにし、
           md+ は従来サイズを維持する。 */}
       <div className="absolute inset-0 flex items-center justify-center p-3">
@@ -354,10 +290,10 @@ function LockedBlock({
 // サーバ (deep-dive-resolve) が返す locked ブロックの heading をキーに表示を組む。
 const LOCKED_BLOCK_CONFIG: Record<
   string,
-  { decoyItems: { heading: string; body: string }[]; cardCopy: ReactNode; source: string }
+  { decoyItems: DecoyItem[]; cardCopy: ReactNode; source: string }
 > = {
   あなたを好きになった人が読むトリセツ: {
-    decoyItems: LOVE_DECOY_ITEMS,
+    decoyItems: LOVE_PAYOFF_DECOY_ITEMS,
     cardCopy: (
       <>
         ここから先には、<span className="inline-block">あなたの恋愛の続きが書かれています。</span>
@@ -584,14 +520,30 @@ export function DeepDiveSections({
                       locale={locale}
                     />
                   ) : (
-                    b.body.split("\n\n").map((para, i) => (
-                      <p
-                        key={i}
-                        className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.4] mb-4 last:mb-0"
-                      >
-                        {para}
-                      </p>
-                    ))
+                    <>
+                      {b.body &&
+                        b.body.split("\n\n").map((para, i) => (
+                          <p
+                            key={i}
+                            className="body-gothic text-[#1A1A1A] font-normal text-[17px] leading-[1.4] mb-4 last:mb-0"
+                          >
+                            {para}
+                          </p>
+                        ))}
+                      {/* 項目つき本文。ロック中の見本 (LockedBlock のデコイ) と同じ並びで出す。 */}
+                      {b.items && b.items.length > 0 && (
+                        <ResultItemGrid
+                          items={b.items}
+                          className={b.body ? "mt-5" : ""}
+                        />
+                      )}
+                      {/* 項目のあとの締めの段落 (従来の文と項目を両方出すとき)。 */}
+                      {b.after && (
+                        <p className="body-gothic mt-6 text-[17px] font-normal leading-[1.4] text-[#1A1A1A]">
+                          {b.after}
+                        </p>
+                      )}
+                    </>
                   )}
                 </div>
               ))}
