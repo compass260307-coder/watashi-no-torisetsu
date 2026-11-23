@@ -31,7 +31,7 @@ export class XAdsApiError extends Error {
   }
 }
 
-async function xAdsGet<T>(
+export async function xAdsGet<T>(
   path: string,
   query: Record<string, string>,
   credentials: XAdsCredentials,

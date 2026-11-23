@@ -5,7 +5,8 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { isInternalDashboardViewer } from "@/lib/internal-numbers-access";
 import { getSession } from "@/lib/session";
-import { syncXAdsSpend } from "@/lib/x-ads-spend";
+import { xAdsCredentials, xAdsGet } from "@/lib/x-ads-api";
+import { syncXAdsSpend, xAdsSyncWindow } from "@/lib/x-ads-spend";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -54,6 +55,64 @@ export async function GET(request: NextRequest) {
   if (!(await isInternalDashboardViewer(await getSession(request)))) {
     return json({ error: "not_found" }, 404);
   }
+  // debug=<広告アカウントID>: そのアカウントの統計の応答を、加工せずに返す
+  // (広告費の読み取り方を確かめるため)。直近 24 時間、アカウント全体と、
+  // 配信中のキャンペーン (最大 5 つ) の 2 通り。
+  const debug = request.nextUrl.searchParams.get("debug");
+  if (debug !== null) {
+    const credentials = xAdsCredentials();
+    if (!credentials || !/^[a-z0-9]{1,20}$/.test(debug)) {
+      return json({ error: "invalid" }, 400);
+    }
+    const window = xAdsSyncWindow(1);
+    const start = new Date(window.to - 24 * 3_600_000)
+      .toISOString()
+      .replace(".000Z", "Z");
+    const end = new Date(window.to).toISOString().replace(".000Z", "Z");
+    const safe = async (fn: () => Promise<unknown>) => {
+      try {
+        return await fn();
+      } catch (error) {
+        return { error: error instanceof Error ? error.message : "unknown" };
+      }
+    };
+    const campaigns = (await safe(() =>
+      xAdsGet(
+        `/accounts/${debug}/campaigns`,
+        { count: "200", sort_by: "updated_at-desc" },
+        credentials,
+      ),
+    )) as { data?: { id: string; name: string; entity_status?: string }[] };
+    const active = (campaigns.data ?? [])
+      .filter((c) => c.entity_status === "ACTIVE")
+      .slice(0, 5);
+    const stats = (entity: string, ids: string) =>
+      safe(() =>
+        xAdsGet(
+          `/stats/accounts/${debug}`,
+          {
+            entity,
+            entity_ids: ids,
+            start_time: start,
+            end_time: end,
+            granularity: "HOUR",
+            metric_groups: "BILLING,ENGAGEMENT",
+            placement: "ALL_ON_TWITTER",
+          },
+          credentials,
+        ),
+      );
+    return json({
+      start,
+      end,
+      campaigns: active.map((c) => ({ id: c.id, name: c.name })),
+      account: await stats("ACCOUNT", debug),
+      campaign: active.length
+        ? await stats("CAMPAIGN", active.map((c) => c.id).join(","))
+        : null,
+    });
+  }
+
   const report = await syncXAdsSpend({
     days: daysParam(request),
     dryRun: true,
