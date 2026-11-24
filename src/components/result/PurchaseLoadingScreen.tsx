@@ -3,7 +3,7 @@
 // 完全版 (日本語 Web) を買った直後の「完全版の準備画面」。設定と A/B は src/lib/purchase-loading.ts。
 //
 // - 自己診断の解析待ち画面 (DiagnosisAnalyzingLoader) を金色の豪華版 (theme="premium") で使い、
-//   15秒のあいだ「完全版でひらいたもの → 友達診断 → 結果アップグレード」の3枚を流す。
+//   15秒のあいだ「完全版の購入者は、さらに結果をアップグレードできる」の1枚を見せる。
 // - 権利がもう反映済みでも、15秒は必ず見せる。終わったら ?paid= を外して自己診断結果を出す。
 // - 戻った時点でまだ反映されていない (webhook 待ち) ときは、裏で反映を確かめる。
 //   15秒たっても反映されていなければ、今までの「決済処理中...」(PaidUnlockWatcher) に引き継ぐ。
@@ -18,35 +18,10 @@ import { startVisiblePolling } from "@/lib/visible-polling";
 
 export const PURCHASE_LOADING_MS = 15_000;
 
+// 伝えることは1つにしぼる (2026-11-24 本人指示): 完全版の購入者は、さらに結果をアップグレードできる。
 const SLIDES: AnalyzingSlide[] = [
   {
-    // ① 買ったものの実感: 宝箱から、ひらいた中身が飛び出す。
-    visual: {
-      kind: "unlock",
-      art: "/result-upgrade/treasure-open.webp",
-      items: ["自己診断の全文", "友達診断の結果", "相性診断", "運命の設計図"],
-    },
-    tint: "#FFF4DA",
-    text: "完全版のすべてがひらいたよ！",
-    highlight: "すべて",
-  },
-  {
-    // ② 友達診断: 友達が答えると読める結果 (キャラ / 理解度 / ギャップ)。
-    visual: {
-      kind: "results",
-      labels: ["キャラ", "理解度", "ギャップ"],
-      face: "/characters/face/fox_N.webp",
-      faceColor: "#E8B84A",
-      word: "リーダー気質",
-      score: 87,
-      more: "友達から見たあなた",
-    },
-    tint: "#EAF6F9",
-    text: "友達が答えると、\nこの結果も全部読めるよ！",
-    highlight: "全部読める",
-  },
-  {
-    // ③ 結果アップグレード (¥899): いつものキャラが、あなた専用のキャラに。
+    // いつものキャラが、あなた専用のキャラに変わる図。
     visual: {
       kind: "upgrade",
       beforeFace: "/characters/face/penguin_N.webp",
@@ -55,15 +30,14 @@ const SLIDES: AnalyzingSlide[] = [
       afterLabel: "あなた専用",
     },
     tint: "#F1ECFA",
-    text: "結果アップグレードで、\n世界に一体だけのキャラに！",
-    highlight: "世界に一体だけ",
+    text: "完全版を購入した方はさらに、\n結果をアップグレードできるよ！",
+    highlight: "結果をアップグレード",
   },
 ];
 
 const STEPS = [
   "お支払いを確認",
   "完全版の特典をひらく",
-  "友達診断の結果を準備",
   "あなた専用のページを仕上げ",
 ];
 
@@ -188,7 +162,7 @@ export function PurchaseLoadingScreen({
         steps={STEPS}
         totalMs={durationMs}
         slides={SLIDES}
-        slidesLabel="完全版でできること"
+        slidesLabel="完全版を購入した方へ"
       />
     </div>
   );
