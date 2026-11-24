@@ -26,7 +26,6 @@ import {
 } from "@/lib/internal-numbers";
 
 import {
-  COMPARISON_STYLES,
   NumbersHourlyChart,
   type NumbersChartType,
 } from "./NumbersHourlyChart";
@@ -42,11 +41,16 @@ import {
   SourcesCard,
 } from "./NumbersSections";
 import {
-  Card,
+  DateButton,
+  GHOST_BASE,
+  NUMBERS_GUTTER,
+  NUMBERS_MAIN,
   NUMBERS_THEMES,
-  NumbersNav,
-  ThemeToggle,
+  NumbersHeader,
+  OUTLINE_BUTTON,
   Segmented,
+  StepButton,
+  ThemeToggle,
   numberFormat,
   yen,
 } from "./numbers-ui";
@@ -268,173 +272,89 @@ export function NumbersDashboard() {
   // 取り直し中に見えているのが、別の日の数字や端末の控えのときは、そう分かるようにする。
   const stale = loading && payload !== null;
   const live = payload?.meta.is_today === true && status === "ready";
-  const navButton =
-    "flex h-9 w-9 items-center justify-center rounded-md border border-[var(--nb-border)] text-[var(--nb-text)] transition-colors hover:border-[var(--nb-border-strong)] hover:bg-[var(--nb-surface-2)] disabled:pointer-events-none disabled:opacity-30";
 
   return (
     <main
-      className="min-h-dvh flex-1 touch-manipulation bg-[var(--nb-bg)] pb-12 font-medium text-[var(--nb-text)] antialiased"
+      className={NUMBERS_MAIN}
       style={NUMBERS_THEMES[theme]}
       data-theme={theme}
     >
-      <header className="sticky top-0 z-30 border-b border-[var(--nb-border)] bg-[var(--nb-surface)]">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-6 xl:px-8">
-          {/* スマホでは見出しと時刻を縦に重ね、日付の操作と更新ボタンを同じ行に収める。 */}
-          <div className="mr-auto flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
-            <h1 className="text-[17px] font-bold leading-tight tracking-tight">
-              数値
-            </h1>
-            <div className="hidden sm:block">
-              <NumbersNav current="day" />
-            </div>
-            <p
-              className="flex min-w-0 items-center gap-2 text-[13px] text-[var(--nb-text-2)] sm:text-sm"
-              aria-live="polite"
-            >
-              {payload ? (
-                <>
+      <NumbersHeader
+        current="day"
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onRefresh={() => show(day)}
+        busy={busy}
+        status={
+          <p
+            className="flex min-w-0 items-center gap-2 text-[13px] text-[var(--nb-text-3)]"
+            aria-live="polite"
+          >
+            {payload ? (
+              <>
+                {/* 今日を見ていて、数字が最新のときだけ緑の点を出す。 */}
+                {live && (
                   <span
                     aria-hidden
-                    className="h-1.5 w-1.5 shrink-0 rounded-full"
-                    style={{
-                      background: live
-                        ? "var(--nb-up)"
-                        : "var(--nb-border-strong)",
-                    }}
+                    className="h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--nb-up)]"
                   />
-                  <span className="truncate tabular-nums">
-                    {payload.meta.is_today
-                      ? `${formatNumbersClock(payload.meta.generated_at)} 時点`
-                      : `${formatNumbersDay(payload.meta.day)} の1日分`}
-                    {stale ? " ・ 取り直しています..." : ""}
-                    {status === "catching_up"
-                      ? " ・ 続きを集計しています..."
-                      : ""}
-                  </span>
-                </>
-              ) : loading ? (
-                "読み込んでいます..."
-              ) : null}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            {shownDay !== today && (
-              <button
-                type="button"
-                onClick={() => show(null)}
-                className="h-9 rounded-md border border-[var(--nb-border)] px-3 text-sm font-semibold transition-colors hover:border-[var(--nb-border-strong)] hover:bg-[var(--nb-surface-2)]"
-              >
-                今日
-              </button>
-            )}
-            <button
-              type="button"
-              aria-label="前の日"
-              disabled={shownDay <= NUMBERS_EARLIEST_DAY}
-              onClick={() => show(shiftNumbersDay(shownDay, -1))}
-              className={navButton}
-            >
-              <svg
-                aria-hidden
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-              >
-                <path
-                  d="M10 3 5 8l5 5"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-            <label>
-              <span className="sr-only">表示する日</span>
-              <input
-                type="date"
-                value={shownDay}
-                min={NUMBERS_EARLIEST_DAY}
-                max={today}
-                onChange={(event) => {
-                  const value = event.target.value;
-                  if (value) show(value >= today ? null : value);
-                }}
-                className="h-9 w-[7.4rem] rounded-md border border-[var(--nb-border)] bg-transparent px-1.5 text-sm tabular-nums sm:w-[8.6rem] sm:px-2 sm:text-base text-[var(--nb-text)] transition-colors hover:border-[var(--nb-border-strong)] sm:w-auto sm:px-2.5"
-              />
-            </label>
-            <button
-              type="button"
-              aria-label="次の日"
-              disabled={shownDay >= today}
-              onClick={() => {
-                const next = shiftNumbersDay(shownDay, 1);
-                show(next >= today ? null : next);
-              }}
-              className={navButton}
-            >
-              <svg
-                aria-hidden
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-              >
-                <path
-                  d="m6 3 5 5-5 5"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
-
-          <ThemeToggle theme={theme} onToggle={toggleTheme} variant="icon" />
-
+                )}
+                <span className="truncate tabular-nums">
+                  {payload.meta.is_today
+                    ? `${formatNumbersClock(payload.meta.generated_at)} 時点`
+                    : `${formatNumbersDay(payload.meta.day)} の1日分`}
+                  {stale ? " ・ 取り直しています..." : ""}
+                  {status === "catching_up" ? " ・ 続きを集計しています..." : ""}
+                </span>
+              </>
+            ) : loading ? (
+              "読み込んでいます..."
+            ) : null}
+          </p>
+        }
+      >
+        {shownDay !== today && (
           <button
             type="button"
-            onClick={() => show(day)}
-            disabled={busy}
-            aria-busy={busy}
-            className="flex h-9 min-w-9 items-center justify-center gap-2 rounded-md bg-[var(--nb-text)] px-2.5 text-sm font-semibold text-[var(--nb-bg)] transition-opacity hover:opacity-90 disabled:opacity-70 sm:min-w-[6.5rem] sm:px-4"
+            onClick={() => show(null)}
+            className={`${GHOST_BASE} px-2.5`}
           >
-            <svg
-              aria-hidden
-              width="15"
-              height="15"
-              viewBox="0 0 16 16"
-              fill="none"
-              className={busy ? "animate-spin" : ""}
-            >
-              <path
-                d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v2.6h-2.6"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            {/* スマホでは日付の操作と1行に収めるため、文字は読み上げ用にだけ残す。 */}
-            <span className="sr-only sm:not-sr-only">
-              {busy ? "更新中..." : "更新"}
-            </span>
+            今日
           </button>
+        )}
+        <div className="flex items-center">
+          <StepButton
+            direction="previous"
+            label="前の日"
+            disabled={shownDay <= NUMBERS_EARLIEST_DAY}
+            onClick={() => show(shiftNumbersDay(shownDay, -1))}
+          />
+          <DateButton
+            label={formatNumbersDay(shownDay)}
+            ariaLabel="表示する日"
+            value={shownDay}
+            min={NUMBERS_EARLIEST_DAY}
+            max={today}
+            onPick={(value) => show(value >= today ? null : value)}
+            className="h-9 rounded-lg px-1.5 text-[15px] font-semibold tabular-nums transition-colors hover:bg-[var(--nb-surface-2)] sm:px-2.5"
+          />
+          <StepButton
+            direction="next"
+            label="次の日"
+            disabled={shownDay >= today}
+            onClick={() => {
+              const next = shiftNumbersDay(shownDay, 1);
+              show(next >= today ? null : next);
+            }}
+          />
         </div>
-      </header>
-      {/* スマホではヘッダーに収まらないので、行き来のタブはその下に置く (固定しない。固定すると画面の上を広く覆ってしまう)。 */}
-      <div className="px-4 pt-3 sm:hidden">
-        <NumbersNav current="day" />
-      </div>
+      </NumbersHeader>
 
-      <div className="px-4 pt-4 sm:px-6 xl:px-8 xl:pt-6">
+      <div className={`pt-5 sm:pt-6 ${NUMBERS_GUTTER}`}>
         {status === "error" && (
           <div
             role="alert"
-            className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-[color-mix(in_srgb,var(--nb-down)_45%,transparent)] bg-[color-mix(in_srgb,var(--nb-down)_10%,transparent)] px-4 py-3 text-base"
+            className="mb-5 flex flex-wrap items-center gap-3 rounded-xl bg-[color-mix(in_srgb,var(--nb-down)_9%,transparent)] px-4 py-3 text-base"
           >
             <span className="mr-auto">
               数字を取得できませんでした。
@@ -443,7 +363,7 @@ export function NumbersDashboard() {
             <button
               type="button"
               onClick={() => show(day)}
-              className="rounded-md border border-[color-mix(in_srgb,var(--nb-down)_45%,transparent)] px-3 py-1.5 font-semibold"
+              className={OUTLINE_BUTTON}
             >
               もう一度試す
             </button>
@@ -488,22 +408,19 @@ export function NumbersDashboard() {
 }
 
 function Skeleton() {
-  const block =
-    "animate-pulse rounded-lg border border-[var(--nb-border)] bg-[var(--nb-surface)]";
+  const block = "animate-pulse rounded-xl bg-[var(--nb-surface-2)]";
   return (
-    <div aria-hidden className="grid gap-3 xl:gap-4">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-5 xl:gap-4">
+    <div aria-hidden className="grid gap-8">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-5 md:grid-cols-5">
         {HEADLINES.map((item, index) => (
           <div
             key={item.key}
-            className={`${block} h-36 ${index === 0 ? "col-span-2 md:col-span-1" : ""}`}
+            className={`${block} h-24 ${index === 0 ? "col-span-2 md:col-span-1" : ""}`}
           />
         ))}
       </div>
-      <div className="grid gap-3 xl:grid-cols-12 xl:gap-4">
-        <div className={`${block} h-[26rem] xl:col-span-8`} />
-        <div className={`${block} h-[26rem] xl:col-span-4`} />
-      </div>
+      <div className={`${block} h-[22rem]`} />
+      <div className={`${block} h-32`} />
     </div>
   );
 }
@@ -564,30 +481,30 @@ function ComparisonPicker({
   const full = selected.length >= MAX_COMPARISONS;
   const lastDay = shiftNumbersDay(meta.day, -1);
 
+  const chip =
+    "inline-flex h-8 items-center rounded-full text-sm transition-colors";
+
   return (
     <div
       role="group"
       aria-label="比べる相手"
-      className="flex flex-wrap items-center gap-1.5"
+      className="flex flex-wrap items-center gap-1"
     >
-      <span className="mr-1.5 text-[13px] text-[var(--nb-text-2)]">
-        比較
-      </span>
+      <span className="mr-2 text-sm text-[var(--nb-text-3)]">比較</span>
       {options.map((option) => {
         const on = selected.includes(option.id);
-        const ready = comparisons.findIndex((item) => item.id === option.id);
+        const ready = comparisons.some((item) => item.id === option.id);
         const target = comparisonDay(payload, option.id);
         const failed = on && target !== null && failedDays[target];
-        const loading = on && ready < 0 && !failed;
-        const color = ready >= 0 ? COMPARISON_STYLES[ready]?.color : undefined;
+        const loading = on && !ready && !failed;
         return (
           <span
             key={option.id}
-            className={`inline-flex items-center rounded-md border text-[13px] transition-colors ${
+            className={`${chip} ${
               on
-                ? "border-[var(--nb-text)] bg-[var(--nb-surface)] text-[var(--nb-text)]"
-                : "border-[var(--nb-border-strong)] bg-[var(--nb-surface)] text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
-            } ${!on && full ? "opacity-40" : ""}`}
+                ? "bg-[var(--nb-text)] text-[var(--nb-bg)]"
+                : "text-[var(--nb-text-2)] hover:bg-[var(--nb-surface-2)] hover:text-[var(--nb-text)]"
+            } ${!on && full ? "opacity-40" : ""} ${loading ? "animate-pulse" : ""}`}
           >
             <button
               type="button"
@@ -599,33 +516,18 @@ function ComparisonPicker({
                   : undefined
               }
               onClick={() => onToggle(option.id)}
-              className="flex items-center gap-1.5 py-1 pl-2.5 pr-2.5 font-semibold disabled:cursor-not-allowed"
+              className={`flex h-full items-center gap-1.5 rounded-full px-3.5 disabled:cursor-not-allowed ${on ? "font-semibold" : ""}`}
             >
-              {on && (
-                <span
-                  aria-hidden
-                  className={`h-0.5 w-3 ${loading ? "animate-pulse" : ""}`}
-                  style={{
-                    background: failed
-                      ? "var(--nb-down)"
-                      : (color ?? "var(--nb-border-strong)"),
-                  }}
-                />
-              )}
               {option.label}
               {loading && <span className="sr-only">（取得中）</span>}
-              {failed && (
-                <span className="font-normal text-[var(--nb-down)]">
-                  取得できません
-                </span>
-              )}
+              {failed && <span className="font-normal">取得できません</span>}
             </button>
             {option.removable && (
               <button
                 type="button"
                 aria-label={`${option.label} を候補から外す`}
                 onClick={() => onRemove(option.removable as string)}
-                className="-ml-1.5 py-1 pl-1 pr-2 text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
+                className="-ml-2 flex h-full items-center rounded-full pl-1 pr-3 opacity-60 hover:opacity-100"
               >
                 ×
               </button>
@@ -633,22 +535,17 @@ function ComparisonPicker({
           </span>
         );
       })}
-      <label className="inline-flex items-center gap-1.5 rounded-md border border-dashed border-[var(--nb-border-strong)] py-0.5 pl-2.5 pr-1.5 text-[13px] text-[var(--nb-text-2)]">
-        <span className="font-semibold">＋ 日付</span>
-        <input
-          type="date"
-          value=""
-          min={NUMBERS_EARLIEST_DAY}
-          max={lastDay}
-          onChange={(event) => {
-            const value = event.target.value;
-            if (value && value <= lastDay && value >= NUMBERS_EARLIEST_DAY) {
-              onAdd(value);
-            }
-          }}
-          className="h-6 w-[7.6rem] bg-transparent px-1 text-[13px] tabular-nums text-[var(--nb-text)]"
-        />
-      </label>
+      <DateButton
+        label="＋ 日付を選ぶ"
+        ariaLabel="比べる日付を足す"
+        value=""
+        min={NUMBERS_EARLIEST_DAY}
+        max={lastDay}
+        onPick={(value) => {
+          if (value <= lastDay && value >= NUMBERS_EARLIEST_DAY) onAdd(value);
+        }}
+        className={`${chip} px-3.5 text-[var(--nb-text-2)] hover:bg-[var(--nb-surface-2)] hover:text-[var(--nb-text)]`}
+      />
     </div>
   );
 }
@@ -722,9 +619,10 @@ function Body({
 
   return (
     <div
-      className={`grid gap-4 transition-opacity duration-200 ${dimmed ? "opacity-60" : ""}`}
+      className={`grid gap-12 transition-opacity duration-200 xl:gap-14 ${dimmed ? "opacity-60" : ""}`}
     >
-      <div>
+      {/* いまの数字。指標のタブと、そのすぐ下のグラフで 1 つのまとまり。 */}
+      <div className="min-w-0">
         <ComparisonPicker
           payload={payload}
           selected={selected}
@@ -735,47 +633,16 @@ function Body({
           onAdd={onAddCustomDay}
           onRemove={onRemoveCustomDay}
         />
-      </div>
-
-      <KpiRow
-        day={day}
-        comparison={comparison}
-        selected={metric.key}
-        onSelect={onMetric}
-        isToday={meta.is_today}
-      />
-
-      <EconomicsCard payload={payload} onOpenEntry={onOpenCostEntry} />
-
-      <Card
-        title={metric.label}
-        hint={metric.hint}
-        action={
-          <div className="flex flex-wrap items-center gap-2">
-            {mode === "hourly" && (
-              <Segmented
-                label="グラフの形"
-                value={chartType}
-                onChange={onChartType}
-                options={[
-                  { value: "line", label: "線" },
-                  { value: "bar", label: "棒" },
-                ]}
-              />
-            )}
-            <Segmented
-              label="グラフの見方"
-              value={mode}
-              onChange={onMode}
-              options={[
-                { value: "hourly", label: "時間別" },
-                { value: "cumulative", label: "累計" },
-              ]}
-            />
-          </div>
-        }
-      >
-        <div className="px-3 pb-2 sm:px-4">
+        <div className="mt-6">
+          <KpiRow
+            day={day}
+            comparison={comparison}
+            selected={metric.key}
+            onSelect={onMetric}
+            isToday={meta.is_today}
+          />
+        </div>
+        <div className="pt-4">
           <NumbersHourlyChart
             metric={metric}
             mode={mode}
@@ -785,67 +652,88 @@ function Body({
             dayLabel={dayLabel}
             currentHour={currentHour}
             nowHours={nowHours}
+            hint={`${metric.label}＝${metric.hint}`}
+            toolbar={
+              <>
+                {mode === "hourly" && (
+                  <Segmented
+                    label="グラフの形"
+                    value={chartType}
+                    onChange={onChartType}
+                    options={[
+                      { value: "line", label: "線" },
+                      { value: "bar", label: "棒" },
+                    ]}
+                  />
+                )}
+                <Segmented
+                  label="グラフの見方"
+                  value={mode}
+                  onChange={onMode}
+                  options={[
+                    { value: "hourly", label: "時間別" },
+                    { value: "cumulative", label: "累計" },
+                  ]}
+                />
+              </>
+            }
           />
         </div>
         {lastFull && (
-          <div className="mt-auto border-t border-[var(--nb-border)] sm:flex sm:items-stretch">
-            <p className="whitespace-nowrap px-4 pt-3 text-[13px] font-semibold text-[var(--nb-text-2)] sm:flex sm:shrink-0 sm:items-center sm:px-5 sm:pt-0">
+          <dl className="mt-3 flex flex-wrap items-baseline gap-x-8 gap-y-2 border-t border-[var(--nb-border)] pt-3.5 text-sm tabular-nums">
+            <dt className="text-[var(--nb-text-3)]">
               直近1時間（{lastFull.h}時台）
-            </p>
-            <dl className="grid flex-1 grid-cols-3 sm:divide-x sm:divide-[var(--nb-border)] sm:border-l sm:border-[var(--nb-border)]">
-              {[
-                {
-                  label: "診断数",
-                  now: numberFormat.format(lastFull.diagnoses),
-                  before: lastFullBefore
-                    ? formatNumbersValue(lastFullBefore.diagnoses, "count")
-                    : null,
-                },
-                {
-                  label: "純売上",
-                  now: yen(lastFull.net),
-                  before: lastFullBefore ? yen(lastFullBefore.net) : null,
-                },
-                {
-                  label: "買い切り",
-                  now: numberFormat.format(lastFull.purchases_full),
-                  before: lastFullBefore
-                    ? formatNumbersValue(lastFullBefore.purchases_full, "count")
-                    : null,
-                },
-              ].map((item) => (
-                <div key={item.label} className="min-w-0 px-4 py-3 sm:px-5">
-                  <dt className="text-[13px] text-[var(--nb-text-2)]">
-                    {item.label}
-                  </dt>
-                  <dd className="mt-0.5 tabular-nums">
-                    <span className="text-base font-semibold">{item.now}</span>
-                    {item.before !== null && comparison && (
-                      <span className="block truncate text-[13px] text-[var(--nb-text-2)] sm:ml-2 sm:inline">
-                        {comparison.shortLabel} {item.before}
-                      </span>
-                    )}
-                  </dd>
-                </div>
-              ))}
-            </dl>
-          </div>
+            </dt>
+            {[
+              {
+                label: "診断数",
+                now: numberFormat.format(lastFull.diagnoses),
+                before: lastFullBefore
+                  ? formatNumbersValue(lastFullBefore.diagnoses, "count")
+                  : null,
+              },
+              {
+                label: "純売上",
+                now: yen(lastFull.net),
+                before: lastFullBefore ? yen(lastFullBefore.net) : null,
+              },
+              {
+                label: "買い切り",
+                now: numberFormat.format(lastFull.purchases_full),
+                before: lastFullBefore
+                  ? formatNumbersValue(lastFullBefore.purchases_full, "count")
+                  : null,
+              },
+            ].map((item) => (
+              <dd key={item.label} className="flex items-baseline gap-2">
+                <span className="text-[var(--nb-text-2)]">{item.label}</span>
+                <span className="text-base font-semibold text-[var(--nb-text)]">
+                  {item.now}
+                </span>
+                {item.before !== null && comparison && (
+                  <span className="text-[13px] text-[var(--nb-text-3)]">
+                    {comparison.shortLabel} {item.before}
+                  </span>
+                )}
+              </dd>
+            ))}
+          </dl>
         )}
-      </Card>
-
-      {/* スマホでは下の内訳を 1 つずつ切り替えて見る。PC では全部を、上から順に並べる。 */}
-      <div className="xl:hidden">
-        <div className="overflow-x-auto">
-          <Segmented
-            label="内訳"
-            value={section}
-            onChange={onSection}
-            options={SECTIONS}
-          />
-        </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-12">
+      <EconomicsCard payload={payload} onOpenEntry={onOpenCostEntry} />
+
+      {/* スマホでは下の内訳を 1 つずつ切り替えて見る。PC では全部を、上から順に並べる。 */}
+      <div className="-mb-6 overflow-x-auto xl:hidden">
+        <Segmented
+          label="内訳"
+          value={section}
+          onChange={onSection}
+          options={SECTIONS}
+        />
+      </div>
+
+      <div className="grid min-w-0 gap-x-9 gap-y-12 xl:grid-cols-12 xl:gap-y-14 2xl:gap-x-14">
         <div className={only("funnel")}>
           <FunnelCard
             day={day}

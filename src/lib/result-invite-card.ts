@@ -36,9 +36,19 @@ export const RESULT_INVITE_CARD_AGAIN_SOURCE = "me_read_end_again";
  */
 export const RESULT_INVITE_CARD_AGAIN_AFTER_MS = 30 * 60 * 1000;
 
+/**
+ * 友達診断ページを見たあとの人に出す分の surface / source (2026-11-25)。
+ * 友達診断ページで同じ招待カードを見た人が、あとで結果ページに戻ってきたときに1回だけ出す。
+ * 友達診断ページを見てから RESULT_INVITE_CARD_AGAIN_AFTER_MS 以上あいた訪問だけを対象にする。
+ * 回数は全体の上限 (1人2回まで) の中で数える。
+ */
+export const RESULT_INVITE_CARD_AFTER_TAKO_SOURCE = "me_read_end_after_tako";
+
 const SHOWN_PREFIX = "wt_result_invite_card_shown_v1:";
 const SHOWN_AT_PREFIX = "wt_result_invite_card_shown_at_v1:";
 const AGAIN_PREFIX = "wt_result_invite_card_again_v1:";
+const TAKO_SEEN_AT_PREFIX = "wt_result_invite_card_tako_seen_at_v1:";
+const AFTER_TAKO_PREFIX = "wt_result_invite_card_after_tako_v1:";
 
 /** 1回目を出した目印 (owner_token ごと)。 */
 export function resultInviteCardShownKey(ownerToken: string): string {
@@ -56,4 +66,17 @@ export function resultInviteCardShownAtKey(ownerToken: string): string {
 /** 2回目を出した目印 (owner_token ごと)。3回目は出さない。 */
 export function resultInviteCardAgainKey(ownerToken: string): string {
   return `${AGAIN_PREFIX}${ownerToken}`;
+}
+
+/**
+ * 友達診断ページを最後に見た時刻 (ミリ秒)。友達診断ページ側 (TakoViewTracker) が残す。
+ * 2026-11-25 より前に見た人には無い (その人たちは、次に結果ページを開いたときから対象にする)。
+ */
+export function resultInviteCardTakoSeenAtKey(ownerToken: string): string {
+  return `${TAKO_SEEN_AT_PREFIX}${ownerToken}`;
+}
+
+/** 友達診断ページを見たあとの人に出した目印 (owner_token ごと)。この出し方は1回だけ。 */
+export function resultInviteCardAfterTakoKey(ownerToken: string): string {
+  return `${AFTER_TAKO_PREFIX}${ownerToken}`;
 }

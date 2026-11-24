@@ -25,10 +25,14 @@ import {
 } from "@/lib/internal-numbers";
 
 import {
-  Card,
-  NAV_BUTTON,
+  NUMBERS_GUTTER,
+  NUMBERS_MAIN,
   NUMBERS_THEMES,
-  NumbersNav,
+  NumbersHeader,
+  OUTLINE_BUTTON,
+  Section,
+  Segmented,
+  StepButton,
   ThemeToggle,
   numberFormat,
   percent,
@@ -318,114 +322,44 @@ export function NumbersDaily() {
 
   return (
     <main
-      className="min-h-dvh flex-1 touch-manipulation bg-[var(--nb-bg)] pb-12 font-medium text-[var(--nb-text)] antialiased"
+      className={NUMBERS_MAIN}
       style={NUMBERS_THEMES[theme]}
       data-theme={theme}
     >
-      <header className="sticky top-0 z-30 border-b border-[var(--nb-border)] bg-[var(--nb-surface)]">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 sm:px-6 xl:px-8">
-          <div className="mr-auto flex min-w-0 items-center gap-3">
-            <h1 className="text-[17px] font-bold leading-tight tracking-tight">
-              数値
-            </h1>
-            <div className="hidden sm:block">
-              <NumbersNav current="month" />
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              aria-label="前の月"
-              disabled={shownMonth <= NUMBERS_EARLIEST_DAY.slice(0, 7)}
-              onClick={() => show(shiftNumbersMonth(shownMonth, -1))}
-              className={`flex ${NAV_BUTTON}`}
-            >
-              <svg
-                aria-hidden
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-              >
-                <path
-                  d="M10 3 5 8l5 5"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-            <p
-              aria-live="polite"
-              className="min-w-[7.5rem] text-center text-[15px] font-semibold tabular-nums"
-            >
-              {year}年{monthIndex}月
-            </p>
-            <button
-              type="button"
-              aria-label="次の月"
-              disabled={shownMonth >= currentMonth}
-              onClick={() => show(shiftNumbersMonth(shownMonth, 1))}
-              className={`flex ${NAV_BUTTON}`}
-            >
-              <svg
-                aria-hidden
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                fill="none"
-              >
-                <path
-                  d="m6 3 5 5-5 5"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-            </button>
-          </div>
-          <ThemeToggle theme={theme} onToggle={toggleTheme} variant="icon" />
-          <button
-            type="button"
-            onClick={() => show(shownMonth)}
-            disabled={loading}
-            aria-busy={loading}
-            className="flex h-9 min-w-9 items-center justify-center gap-2 rounded-md bg-[var(--nb-text)] px-2.5 text-sm font-semibold text-[var(--nb-bg)] transition-opacity hover:opacity-90 disabled:opacity-70 sm:min-w-[6.5rem] sm:px-4"
+      <NumbersHeader
+        current="month"
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onRefresh={() => show(shownMonth)}
+        busy={loading}
+      >
+        <div className="flex items-center">
+          <StepButton
+            direction="previous"
+            label="前の月"
+            disabled={shownMonth <= NUMBERS_EARLIEST_DAY.slice(0, 7)}
+            onClick={() => show(shiftNumbersMonth(shownMonth, -1))}
+          />
+          <p
+            aria-live="polite"
+            className="min-w-[6.5rem] text-center text-[15px] font-semibold tabular-nums"
           >
-            <svg
-              aria-hidden
-              width="15"
-              height="15"
-              viewBox="0 0 16 16"
-              fill="none"
-              className={loading ? "animate-spin" : ""}
-            >
-              <path
-                d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9M13.5 2.5v2.6h-2.6"
-                stroke="currentColor"
-                strokeWidth="1.75"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <span className="sr-only sm:not-sr-only">
-              {loading ? "更新中..." : "更新"}
-            </span>
-          </button>
+            {year}年{monthIndex}月
+          </p>
+          <StepButton
+            direction="next"
+            label="次の月"
+            disabled={shownMonth >= currentMonth}
+            onClick={() => show(shiftNumbersMonth(shownMonth, 1))}
+          />
         </div>
-      </header>
-      {/* スマホではヘッダーに収まらないので、行き来のタブはその下に置く (固定しない)。 */}
-      <div className="px-4 pt-3 sm:hidden">
-        <NumbersNav current="month" />
-      </div>
+      </NumbersHeader>
 
-      <div className="grid gap-4 px-4 pt-5 sm:px-6 xl:gap-5 xl:px-8">
+      <div className={`grid gap-12 pt-6 sm:pt-7 xl:gap-14 ${NUMBERS_GUTTER}`}>
         {status === "not_installed" && (
           <p
             role="alert"
-            className="rounded-lg border border-[var(--nb-border-strong)] bg-[var(--nb-surface)] px-5 py-6 text-base leading-relaxed"
+            className="rounded-xl bg-[var(--nb-surface-2)] px-5 py-5 text-base leading-relaxed"
           >
             月の推移を出すための準備（データベースへのSQLの追加）が、まだ済んでいません。
           </p>
@@ -433,13 +367,13 @@ export function NumbersDaily() {
         {status === "error" && (
           <p
             role="alert"
-            className="rounded-lg border border-[var(--nb-down)] bg-[var(--nb-surface)] px-5 py-6 text-base leading-relaxed"
+            className="flex flex-wrap items-center gap-3 rounded-xl bg-[color-mix(in_srgb,var(--nb-down)_9%,transparent)] px-5 py-4 text-base leading-relaxed"
           >
-            数字を取得できませんでした。
+            <span className="mr-auto">数字を取得できませんでした。</span>
             <button
               type="button"
               onClick={() => show(shownMonth)}
-              className="ml-2 font-bold underline"
+              className={OUTLINE_BUTTON}
             >
               もう一度試す
             </button>
@@ -471,35 +405,25 @@ export function NumbersDaily() {
               coupon={data.coupon ?? null}
               onCouponSaved={() => void load(shownMonth)}
             />
-            <Card
+            <Section
               title={`${metric.label}トレンド`}
               hint={metric.hint}
+              plain
               action={
-                <div
-                  role="tablist"
-                  aria-label="グラフに出す項目"
-                  className="flex flex-wrap overflow-hidden rounded-md border border-[var(--nb-border-strong)]"
-                >
-                  {METRICS.map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      role="tab"
-                      aria-selected={item.key === metric.key}
-                      onClick={() => setMetricKey(item.key)}
-                      className={`border-l border-[var(--nb-border-strong)] px-3 py-1 text-[13px] font-semibold transition-colors first:border-l-0 ${
-                        item.key === metric.key
-                          ? "bg-[var(--nb-text)] text-[var(--nb-bg)]"
-                          : "bg-[var(--nb-surface)] text-[var(--nb-text-2)] hover:text-[var(--nb-text)]"
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
+                <div className="max-w-full overflow-x-auto">
+                  <Segmented
+                    label="グラフに出す項目"
+                    value={metric.key}
+                    onChange={setMetricKey}
+                    options={METRICS.map((item) => ({
+                      value: item.key,
+                      label: item.label,
+                    }))}
+                  />
                 </div>
               }
             >
-              <div className="px-3 pb-4 sm:px-5">
+              <div className="pt-3">
                 <DailyChart
                   rows={rows}
                   month={shownMonth}
@@ -507,7 +431,7 @@ export function NumbersDaily() {
                   today={data.today}
                 />
               </div>
-            </Card>
+            </Section>
             <DailyTable
               rows={rows}
               today={data.today}
@@ -524,18 +448,16 @@ export function NumbersDaily() {
 }
 
 function DailySkeleton() {
+  const block = "rounded-xl bg-[var(--nb-surface-2)]";
   return (
-    <div aria-hidden className="grid animate-pulse gap-4 xl:gap-5">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6 xl:gap-5">
-        {Array.from({ length: 6 }, (_, index) => (
-          <div
-            key={index}
-            className="h-28 rounded-lg border border-[var(--nb-border)] bg-[var(--nb-surface)]"
-          />
+    <div aria-hidden className="grid animate-pulse gap-10">
+      <div className="grid grid-cols-2 gap-x-8 gap-y-6 md:grid-cols-4">
+        {Array.from({ length: 8 }, (_, index) => (
+          <div key={index} className={`${block} h-20`} />
         ))}
       </div>
-      <div className="h-80 rounded-lg border border-[var(--nb-border)] bg-[var(--nb-surface)]" />
-      <div className="h-96 rounded-lg border border-[var(--nb-border)] bg-[var(--nb-surface)]" />
+      <div className={`${block} h-80`} />
+      <div className={`${block} h-96`} />
     </div>
   );
 }
@@ -563,15 +485,14 @@ function FillNotice({
   const finished = done >= total;
   // すべて数え終わって失敗も無ければ、知らせは出さない。
   if (finished && failed === 0) return null;
-  const button =
-    "h-9 shrink-0 rounded-md border border-[var(--nb-border-strong)] px-3.5 text-[13px] font-semibold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)]";
+  const button = `${OUTLINE_BUTTON} shrink-0 bg-[var(--nb-bg)]`;
   return (
     <div
       role="status"
-      className="flex flex-wrap items-center gap-x-4 gap-y-3 rounded-lg border border-[var(--nb-border-strong)] bg-[var(--nb-surface)] px-5 py-4"
+      className="-mb-4 flex flex-wrap items-center gap-x-4 gap-y-3 rounded-xl bg-[var(--nb-surface-2)] px-5 py-4"
     >
       <div className="mr-auto min-w-0">
-        <p className="text-base font-bold">
+        <p className="text-base font-semibold">
           {finished
             ? `集計できなかった日が ${failed} 日あります`
             : `まだ集計していない日を、1日ずつ集計しています（${done} / ${total} 日）`}
@@ -586,9 +507,9 @@ function FillNotice({
               }`}
         </p>
         {!finished && (
-          <div className="mt-3 h-1 max-w-xl bg-[var(--nb-surface-2)]">
+          <div className="mt-3 h-1 max-w-xl rounded-full bg-[var(--nb-border-strong)]">
             <div
-              className="h-full bg-[var(--nb-accent)] transition-[width] duration-500 ease-out"
+              className="h-full rounded-full bg-[var(--nb-accent)] transition-[width] duration-500 ease-out"
               style={{ width: `${(done / total) * 100}%` }}
             />
           </div>
@@ -641,7 +562,7 @@ function CouponEditor({
   const parsed = Number(value.replace(/[,，¥￥\s]/g, ""));
   const valid = value.trim() !== "" && Number.isFinite(parsed) && parsed >= 0;
   const link =
-    "text-[13px] font-semibold text-[var(--nb-accent)] underline-offset-2 hover:underline disabled:opacity-50";
+    "text-sm font-semibold text-[var(--nb-accent)] underline-offset-2 hover:underline disabled:opacity-50";
 
   const submit = async (next: number | null) => {
     setBusy(true);
@@ -693,7 +614,7 @@ function CouponEditor({
         placeholder="例: 182592"
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        className="h-8 w-28 rounded-md border border-[var(--nb-border-strong)] bg-[var(--nb-surface)] px-2 text-[13px] tabular-nums text-[var(--nb-text)]"
+        className="h-8 w-28 rounded-lg border border-[var(--nb-border-strong)] bg-[var(--nb-bg)] px-2 text-sm tabular-nums text-[var(--nb-text)] outline-none focus:border-[var(--nb-accent)]"
       />
       <button type="submit" className={link} disabled={!valid || busy}>
         {busy ? "保存中" : "保存"}
@@ -812,7 +733,7 @@ function MonthSummary({
         ),
       },
       {
-        label: "利益（クーポン控除後）",
+        label: "利益（クーポン込み）",
         value: hasCost && amount !== null ? signedYen(afterCoupon) : "–",
         tone:
           hasCost && amount !== null && total.costPlan <= 0
@@ -825,39 +746,34 @@ function MonthSummary({
     );
   }
   return (
-    <section aria-label="月の合計">
-      <p className="mb-2 text-[13px] text-[var(--nb-text-2)]">
-        月の合計 ・ {total.days} 日分
-        {includesToday ? "（今日の途中までを含む）" : ""}
-      </p>
+    <Section
+      title="月の合計"
+      note={`${total.days} 日分${includesToday ? "（今日の途中までを含む）" : ""}`}
+    >
+      {/* 枠や区切り線は使わず、余白だけで並べる。 */}
       <dl
-        className={`grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[var(--nb-border)] bg-[var(--nb-border)] ${
+        className={`grid grid-cols-2 gap-x-8 gap-y-8 pt-6 ${
           tiles.length > 6 ? "md:grid-cols-4" : "md:grid-cols-3 xl:grid-cols-6"
         }`}
       >
         {tiles.map((tile) => (
-          <div
-            key={tile.label}
-            className="min-w-0 bg-[var(--nb-surface)] px-4 pb-4 pt-3.5 xl:px-5"
-          >
-            <dt className="text-[13px] font-semibold text-[var(--nb-text-2)]">
-              {tile.label}
-            </dt>
-            <dd className="mt-1.5">
+          <div key={tile.label} className="min-w-0">
+            <dt className="text-sm text-[var(--nb-text-2)]">{tile.label}</dt>
+            <dd className="mt-1">
               <span
-                className="block whitespace-nowrap text-[1.5rem] font-semibold leading-none tracking-tight tabular-nums xl:text-[1.75rem]"
+                className="block whitespace-nowrap text-[1.625rem] font-semibold leading-[1.2] tracking-[-0.025em] tabular-nums lg:text-[1.875rem] xl:text-[2.125rem]"
                 style={{ color: tile.tone ?? "var(--nb-text)" }}
               >
                 {tile.value}
               </span>
-              <div className="mt-2 min-h-5 text-[13px] leading-snug tabular-nums text-[var(--nb-text-2)]">
+              <div className="mt-1 min-h-5 text-sm leading-snug tabular-nums text-[var(--nb-text-3)]">
                 {tile.note}
               </div>
             </dd>
           </div>
         ))}
       </dl>
-    </section>
+    </Section>
   );
 }
 
@@ -908,8 +824,8 @@ function DailyChart({
     .filter((value): value is number => value !== null);
 
   const narrow = width > 0 && width < 640;
-  const height = narrow ? 240 : 340;
-  const pad = { top: 16, right: 12, bottom: 30, left: narrow ? 52 : 72 };
+  const height = narrow ? 240 : 320;
+  const pad = { top: 16, right: 4, bottom: 30, left: narrow ? 52 : 72 };
   const plotW = Math.max(0, width - pad.left - pad.right);
   const plotH = height - pad.top - pad.bottom;
   const top = niceCeil(Math.max(0, ...values));
@@ -956,13 +872,14 @@ function DailyChart({
                   tick === 0 ? "var(--nb-border-strong)" : "var(--nb-border)"
                 }
                 strokeWidth={1}
+                strokeDasharray={tick === 0 ? undefined : "2 4"}
               />
               <text
-                x={pad.left - 8}
-                y={y(tick) + 4}
+                x={pad.left - (narrow ? 8 : 12)}
+                y={y(tick) + 4.5}
                 textAnchor="end"
                 fontSize={13}
-                fill="var(--nb-text-2)"
+                fill="var(--nb-text-3)"
               >
                 {metric.format(tick)}
               </text>
@@ -986,7 +903,7 @@ function DailyChart({
                   y={Math.min(y(point.value), y(0))}
                   width={barWidth}
                   height={Math.max(1, Math.abs(y(point.value) - y(0)))}
-                  rx={Math.min(3, barWidth / 2)}
+                  rx={Math.min(4, barWidth / 2)}
                   fill={point.value < 0 ? "var(--nb-down)" : "var(--nb-accent)"}
                   // 今日は途中なので、薄くして区別する。
                   opacity={point.row?.day === today ? 0.45 : 1}
@@ -1032,7 +949,7 @@ function DailyChart({
                 y={height - 9}
                 textAnchor="middle"
                 fontSize={13}
-                fill="var(--nb-text-2)"
+                fill="var(--nb-text-3)"
               >
                 {point.date}
               </text>
@@ -1055,7 +972,7 @@ function DailyChart({
       )}
       {hovered && hover !== null && (
         <div
-          className="pointer-events-none absolute top-2 z-10 rounded-md border border-[var(--nb-border-strong)] bg-[var(--nb-surface)] px-3 py-2 text-[13px] shadow-sm"
+          className="pointer-events-none absolute top-2 z-10 rounded-xl border border-[var(--nb-border)] bg-[var(--nb-bg)] px-3.5 py-2.5 text-[13px] shadow-[var(--nb-shadow)]"
           style={{
             left: Math.min(
               Math.max(8, pad.left + slot * (hover + 0.5) - 80),
@@ -1069,7 +986,7 @@ function DailyChart({
               : `${monthIndex}/${hovered.date}`}
             {hovered.row?.day === today ? "（途中）" : ""}
           </p>
-          <p className="mt-0.5 text-base font-bold tabular-nums">
+          <p className="mt-0.5 text-base font-semibold tabular-nums">
             {metric.label}{" "}
             {hovered.value === null ? "–" : metric.format(hovered.value)}
           </p>
@@ -1083,7 +1000,7 @@ function DailyChart({
 
 /** 0 の値は薄くする (表の中で、意味のある数字だけが目に入るように)。 */
 const quiet = (value: number | null | undefined) =>
-  value === 0 ? "text-[var(--nb-text-3)]" : "";
+  value === 0 ? "text-[var(--nb-faint)]" : "";
 
 function DailyTable({
   rows,
@@ -1112,15 +1029,17 @@ function DailyTable({
     "友達診断率",
     "シェア率",
   ];
+  // 枠や見出しの地色は使わず、行の下の細い線だけで区切る。左右の端はページの余白にそろえる。
   const cell =
-    "whitespace-nowrap border-b border-[var(--nb-border)] px-3.5 py-2.5 text-right tabular-nums";
+    "whitespace-nowrap border-b border-[var(--nb-border)] px-3 py-[11px] text-right tabular-nums last:pr-0";
   const first =
-    "sticky left-0 whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-surface)] px-3.5 py-2.5 text-left font-semibold tabular-nums";
+    "sticky left-0 whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-bg)] py-[11px] pl-0 pr-3 text-left font-medium tabular-nums group-hover:bg-[var(--nb-surface-2)]";
   // 新しい日を上に。
   const ordered = [...rows].reverse();
   return (
-    <Card
+    <Section
       title="日別実績"
+      plain
       hint="日付を押すと、その日の詳しい数字に移ります。広告費の「推定」は、配信計画の金額で補った分を含む日です"
     >
       <div className="overflow-x-auto">
@@ -1131,8 +1050,10 @@ function DailyTable({
                 <th
                   key={label}
                   scope="col"
-                  className={`whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-3.5 py-2 text-[13px] font-semibold text-[var(--nb-text-2)] ${
-                    index === 0 ? "sticky left-0 z-[1] text-left" : "text-right"
+                  className={`whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-bg)] px-3 py-2.5 text-[13px] font-medium text-[var(--nb-text-3)] last:pr-0 ${
+                    index === 0
+                      ? "sticky left-0 z-[1] pl-0 text-left"
+                      : "text-right"
                   }`}
                 >
                   {label}
@@ -1151,12 +1072,12 @@ function DailyTable({
                         ? "/internal/numbers"
                         : `/internal/numbers?day=${row.day}`
                     }
-                    className="underline decoration-[var(--nb-border-strong)] underline-offset-4 hover:decoration-[var(--nb-text)]"
+                    className="underline-offset-4 hover:underline"
                   >
                     {formatNumbersDay(row.day)}
                   </Link>
                   {isToday && (
-                    <span className="ml-2 rounded-sm border border-[var(--nb-border-strong)] px-1 py-px text-[13px] leading-none font-normal text-[var(--nb-text-2)]">
+                    <span className="ml-2 rounded-[5px] bg-[var(--nb-surface-2)] px-1.5 py-0.5 text-[13px] font-normal leading-none text-[var(--nb-text-2)]">
                       途中
                     </span>
                   )}
@@ -1164,7 +1085,7 @@ function DailyTable({
               );
               if (!row.amounts) {
                 return (
-                  <tr key={row.day}>
+                  <tr key={row.day} className="group">
                     {date}
                     <td
                       colSpan={head.length - 1}
@@ -1185,12 +1106,12 @@ function DailyTable({
               }
               const profit = row.economics?.profit ?? null;
               return (
-                <tr key={row.day} className="hover:bg-[var(--nb-surface-2)]">
+                <tr key={row.day} className="group hover:bg-[var(--nb-surface-2)]">
                   {date}
                   <td className={`${cell} font-semibold`}>
                     {numberFormat.format(row.amounts.diagnoses)}
                   </td>
-                  <td className={`${cell} font-semibold ${quiet(row.amounts.net)}`}>
+                  <td className={`${cell} ${quiet(row.amounts.net)}`}>
                     {signedYen(row.amounts.net)}
                   </td>
                   <td
@@ -1235,7 +1156,7 @@ function DailyTable({
                     }}
                   >
                     {profit === null ? (
-                      <span className="font-medium text-[var(--nb-text-3)]">
+                      <span className="font-normal text-[var(--nb-text-3)]">
                         –
                       </span>
                     ) : (
@@ -1258,11 +1179,11 @@ function DailyTable({
           </tbody>
         </table>
         {ordered.length === 0 && (
-          <p className="px-4 py-10 text-center text-base text-[var(--nb-text-2)]">
+          <p className="py-12 text-center text-base text-[var(--nb-text-2)]">
             この月の数字は、まだありません
           </p>
         )}
       </div>
-    </Card>
+    </Section>
   );
 }
