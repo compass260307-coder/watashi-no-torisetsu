@@ -23,9 +23,37 @@ export const RESULT_INVITE_CARD_DELAY_MS = 5000;
  */
 export const RESULT_INVITE_CARD_SOURCE = "me_read_end";
 
-const SHOWN_PREFIX = "wt_result_invite_card_shown_v1:";
+/**
+ * 2回目 (あとでもう一度結果ページを開いた人に出す分) の surface / source。
+ * 1回目と分けて数えられるように、別の値にする。
+ */
+export const RESULT_INVITE_CARD_AGAIN_SOURCE = "me_read_end_again";
 
-/** 1人1回だけ出すための目印 (owner_token ごと)。 */
+/**
+ * 2回目を出してよくなるまでの時間 (1回目を出してから)。
+ * 2026-11-25: 1人1回 → 2回まで。友達の回答が0人のまま戻ってきた人に、もう一度だけ出す。
+ * 同じ訪問の中で続けて出さないよう、1回目から30分以上あいた訪問だけを対象にする。
+ */
+export const RESULT_INVITE_CARD_AGAIN_AFTER_MS = 30 * 60 * 1000;
+
+const SHOWN_PREFIX = "wt_result_invite_card_shown_v1:";
+const SHOWN_AT_PREFIX = "wt_result_invite_card_shown_at_v1:";
+const AGAIN_PREFIX = "wt_result_invite_card_again_v1:";
+
+/** 1回目を出した目印 (owner_token ごと)。 */
 export function resultInviteCardShownKey(ownerToken: string): string {
   return `${SHOWN_PREFIX}${ownerToken}`;
+}
+
+/**
+ * 1回目を出した時刻 (ミリ秒)。2026-11-25 より前に出した人には無い
+ * (その人たちは、次に開いたときから2回目の対象にする)。
+ */
+export function resultInviteCardShownAtKey(ownerToken: string): string {
+  return `${SHOWN_AT_PREFIX}${ownerToken}`;
+}
+
+/** 2回目を出した目印 (owner_token ごと)。3回目は出さない。 */
+export function resultInviteCardAgainKey(ownerToken: string): string {
+  return `${AGAIN_PREFIX}${ownerToken}`;
 }
