@@ -1456,6 +1456,9 @@ async function MeResultPageContent({
                               previewType !== null)) && (
                               <Link
                                 href={withTakoEntry(`${localePrefix}/tako/${encodeURIComponent(token)}`, "me_pill")}
+                                // 入口ごとにURLが違う (?from=) ため、先読みもリンクの数だけ別々に走る。
+                                // 上部の固定ヘッダーの先読みだけ残し、ここでは止める (押したときに読み込む)。
+                                prefetch={false}
                                 className="inline-flex items-center gap-2 rounded-full border border-[#E3E6F5] bg-white px-6 py-3 text-[14px] font-black text-[#2E2E5C] shadow-[0_1px_4px_rgba(46,46,92,0.08)] transition-colors hover:bg-[#F4F4FE]"
                               >
                                 <svg
@@ -1928,6 +1931,9 @@ async function MeResultPageContent({
               </p>
               <Link
                 href={withTakoEntry(`${localePrefix}/tako/${encodeURIComponent(token)}`, "me_friend_section")}
+                // 入口ごとにURLが違う (?from=) ため、先読みもリンクの数だけ別々に走る。
+                // 上部の固定ヘッダーの先読みだけ残し、ここでは止める (押したときに読み込む)。
+                prefetch={false}
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-6 py-3 text-[14px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
                 style={resultActionButtonStyle}
               >
