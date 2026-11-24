@@ -19,6 +19,10 @@ const FONT_STACK =
 const NAVY = "#2E2E5C";
 const SORA = "#5B5BEF";
 const TRACK = "#E6E6FB"; // Sora ブルーの淡ティント (トラック / 空円)
+// 完全版の購入後の準備画面 (theme="premium") の金色。宝箱の絵の金に合わせる。
+const GOLD = "#D9A43A";
+const GOLD_TRACK = "#F6E7C1";
+const GOLD_FILL = "linear-gradient(90deg, #E8B84A, #F6D57A, #E8B84A)";
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 function subscribeToReducedMotion(onChange: () => void) {
@@ -85,6 +89,8 @@ export function DiagnosisAnalyzingLoader({
   slidesLabel,
   startDelayMs = 0,
   fontFamily = FONT_STACK,
+  theme = "default",
+  header,
 }: {
   messages?: string[];
   steps?: string[];
@@ -102,7 +108,14 @@ export function DiagnosisAnalyzingLoader({
   // 読み込みを始めたいときに指定する。totalMs は、この待ち時間を除いた読み込みの長さ。
   startDelayMs?: number;
   fontFamily?: string;
+  // "premium": 完全版の購入後の準備画面。背景・進行バー・チェックを金色にする。
+  theme?: "default" | "premium";
+  // スライドの上に出す見出し (準備画面の「完全版を準備しています」など)。
+  header?: React.ReactNode;
 } = {}) {
+  const premium = theme === "premium";
+  const accent = premium ? GOLD : SORA;
+  const track = premium ? GOLD_TRACK : TRACK;
   const [messageIndex, setMessageIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState(0);
   const [videoFailed, setVideoFailed] = useState(false);
@@ -167,9 +180,15 @@ export function DiagnosisAnalyzingLoader({
 
   return (
     <div
-      className="flex min-h-screen flex-1 flex-col items-center justify-center overflow-x-hidden bg-[#FCFCFC] px-5 py-10"
-      style={{ fontFamily }}
+      className="flex min-h-screen flex-1 flex-col items-center justify-center overflow-x-hidden px-5 py-10"
+      style={{
+        fontFamily,
+        background: premium
+          ? "radial-gradient(120% 70% at 50% 0%, #FFF1CC 0%, #FFF9EC 45%, #FFFDF8 100%)"
+          : "#FCFCFC",
+      }}
     >
+      {header}
       {/* 動画と poster の両方がアルファ付き。元の表示サイズと余白を維持する。 */}
       {slides ? (
         <AnalyzingSlideDeck slides={slides} index={slideIndex} label={slidesLabel} />
@@ -213,13 +232,13 @@ export function DiagnosisAnalyzingLoader({
       {/* Progress bar (淡ブルートラック + Sora ブルー塗り) */}
       <div
         className="mb-6 h-1.5 w-72 max-w-full overflow-hidden rounded-full"
-        style={{ backgroundColor: TRACK }}
+        style={{ backgroundColor: track }}
         aria-hidden
       >
         <div
           className="animate-progress-20s h-full rounded-full"
           style={{
-            backgroundColor: SORA,
+            background: premium ? GOLD_FILL : SORA,
             animationDuration: `${totalMs}ms`,
             animationDelay: `${startDelayMs}ms`,
             animationFillMode: "both",
@@ -240,7 +259,7 @@ export function DiagnosisAnalyzingLoader({
               {isDone ? (
                 <span
                   className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white"
-                  style={{ backgroundColor: SORA }}
+                  style={{ backgroundColor: accent }}
                 >
                   <svg
                     width="11"
@@ -260,14 +279,14 @@ export function DiagnosisAnalyzingLoader({
                 <span
                   className="inline-flex h-5 w-5 shrink-0 animate-pulse rounded-full border-2"
                   style={{
-                    borderColor: SORA,
-                    backgroundColor: "rgba(91,91,239,0.15)",
+                    borderColor: accent,
+                    backgroundColor: premium ? "rgba(217,164,58,0.15)" : "rgba(91,91,239,0.15)",
                   }}
                 />
               ) : (
                 <span
                   className="inline-flex h-5 w-5 shrink-0 rounded-full border-2 bg-white"
-                  style={{ borderColor: TRACK }}
+                  style={{ borderColor: track }}
                 />
               )}
               <span
@@ -1374,6 +1393,164 @@ function EntryVisual({
   );
 }
 
+// 完全版の購入後の準備画面: 左の宝箱から、ひらいた中身の札が上から順に飛び出す。
+const UNLOCK_ITEM_AT_MS = 550;
+const UNLOCK_ITEM_GAP_MS = 420;
+
+function GoldCheck({ size = 18 }: { size?: number }) {
+  return (
+    <span
+      className="inline-flex shrink-0 items-center justify-center rounded-full text-white"
+      style={{ width: size, height: size, background: GOLD }}
+      aria-hidden
+    >
+      <svg width={size * 0.6} height={size * 0.6} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    </span>
+  );
+}
+
+function Sparkle({ size, color = "#F2C14E" }: { size: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
+      <path d="M12 1.5 14.2 9.8 22.5 12 14.2 14.2 12 22.5 9.8 14.2 1.5 12 9.8 9.8Z" fill={color} />
+    </svg>
+  );
+}
+
+function UnlockVisual({
+  visual,
+}: {
+  visual: Extract<AnalyzingSlide["visual"], { kind: "unlock" }>;
+}) {
+  const items = visual.items.slice(0, 4);
+  const rowHeight = 26;
+  const rowGap = 7;
+  const listTop = (164 - (items.length * rowHeight + (items.length - 1) * rowGap)) / 2;
+  return (
+    <div className="relative h-[164px] w-[316px] shrink-0">
+      {/* 宝箱のうしろの光 */}
+      <div
+        className="animate-fade-in absolute left-[2px] top-[10px] h-[144px] w-[144px] rounded-full"
+        style={{ background: "radial-gradient(circle, rgba(255,214,110,0.75) 0%, rgba(255,214,110,0) 68%)" }}
+        aria-hidden
+      />
+      <div className="absolute left-[14px] top-[22px] h-[120px] w-[120px]">
+        <Pop delay={100} className="h-full w-full">
+          <SmoothImage
+            src={visual.art}
+            alt=""
+            width={240}
+            height={240}
+            fadeIn={false}
+            className="h-full w-full object-contain"
+          />
+        </Pop>
+      </div>
+      <div className="absolute left-[8px] top-[14px]">
+        <Pop delay={350}>
+          <Sparkle size={14} />
+        </Pop>
+      </div>
+      <div className="absolute left-[124px] top-[30px]">
+        <Pop delay={500}>
+          <Sparkle size={11} />
+        </Pop>
+      </div>
+      {items.map((item, i) => (
+        <div
+          key={item}
+          className="absolute left-[146px]"
+          style={{ top: listTop + i * (rowHeight + rowGap) }}
+        >
+          <Pop delay={UNLOCK_ITEM_AT_MS + i * UNLOCK_ITEM_GAP_MS} className="origin-left">
+            <span
+              className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-white py-1 pl-1 pr-3 text-[12px] font-black leading-none shadow-[0_3px_10px_rgba(154,106,36,0.16)]"
+              style={{ color: NAVY, height: rowHeight }}
+            >
+              <GoldCheck />
+              {item}
+            </span>
+          </Pop>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// 完全版の購入後の準備画面: いつものキャラの顔が、矢印のあとで「あなた専用」のキャラに変わる。
+function UpgradeVisual({
+  visual,
+}: {
+  visual: Extract<AnalyzingSlide["visual"], { kind: "upgrade" }>;
+}) {
+  return (
+    <div className="relative h-[164px] w-[316px] shrink-0">
+      <At x={66} top={34}>
+        <Pop delay={100} className="flex flex-col items-center">
+          <Face src={visual.beforeFace} size={64} ring="#FFFFFF" />
+          <span
+            className="mt-3 whitespace-nowrap rounded-full bg-white/90 px-2.5 py-1.5 text-[11px] font-black leading-none"
+            style={{ color: `${NAVY}99` }}
+          >
+            {visual.beforeLabel}
+          </span>
+        </Pop>
+      </At>
+      <At x={140} top={56}>
+        <Pop delay={650}>
+          <svg width="34" height="24" viewBox="0 0 34 24" fill="none" aria-hidden>
+            <path d="M3 12h24M20 4l8 8-8 8" stroke={GOLD} strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </Pop>
+      </At>
+      {/* 専用キャラのうしろの光 */}
+      <div
+        className="animate-fade-in absolute left-[166px] top-[0px] h-[150px] w-[150px] rounded-full"
+        style={{
+          background: "radial-gradient(circle, rgba(255,214,110,0.8) 0%, rgba(255,214,110,0) 68%)",
+          animationDelay: "900ms",
+          animationFillMode: "both",
+        }}
+        aria-hidden
+      />
+      <div className="absolute left-[184px] top-[6px] h-[120px] w-[110px]">
+        <Pop delay={1000} className="h-full w-full">
+          <SmoothImage
+            src={visual.afterArt}
+            alt=""
+            width={220}
+            height={240}
+            fadeIn={false}
+            className="h-full w-full object-contain"
+          />
+        </Pop>
+      </div>
+      <div className="absolute left-[176px] top-[18px]">
+        <Pop delay={1350}>
+          <Sparkle size={15} />
+        </Pop>
+      </div>
+      <div className="absolute left-[290px] top-[62px]">
+        <Pop delay={1550}>
+          <Sparkle size={11} />
+        </Pop>
+      </div>
+      <At x={239} top={130}>
+        <Pop delay={1700}>
+          <span
+            className="block whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-black leading-none text-white shadow-[0_3px_10px_rgba(154,106,36,0.3)]"
+            style={{ background: "linear-gradient(135deg, #E8B84A, #C98F2A)" }}
+          >
+            {visual.afterLabel}
+          </span>
+        </Pop>
+      </At>
+    </div>
+  );
+}
+
 // 文は1スライド1つ・1スタイル。highlight に一致する部分だけ色を変える。
 function SlideText({ text, highlight }: { text: string; highlight?: string }) {
   const at = highlight ? text.indexOf(highlight) : -1;
@@ -1398,6 +1575,7 @@ function slideFaces(slide: AnalyzingSlide): string[] {
   if (v.kind === "quiz") return [v.friendFace];
   if (v.kind === "results") return [v.face];
   if (v.kind === "deliver") return [v.recipientFace];
+  if (v.kind === "upgrade") return [v.beforeFace];
   return [];
 }
 
@@ -1520,6 +1698,10 @@ function AnalyzingSlideDeck({
                 <QuestionsVisual visual={slide.visual} />
               ) : slide.visual.kind === "welcome" ? (
                 <WelcomeVisual visual={slide.visual} />
+              ) : slide.visual.kind === "unlock" ? (
+                <UnlockVisual visual={slide.visual} />
+              ) : slide.visual.kind === "upgrade" ? (
+                <UpgradeVisual visual={slide.visual} />
               ) : (
                 <GapVisual visual={slide.visual} />
               )}

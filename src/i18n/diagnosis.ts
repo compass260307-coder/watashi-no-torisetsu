@@ -188,6 +188,24 @@ export interface AnalyzingSlide {
         rowLabels?: [string, string, string];
       }
     | {
+        // 完全版の購入後の準備画面用。左の宝箱から、ひらいた中身の札が順に飛び出す図。
+        kind: "unlock";
+        // 宝箱の絵 (public 以下のパス)。
+        art: string;
+        // 札の文言 (4つまで)。上から順に出る。
+        items: string[];
+      }
+    | {
+        // 完全版の購入後の準備画面用。いつものキャラの顔が、あなた専用のキャラに変わる図。
+        kind: "upgrade";
+        // 左: いつものキャラの顔と札。
+        beforeFace: string;
+        beforeLabel: string;
+        // 右: あなた専用のキャラの絵と札。
+        afterArt: string;
+        afterLabel: string;
+      }
+    | {
         kind: "entry";
         // 結果ページの見立て (顔 + 見出し)。
         selfFace: string;
