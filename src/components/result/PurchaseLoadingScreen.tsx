@@ -81,15 +81,6 @@ const INITIAL_POLL_INTERVAL_MS = 2000;
 const POLL_BACKOFF_FACTOR = 1.5;
 const MAX_POLL_INTERVAL_MS = 10_000;
 
-// 見出しはお礼の1行だけ (2026-11-24 本人指示でシンプルに)。準備中であることは下の進行バーで伝わる。
-function Header() {
-  return (
-    <p className="mb-6 text-center text-[20px] font-black leading-[1.5] text-[#2E2E5C]">
-      ご購入ありがとうございます！
-    </p>
-  );
-}
-
 export function PurchaseLoadingScreen({
   ownerToken,
   waitingForAccess,
@@ -179,7 +170,6 @@ export function PurchaseLoadingScreen({
     >
       <DiagnosisAnalyzingLoader
         theme="premium"
-        header={<Header />}
         steps={STEPS}
         totalMs={durationMs}
         slides={SLIDES}
