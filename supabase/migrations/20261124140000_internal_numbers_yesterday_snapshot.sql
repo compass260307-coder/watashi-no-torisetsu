@@ -7,10 +7,11 @@
 -- ここでは次のように変える。数え方は変えていない。
 --   * 終わった日 (前日を含む) は、控えがあれば控えから出す。「同じ時刻まで」の小計
 --     (診断数・売上) だけは、分単位で切るため元の表から数える (1 日分の範囲を索引で読むだけ)。
---   * 前日の控えは、毎時 40 分の定期実行が 1 時間に 1 回作り直す (これまでは画面が作り直していた)。
---     友達診断・シェア・返金は、最大 1 時間ほど古い値になる。
---   * 前日の控えが 3 時間より古い (定期実行が止まっているなど) か、まだ無いときは、
---     これまでどおり元の表から数えて控え直す。
+--   * 前日の控えは、ほかの日と同じく定期実行が 1 日 1 回 (日付が変わった直後の 0:40) 作る
+--     (これまでは画面が 1 時間に 1 回作り直していた)。前日の友達診断・シェア・返金・流入元ごとの
+--     購入者は、控えを作った時点の値になる (あとから増えた分は、翌日以降の作り直しで入る)。
+--     定期実行の回数は増やさない (2026-11-24 本人の指定)。
+--   * 前日の控えがまだ無いとき (0:00〜0:40 など) は、これまでどおり元の表から数えて控える。
 
 begin;
 
@@ -293,7 +294,7 @@ $function$;
 -- 1 日分の数字を、できるだけ速い方法で用意する。
 --   * 今日: 元の表を直接数える。
 --   * 終わった日: 控えがあれば控えから出す。「同じ時刻まで」の小計だけ元の表から数える。
---     前日の控えは定期実行が 1 時間に 1 回作り直す。3 時間より古ければ使わずに数え直す。
+--     控えの古さは問わない (数え直しは定期実行が 1 日 1 回受け持つ)。
 --   * 控えが無いとき: 前日と「同じ時刻まで」は元の表から数える (前日は控える)。
 --     2 日以上前の 1 日分は数えて控える。
 -- p_deadline を過ぎていて控えも無いときは null を返す (呼び出し側が次回に回す)。
@@ -315,22 +316,19 @@ declare
   v_day_end timestamptz := (p_day::timestamp at time zone 'Asia/Tokyo') + interval '1 day';
   v_full boolean := p_cut >= v_day_end;
   v_payload jsonb;
-  v_computed_at timestamptz;
   v_block jsonb;
 begin
   if p_day >= p_today then
     return internal_numbers_day(p_day, p_cut, p_now, p_locale, true);
   end if;
 
-  select s.payload, s.computed_at
-    into v_payload, v_computed_at
+  select s.payload
+    into v_payload
     from metrics_day_snapshots as s
    where s.day = p_day
      and s.locale = p_locale;
 
-  if v_payload is not null
-    and (p_day < p_today - 1 or v_computed_at >= p_now - interval '3 hours')
-  then
+  if v_payload is not null then
     if not v_full then
       v_payload := v_payload || jsonb_build_object(
         'until_cut', internal_numbers_until_cut(p_day, p_cut, p_locale)
@@ -371,101 +369,6 @@ begin
     set payload = excluded.payload,
         computed_at = excluded.computed_at;
   return v_block;
-end;
-$function$;
-
--- 定期実行の 1 単位 (第5段と同じ。前日の控えを 1 時間に 1 回作り直す条件だけ足した)。
-create or replace function public.metrics_nightly_step(p_skip text[] default '{}')
-returns jsonb
-language plpgsql
-volatile
-security definer
-set search_path = public, pg_temp
-as $function$
-declare
-  c_locale constant text := 'ja';
-  v_today date := (clock_timestamp() at time zone 'Asia/Tokyo')::date;
-  v_today_start timestamptz := v_today::timestamp at time zone 'Asia/Tokyo';
-  v_day date;
-  v_t timestamptz := clock_timestamp();
-begin
-  -- 1. イベント (ファネル)。前日だけ (過去の日はさかのぼらない。古い日は元のイベントの行数が多く、まとめて読むと DB の負荷になる)。
-  select d::date
-    into v_day
-    from generate_series(v_today - 1, v_today - 1, interval '-1 day') as d
-   where not (('events:' || d::date) = any (p_skip))
-     and not exists (
-       select 1 from metrics_event_days as e
-        where e.day = d::date
-          and not e.is_partial
-          and e.computed_through >= (d::date::timestamp at time zone 'Asia/Tokyo')
-                                    + interval '1 day 5 minutes'
-     )
-   order by d desc
-   limit 1;
-
-  if v_day is not null then
-    begin
-      -- 14 日より前の日は、セッションの控え (metrics_event_session_seen) が消えている。
-      -- 途中から続きを数えるとセッション数が足りなくなるので、最初から数え直す。
-      if v_day < v_today - 13 then
-        delete from metrics_event_days where day = v_day;
-        delete from metrics_event_session_seen where day = v_day;
-      end if;
-      -- 1 回の呼び出しで最後まで数えさせる (既定は 2 秒で区切る)。
-      perform set_config('metrics.refresh_budget_ms', '3600000', true);
-      perform metrics_refresh_events(v_day);
-      return jsonb_build_object(
-        'kind', 'events', 'day', v_day,
-        'ms', (extract(epoch from clock_timestamp() - v_t) * 1000)::integer
-      );
-    exception when others then
-      return jsonb_build_object(
-        'kind', 'events', 'day', v_day, 'code', sqlstate, 'message', sqlerrm
-      );
-    end;
-  end if;
-
-  -- 2. 控え。
-  select t.day
-    into v_day
-    from (
-      -- 前日〜7 日前 (友達診断・シェアがまだ動く): 今日まだ数え直していなければ。
-      select d::date as day, 0 as priority
-        from generate_series(v_today - 1, v_today - 7, interval '-1 day') as d
-      union all
-      -- 32 日前: シェアの集計期間 (31 日) が終わったあと 1 回。
-      select v_today - 32, 1
-    ) as t
-    left join metrics_day_snapshots as s
-      on s.day = t.day and s.locale = c_locale
-   where t.day >= date '2026-01-01'
-     and not (('snapshot:' || t.day) = any (p_skip))
-     and (
-       s.day is null
-       or (t.priority = 0 and s.computed_at < v_today_start)
-       -- 前日は画面が控えから出すので、1 時間に 1 回作り直す (毎時 40 分の実行ごと)。
-       or (t.day = v_today - 1 and s.computed_at < clock_timestamp() - interval '50 minutes')
-       or (t.priority = 1
-           and s.computed_at < (t.day::timestamp at time zone 'Asia/Tokyo') + interval '32 days')
-     )
-   order by t.priority, t.day desc
-   limit 1;
-
-  if v_day is not null then
-    begin
-      return jsonb_build_object(
-        'kind', 'snapshot', 'day', v_day,
-        'ms', metrics_snapshot_day(v_day, c_locale)
-      );
-    exception when others then
-      return jsonb_build_object(
-        'kind', 'snapshot', 'day', v_day, 'code', sqlstate, 'message', sqlerrm
-      );
-    end;
-  end if;
-
-  return null;
 end;
 $function$;
 
