@@ -454,6 +454,10 @@ ${timingBasis}
 - chosen: 전체 점수를 함께 봅니다. subline의 대표 요인에는 haichi와 같은 "${plan.topFactorPct}"를 사용합니다. 예시는 "${plan.topFactorPct} × {별 요소 하나} ↔ {별 요소 둘}"입니다. subline 다음에 ①, ②, ③, ④ 시기 순서로 구성합니다. ④는 반드시 위의 [chosen 시기 근거]를 따르고 서기 연도와 계절을 사용한 넓은 범위의 행동 지침으로 씁니다. "올해", "내년" 같은 상대 표현과 정확한 날짜는 쓰지 않습니다. body는 약 850자에서 1100자로 씁니다.
 - grace: 행동이나 숙제 없이 마무리의 여운만 남기고 subline은 빈 문자열로 둡니다. body는 약 250자에서 400자로 씁니다.
 
+## 출력 전 점검(반드시 수행)
+- 전체 글에서 "일지도 모릅니다", "일 수 있습니다", "것 같습니다", "듯합니다", "듯 보입니다", "것으로 보입니다", "아마", "추측됩니다"를 찾아, 있으면 단정하는 문장으로 고칩니다. 시기나 앞으로의 이야기도 "~할 것 같습니다"가 아니라 "~할 시기입니다", "~해 보세요"처럼 씁니다.
+- haichi, kokoro, chosen에서는 사용할 수 있는 별 배치 요소 중 천체 두 개 이상을 별자리 이름과 함께 들고, 그 관계가 이 사람의 무엇을 만들었는지 씁니다.
+
 JSON만 출력해 주세요.`;
   }
 
@@ -479,7 +483,7 @@ ${timingBasis}
 
 Personality quadrant: ${plan.quadrant}
 
-Write haichi and kokoro in roughly 300–450 words each. Write chosen in roughly 400–550 words and ground its broad seasonal timing in the supplied basis. Write grace in roughly 100–180 words. In chosen's subline, use the same leading factor as haichi: ${plan.topFactorPct}. Keep explanations personal and concrete, not textbook-like. Return JSON only.`;
+Write haichi and kokoro in roughly 300–450 words each. Write chosen in roughly 400–550 words and ground its broad seasonal timing in the supplied basis. Write grace in roughly 100–180 words. In chosen's subline, use the same leading factor as haichi: ${plan.topFactorPct}. Keep explanations personal and concrete, not textbook-like. Before answering, remove every hedge ("might", "maybe", "perhaps", "possibly", "probably") and state each point plainly. Return JSON only.`;
   }
 
   if (isId) {
@@ -503,7 +507,7 @@ ${timingBasis}
 
 Kuadran kepribadian: ${plan.quadrant}
 
-Tulis haichi dan kokoro sekitar 300–450 kata. Tulis chosen sekitar 400–550 kata dan dasarkan rentang waktunya pada data yang diberikan. Tulis grace sekitar 100–180 kata. Dalam subline chosen, gunakan faktor utama yang sama dengan haichi: ${plan.topFactorPct}. Buat penjelasan pribadi dan konkret, bukan seperti buku teks. Kembalikan JSON saja.`;
+Tulis haichi dan kokoro sekitar 300–450 kata. Tulis chosen sekitar 400–550 kata dan dasarkan rentang waktunya pada data yang diberikan. Tulis grace sekitar 100–180 kata. Dalam subline chosen, gunakan faktor utama yang sama dengan haichi: ${plan.topFactorPct}. Buat penjelasan pribadi dan konkret, bukan seperti buku teks. Sebelum menjawab, hapus semua kata ragu ("mungkin", "barangkali", "bisa jadi", "kemungkinan") dan nyatakan setiap poin dengan tegas. Kembalikan JSON saja.`;
   }
 
   return `以下のデータで、システムの指示どおり JSON のみで鑑定を書いてください。
@@ -533,6 +537,11 @@ ${timingBasis}
 - kokoro: 主語=協調性・外向性。担当=恋と距離の起源(傾向は書かない)。subline→①②③。字数450〜550。冗長な占星術説明を削り断定を増やす。
 - chosen: 主語=全体。subline の因子名%は代表として「${plan.topFactorPct}」(乖離最大の因子・haichiと同じ)を使う。例「${plan.topFactorPct} × {星の要素1} ↔ {星の要素2}」。subline→①②③④(時期)。④は上記[chosen ④時期の根拠(トランジット)]の近い転機に必ず基づき、絶対表記(西暦年+季節)で幅を持たせた行動指示にする(相対表記「今年/来年」やピンポイント日付は禁止)。字数550〜650。
 - grace: 締めの余韻のみ・行動なし・subline は ""。字数150〜250。
+
+## 出力前の点検(必ず行う)
+- 全文から「でしょう」「だろう」「かもしれ」「と思われ」「ではないでしょうか」を探し、見つけたら言い切りの文に書き換える。時期や未来の話も「〜するでしょう」ではなく「〜する時期です」「〜してください」のように書く。
+- haichi・kokoro・chosen の②では、利用可能なホロスコープ要素から天体を2つ以上、星座名とともに挙げ、その関係があなたの何を作ったかを書く。
+- 各章の字数が指定の範囲の中ほど(haichi・kokoro は500字前後、chosen は600字前後、grace は200字前後)に届いているか確かめ、足りない章には、その人の日常で起きる具体的な場面を足す。一般論や言い換えで水増ししない。
 
 JSON を出力してください。`;
 }
