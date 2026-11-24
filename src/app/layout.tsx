@@ -4,7 +4,10 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
 import { LocaleUiBoundary } from "@/components/LocaleUiBoundary";
 import { MEASUREMENT_INIT_SCRIPT } from "@/lib/verified-conversions";
-import { isThirdPartyMeasurementEnabled } from "@/lib/third-party-measurement";
+import {
+  isThirdPartyMeasurementEnabled,
+  MEASUREMENT_EXCLUDED_PATH_JS,
+} from "@/lib/third-party-measurement";
 import { GLOBAL_SITE_NAME, JA_SITE_NAME } from "@/lib/locale-seo";
 import { STATIC_ASSET_RECOVERY_SCRIPT } from "@/lib/static-asset-recovery.mjs";
 import type { Metadata } from "next";
@@ -14,7 +17,8 @@ import { Suspense } from "react";
 import "./globals.css";
 
 const GOOGLE_TAG_MANAGER_ID = "GTM-K39CJGCF";
-const GOOGLE_TAG_MANAGER_SCRIPT = `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+// 社内向けページ (/internal/) では読み込まない (MEASUREMENT_EXCLUDED_PATH)。
+const GOOGLE_TAG_MANAGER_SCRIPT = `if(!${MEASUREMENT_EXCLUDED_PATH_JS})(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
 j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
