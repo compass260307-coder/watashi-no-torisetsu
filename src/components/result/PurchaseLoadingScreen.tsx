@@ -3,7 +3,7 @@
 // 完全版 (日本語 Web) を買った直後の「完全版の準備画面」。設定と A/B は src/lib/purchase-loading.ts。
 //
 // - 自己診断の解析待ち画面 (DiagnosisAnalyzingLoader) を金色の豪華版 (theme="premium") で使い、
-//   20秒 (1枚5秒) のあいだ、結果アップグレードの手順 (3枚) と「完全版でできること」(1枚) を流す。
+//   20秒 (1枚5秒) のあいだ、「結果をアップグレードできる」(1枚) とそのやり方 (3枚) を流す。
 // - 権利がもう反映済みでも、20秒は必ず見せる。終わったら ?paid= を外して自己診断結果を出す。
 // - 戻った時点でまだ反映されていない (webhook 待ち) ときは、裏で反映を確かめる。
 //   20秒たっても反映されていなければ、今までの「決済処理中...」(PaidUnlockWatcher) に引き継ぐ。
@@ -18,9 +18,21 @@ import { startVisiblePolling } from "@/lib/visible-polling";
 
 export const PURCHASE_LOADING_MS = 20_000; // 4枚 × 5秒 (2026-11-24 本人指示で15秒から延長)
 
-// 結果アップグレードの手順を3枚 + 完全版でできることを1枚 (2026-11-24 本人指示)。
+// 1枚目で「結果をアップグレードできる」と伝え、そのやり方を3枚で見せる (2026-11-24 本人指示)。
 // 値段の手順は入れない (本人指示)。1枚5秒なので、文は短くする。
 const SLIDES: AnalyzingSlide[] = [
+  {
+    visual: {
+      kind: "upgrade",
+      beforeFace: "/characters/face/penguin_N.webp",
+      beforeLabel: "いつものキャラ",
+      afterArt: "/result-upgrade/benefit-character.webp",
+      afterLabel: "あなた専用",
+    },
+    tint: "#F1ECFA",
+    text: "完全版を購入した方はさらに、\n結果をアップグレードできるよ！",
+    highlight: "結果をアップグレード",
+  },
   {
     visual: {
       kind: "upgradeButton",
@@ -47,25 +59,15 @@ const SLIDES: AnalyzingSlide[] = [
   },
   {
     visual: {
-      kind: "upgrade",
-      beforeFace: "/characters/face/penguin_N.webp",
-      beforeLabel: "いつものキャラ",
-      afterArt: "/result-upgrade/benefit-character.webp",
-      afterLabel: "あなた専用",
-    },
-    tint: "#F1ECFA",
-    text: "Aliceが、あなた専用の\nキャラと鑑定書を作るよ！",
-    highlight: "あなた専用",
-  },
-  {
-    visual: {
-      kind: "unlock",
-      art: "/result-upgrade/treasure-open.webp",
-      items: ["友達診断の結果", "相性診断", "運命の設計図", "Aliceとタロット"],
+      kind: "upgradeResult",
+      characterArt: "/result-upgrade/benefit-character.webp",
+      characterLabel: "専用キャラ",
+      bookArt: "/result-upgrade/benefit-book.webp",
+      bookLabel: "鑑定書",
     },
     tint: "#FFF4DA",
-    text: "完全版では、ほかにも\nこんなことができるよ！",
-    highlight: "ほかにも",
+    text: "Aliceが、あなた専用の\nキャラと鑑定書を作るよ！",
+    highlight: "あなた専用",
   },
 ];
 

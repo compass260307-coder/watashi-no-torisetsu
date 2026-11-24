@@ -188,12 +188,12 @@ export interface AnalyzingSlide {
         rowLabels?: [string, string, string];
       }
     | {
-        // 完全版の購入後の準備画面用。左の宝箱から、ひらいた中身の札が順に飛び出す図。
-        kind: "unlock";
-        // 宝箱の絵 (public 以下のパス)。
-        art: string;
-        // 札の文言 (4つまで)。上から順に出る。
-        items: string[];
+        // 完全版の購入後の準備画面用 (結果アップグレードの手順)。できあがる専用キャラと鑑定書が並ぶ図。
+        kind: "upgradeResult";
+        characterArt: string;
+        characterLabel: string;
+        bookArt: string;
+        bookLabel: string;
       }
     | {
         // 完全版の購入後の準備画面用 (結果アップグレードの手順)。結果ページの一番下の金色のボタンを指す図。

@@ -1393,89 +1393,11 @@ function EntryVisual({
   );
 }
 
-// 完全版の購入後の準備画面: 左の宝箱から、ひらいた中身の札が上から順に飛び出す。
-const UNLOCK_ITEM_AT_MS = 550;
-const UNLOCK_ITEM_GAP_MS = 420;
-
-function GoldCheck({ size = 18 }: { size?: number }) {
-  return (
-    <span
-      className="inline-flex shrink-0 items-center justify-center rounded-full text-white"
-      style={{ width: size, height: size, background: GOLD }}
-      aria-hidden
-    >
-      <svg width={size * 0.6} height={size * 0.6} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.6" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="20 6 9 17 4 12" />
-      </svg>
-    </span>
-  );
-}
-
 function Sparkle({ size, color = "#F2C14E" }: { size: number; color?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden>
       <path d="M12 1.5 14.2 9.8 22.5 12 14.2 14.2 12 22.5 9.8 14.2 1.5 12 9.8 9.8Z" fill={color} />
     </svg>
-  );
-}
-
-function UnlockVisual({
-  visual,
-}: {
-  visual: Extract<AnalyzingSlide["visual"], { kind: "unlock" }>;
-}) {
-  const items = visual.items.slice(0, 4);
-  const rowHeight = 26;
-  const rowGap = 7;
-  const listTop = (164 - (items.length * rowHeight + (items.length - 1) * rowGap)) / 2;
-  return (
-    <div className="relative h-[164px] w-[316px] shrink-0">
-      {/* 宝箱のうしろの光 */}
-      <div
-        className="animate-fade-in absolute left-[2px] top-[10px] h-[144px] w-[144px] rounded-full"
-        style={{ background: "radial-gradient(circle, rgba(255,214,110,0.75) 0%, rgba(255,214,110,0) 68%)" }}
-        aria-hidden
-      />
-      <div className="absolute left-[14px] top-[22px] h-[120px] w-[120px]">
-        <Pop delay={100} className="h-full w-full">
-          <SmoothImage
-            src={visual.art}
-            alt=""
-            width={240}
-            height={240}
-            fadeIn={false}
-            className="h-full w-full object-contain"
-          />
-        </Pop>
-      </div>
-      <div className="absolute left-[8px] top-[14px]">
-        <Pop delay={350}>
-          <Sparkle size={14} />
-        </Pop>
-      </div>
-      <div className="absolute left-[124px] top-[30px]">
-        <Pop delay={500}>
-          <Sparkle size={11} />
-        </Pop>
-      </div>
-      {items.map((item, i) => (
-        <div
-          key={item}
-          className="absolute left-[146px]"
-          style={{ top: listTop + i * (rowHeight + rowGap) }}
-        >
-          <Pop delay={UNLOCK_ITEM_AT_MS + i * UNLOCK_ITEM_GAP_MS} className="origin-left">
-            <span
-              className="flex items-center gap-1.5 whitespace-nowrap rounded-full bg-white py-1 pl-1 pr-3 text-[12px] font-black leading-none shadow-[0_3px_10px_rgba(154,106,36,0.16)]"
-              style={{ color: NAVY, height: rowHeight }}
-            >
-              <GoldCheck />
-              {item}
-            </span>
-          </Pop>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -1587,6 +1509,66 @@ function AliceQaVisual({
           >
             {visual.answer}
           </p>
+        </Pop>
+      </div>
+    </div>
+  );
+}
+
+// 結果アップグレードの手順3: できあがるもの (専用キャラと鑑定書) が並ぶ。
+function UpgradeResultVisual({
+  visual,
+}: {
+  visual: Extract<AnalyzingSlide["visual"], { kind: "upgradeResult" }>;
+}) {
+  const label = (text: string) => (
+    <span
+      className="block whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-black leading-none text-white shadow-[0_3px_10px_rgba(154,106,36,0.3)]"
+      style={{ background: "linear-gradient(135deg, #E8B84A, #C98F2A)" }}
+    >
+      {text}
+    </span>
+  );
+  return (
+    <div className="relative h-[164px] w-[316px] shrink-0">
+      <div
+        className="animate-fade-in absolute inset-0"
+        style={{ background: "radial-gradient(60% 80% at 50% 45%, rgba(255,214,110,0.55) 0%, rgba(255,214,110,0) 70%)" }}
+        aria-hidden
+      />
+      <div className="absolute left-[30px] top-[6px] h-[118px] w-[106px]">
+        <Pop delay={150} className="h-full w-full">
+          <SmoothImage
+            src={visual.characterArt}
+            alt=""
+            width={212}
+            height={236}
+            fadeIn={false}
+            className="h-full w-full object-contain"
+          />
+        </Pop>
+      </div>
+      <div className="absolute left-[160px] top-[22px] h-[96px] w-[128px]">
+        <Pop delay={700} className="h-full w-full">
+          <SmoothImage
+            src={visual.bookArt}
+            alt=""
+            width={256}
+            height={192}
+            fadeIn={false}
+            className="h-full w-full object-contain"
+          />
+        </Pop>
+      </div>
+      <At x={83} top={130}>
+        <Pop delay={450}>{label(visual.characterLabel)}</Pop>
+      </At>
+      <At x={224} top={130}>
+        <Pop delay={1000}>{label(visual.bookLabel)}</Pop>
+      </At>
+      <div className="absolute left-[148px] top-[62px]">
+        <Pop delay={1300}>
+          <Sparkle size={14} />
         </Pop>
       </div>
     </div>
@@ -1813,8 +1795,8 @@ function AnalyzingSlideDeck({
                 <QuestionsVisual visual={slide.visual} />
               ) : slide.visual.kind === "welcome" ? (
                 <WelcomeVisual visual={slide.visual} />
-              ) : slide.visual.kind === "unlock" ? (
-                <UnlockVisual visual={slide.visual} />
+              ) : slide.visual.kind === "upgradeResult" ? (
+                <UpgradeResultVisual visual={slide.visual} />
               ) : slide.visual.kind === "upgradeButton" ? (
                 <UpgradeButtonVisual visual={slide.visual} />
               ) : slide.visual.kind === "aliceQa" ? (
