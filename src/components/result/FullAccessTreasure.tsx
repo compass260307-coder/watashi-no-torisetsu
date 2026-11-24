@@ -11,11 +11,12 @@ import {
   jaFullAccessOfferForQuote,
   type JaFullAccessPriceArm,
 } from "@/lib/full-access-pricing";
+import { normalizePaywallSource } from "@/lib/paywall-source";
 import { DIAGNOSIS_COUNT_SNAPSHOT } from "@/lib/proof-stats";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
 import type { FullAccessQuoteState } from "@/lib/use-full-access-quote";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FullAccessCta } from "./FullAccessCta";
 
 // 日本語Webの完全版（¥499）: 課金カードを開くCTAを押したとき、課金カードの代わりに
@@ -151,6 +152,12 @@ function fullAccessOffer(ctaSource: string | undefined): TreasureOffer {
   };
 }
 
+// 宝箱の中の進み具合（2026-11-25 追加）。開いた人がどの場面で閉じているかを見る。
+// chest_opened: 宝箱を押して開けた / coupon_received: 「受け取る」を押した / closed: 戻るで閉じた。
+// closed には、そのときの場面（chest: 開ける前 / coupon: クーポンが出たところ / offer: 値札と特典）を付ける。
+type TreasureStep = "chest_opened" | "coupon_received" | "closed";
+type TreasureStage = "chest" | "coupon" | "pricing" | "offer";
+
 type Props = {
   ownerToken?: string;
   ctaSource?: string;
@@ -186,6 +193,61 @@ export function FullAccessTreasure({
   // 同じタブで受け取り済みなら、宝箱を開け直させずに値札と特典から見せる。
   const [startAt] = useState<"chest" | "offer">(() => (fullAccessCouponReceived() ? "offer" : "chest"));
   const [offer] = useState(() => fullAccessOffer(ctaSource));
+  const shownAt = useRef<number | null>(null);
+  const offerShownAt = useRef<number | null>(null);
+  const stage = useRef<TreasureStage>(startAt === "offer" ? "offer" : "chest");
+  useEffect(() => {
+    shownAt.current = performance.now();
+  }, []);
+
+  // 受け口（DB）はイベント名の許可リストを持ち、知らない名前が1つでも混ざると同じ束の記録ごと捨てる。
+  // そのため新しい名前は足さず、既存の paywall_plan_viewed に placement: "treasure" と step を付けて送る
+  // （課金カードの3コース表示の記録は placement が inline / modal なので、混ざらない）。
+  // paywall_viewed と同じく、同じタブ・同じページでは場面ごとに1回だけ送る。
+  function trackStep(step: TreasureStep) {
+    if (previewMode) return;
+    const page = trackingPageFromPathname(window.location.pathname);
+    const dedupKey = `torisetsu_treasure_step_${page}_${THREE_COURSE_PAYWALL_VERSION}_${step}`;
+    try {
+      if (window.sessionStorage.getItem(dedupKey)) return;
+    } catch {
+      /* sessionStorage 不可でも計測は試みる */
+    }
+    const now = performance.now();
+    track("paywall_plan_viewed", {
+      ownerToken: ownerToken ?? null,
+      metadata: {
+        page,
+        variant: variant ?? "self",
+        product: "full_access",
+        paywall_version: THREE_COURSE_PAYWALL_VERSION,
+        placement: "treasure",
+        surface: surface ?? "self",
+        source: normalizePaywallSource(ctaSource),
+        step,
+        start: startAt,
+        displayed_price_minor: priceOffer.saleAmount,
+        // 宝箱が出てからの時間。closed では、値札と特典の画面を見ていた時間も付ける。
+        elapsed_ms: Math.round(now - (shownAt.current ?? now)),
+        ...(step === "closed"
+          ? {
+              stage: stage.current,
+              ...(offerShownAt.current !== null ? { offer_ms: Math.round(now - offerShownAt.current) } : {}),
+            }
+          : {}),
+      },
+    });
+    try {
+      window.sessionStorage.setItem(dedupKey, "1");
+    } catch {
+      /* noop */
+    }
+  }
+
+  function closeWithStep() {
+    trackStep("closed");
+    onClose();
+  }
   // 課金カードと同じ dedup キーで paywall_viewed を1回だけ送る（モーダルを開いた時点＝従来と同じ時点）。
   useEffect(() => {
     if (previewMode) return;
@@ -245,9 +307,21 @@ export function FullAccessTreasure({
           全ての機能をアンロック
         </FullAccessCta>
       }
-      onCouponReceived={saveCouponReceived}
-      onClose={onClose}
-      onDismiss={onClose}
+      onChestOpened={() => {
+        stage.current = "coupon";
+        trackStep("chest_opened");
+      }}
+      onCouponReceived={() => {
+        saveCouponReceived();
+        stage.current = "pricing";
+        trackStep("coupon_received");
+      }}
+      onOfferShown={() => {
+        stage.current = "offer";
+        offerShownAt.current = performance.now();
+      }}
+      onClose={closeWithStep}
+      onDismiss={closeWithStep}
     />
   );
 }
