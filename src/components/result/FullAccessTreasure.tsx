@@ -44,7 +44,10 @@ function saveCouponReceived() {
 }
 
 // 課金カード（FULL_ACCESS_SELF_UNLOCKS）と同じ7つの解放内容。
-// 絵は宝箱の世界観にそろえて、サイトの羊毛フェルトの絵（背景透過）を使う。
+// 絵は宝箱の世界観にそろえた羊毛フェルトの絵（背景透過）で、実際に手に入るものを模した見本にする
+// （2026-11-25。記号的な絵だと、何が手に入るのか想像しにくいため）。
+// 絵の中の文字（見出し・「相性 86%」・「理解度 89%」・チャットの文など）は見本で、その人自身の結果ではない。
+// 特典の中身を変えるときは、絵の中の文字も合わせて作り直す。
 type FullAccessBenefitKey = "sections" | "book" | "chat" | "fortune" | "aisho" | "friends" | "report";
 
 const FULL_ACCESS_BENEFITS: readonly (Omit<TreasureBenefit, "label"> & { key: FullAccessBenefitKey })[] = [
@@ -52,44 +55,50 @@ const FULL_ACCESS_BENEFITS: readonly (Omit<TreasureBenefit, "label"> & { key: Fu
     key: "sections",
     title: "自己診断結果のすべてを解放",
     body: "恋愛・キャリアの深掘りから、周りから見た印象まで、ロック中の9セクションをすべて読めます",
-    // 星の錠前が外れて9枚のカードが飛び出す絵。全員に同じ絵を出す。
-    image: "/result-upgrade/benefit-sections.webp",
+    // 星の錠前が外れて、見出しつきのページ（恋愛・仕事・人間関係・注意点・もしも）が飛び出す絵。全員に同じ絵を出す。
+    image: "/result-upgrade/benefit-sample-sections.webp",
   },
   {
     key: "book",
     title: "16ページ以上の専用電子書籍",
     body: "あなたの性格や特徴を一冊に。保存・印刷して、いつでも読み返せます",
-    image: "/result-upgrade/benefit-book.webp",
+    // 表紙「ワタシのトリセツ」と中の見開き、「16ページ以上」の札。
+    image: "/result-upgrade/benefit-sample-book.webp",
   },
   {
     key: "chat",
     title: "専属占い師Aliceとのチャット",
     body: "あなたの性格や星を理解したAliceが、恋愛・仕事・人間関係の悩みに答えます",
-    image: "/result-upgrade/benefit-line-chat.webp",
+    // Aliceと、相談と返事のやりとりが映ったスマホ。
+    image: "/result-upgrade/benefit-sample-chat.webp",
   },
   {
     key: "fortune",
     title: "Aliceの占いをすべて解放",
     body: "西洋占星術の「運命の設計図」と、恋愛・仕事・人間関係を占うタロット",
-    image: "/mascot/unmei-hero-alice-transparent.png",
+    // 「運命の設計図」の星図と、タロット3枚（恋愛・仕事・友人）。
+    image: "/result-upgrade/benefit-sample-fortune.webp",
   },
   {
     key: "aisho",
     title: "相性診断をすべて解放",
     body: "恋愛・友情・仕事での相性から、すれ違いやすいポイントまで読み解けます",
-    image: "/result-upgrade/benefit-aisho.webp",
+    // 2体のキャラクターと「相性 86%」、4場面（恋愛・友情・仕事・すれ違い）の札。
+    image: "/result-upgrade/benefit-sample-aisho.webp",
   },
   {
     key: "friends",
     title: "2人目以降の友達診断結果",
     body: "友達から見たキャラ・性格のギャップ・恋愛傾向まで、友達ごとの結果をすべて読めます",
-    image: "/result-upgrade/benefit-friends.webp",
+    // 友達ごとの結果カード3枚（「友達から見たあなた」「理解度 89%」）。
+    image: "/result-upgrade/benefit-sample-friends.webp",
   },
   {
     key: "report",
     title: "みんなから見た分析レポート",
     body: "友達の回答をまとめた他己分析PDF。回答が増えるたびに何度でも更新できます",
-    image: "/result-upgrade/benefit-friends-report.webp",
+    // 「みんなから見たあなた」のグラフのページ（自分と友達の比較）。
+    image: "/result-upgrade/benefit-sample-report.webp",
   },
 ];
 
