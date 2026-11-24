@@ -13,12 +13,6 @@
 import { TopDiagnosisCta, TopHeroImage } from "@/components/top/TopAnalytics";
 import { KO_TOP_CONTENT } from "@/i18n/ko/top";
 import { TOP_HERO_BACKGROUNDS } from "@/lib/top-hero-background";
-import { TopQuestionModal } from "@/components/top/TopFirstQuestion";
-import { JA_DEFAULT_QUESTION_SET_ID, JA_QUESTION_SETS } from "@/lib/question-sets";
-
-// 日本語版トップに置く1問目 (診断ページの既定の質問セットの先頭と同じもの)。
-const JA_FIRST_QUESTION = JA_QUESTION_SETS[JA_DEFAULT_QUESTION_SET_ID][0];
-const JA_TOTAL_QUESTIONS = JA_QUESTION_SETS[JA_DEFAULT_QUESTION_SET_ID].length;
 
 // H1・本文ともゴシック (Noto Sans JP)。H1 は 800(極太) で塊感を出す。
 const FONT_STACK =
@@ -33,44 +27,6 @@ export default function TopHero({
   const isIndonesian = locale === "id";
   // 韓国語は日本語版と同じ構成。文は src/i18n/ko/top.ts、書体は /ko のレイアウト (Noto Sans KR) を使う。
   const isKorean = locale === "ko";
-  const isJapanese = !isKorean && !isEnglish && !isIndonesian;
-  const subCopy = (
-        <p className={`top-hero-sub mx-auto max-w-[720px]${isKorean ? " break-keep" : ""}`}>
-          {isKorean ? (
-            <>
-              {KO_TOP_CONTENT.hero.descriptionLine1}
-              <br className="hidden sm:inline" />
-              {KO_TOP_CONTENT.hero.descriptionLine2}
-            </>
-          ) : isEnglish ? (
-            <>
-              Discover the “real you” your friends see,
-              <br className="hidden sm:inline" />
-              with surprising clarity.
-            </>
-          ) : isIndonesian ? (
-            <>
-              Temukan dirimu yang terlihat oleh teman-teman,
-              <br className="hidden sm:inline" />
-              dengan kejujuran yang mengejutkan.
-            </>
-          ) : (
-            <>
-              友達から見えている『ほんとうのワタシ』を、
-              <br className="hidden sm:inline" />
-              怖いくらい正直に知ることができます。
-            </>
-          )}
-        </p>
-  );
-  // CTA: どっしり横長 / 全幅(SP)。「無料」でハードル除去
-  const cta = (
-    <div className="top-hero-cta-wrap">
-      <TopDiagnosisCta locale={locale}>
-        {isKorean ? KO_TOP_CONTENT.hero.cta : isEnglish ? "Start the free test →" : isIndonesian ? "Mulai tes gratis →" : "無料で診断をはじめる →"}
-      </TopDiagnosisCta>
-    </div>
-  );
   return (
     <>
       {/* SEO/CWV: ヒーロー背景 (= LCP 要素) を先読みして描画を早める。
@@ -148,18 +104,40 @@ export default function TopHero({
             「〜を、不気味なくらい正確に知ることができます」構文を踏襲した一文型
             (「不気味」はブランドトーンに合わせ「怖いくらい正直」に変換)。
             PC は読点で改行、SP は自然折返し。 */}
-        {subCopy}
-        {cta}
-        {/* 日本語版: 5秒たっても押されなければ、1問目を小窓 (モーダル) で出す。 */}
-        {isJapanese && (
-          <TopQuestionModal
-            questionSet={JA_DEFAULT_QUESTION_SET_ID}
-            questionId={JA_FIRST_QUESTION.id}
-            questionText={JA_FIRST_QUESTION.text}
-            totalQuestions={JA_TOTAL_QUESTIONS}
-          />
-        )}
+        <p className={`top-hero-sub mx-auto max-w-[720px]${isKorean ? " break-keep" : ""}`}>
+          {isKorean ? (
+            <>
+              {KO_TOP_CONTENT.hero.descriptionLine1}
+              <br className="hidden sm:inline" />
+              {KO_TOP_CONTENT.hero.descriptionLine2}
+            </>
+          ) : isEnglish ? (
+            <>
+              Discover the “real you” your friends see,
+              <br className="hidden sm:inline" />
+              with surprising clarity.
+            </>
+          ) : isIndonesian ? (
+            <>
+              Temukan dirimu yang terlihat oleh teman-teman,
+              <br className="hidden sm:inline" />
+              dengan kejujuran yang mengejutkan.
+            </>
+          ) : (
+            <>
+              友達から見えている『ほんとうのワタシ』を、
+              <br className="hidden sm:inline" />
+              怖いくらい正直に知ることができます。
+            </>
+          )}
+        </p>
 
+        {/* CTA: どっしり横長 / 全幅(SP)。「無料」でハードル除去 */}
+        <div className="top-hero-cta-wrap">
+          <TopDiagnosisCta locale={locale}>
+            {isKorean ? KO_TOP_CONTENT.hero.cta : isEnglish ? "Start the free test →" : isIndonesian ? "Mulai tes gratis →" : "無料で診断をはじめる →"}
+          </TopDiagnosisCta>
+        </div>
       </div>
     </section>
     </>
