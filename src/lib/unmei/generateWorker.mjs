@@ -1,7 +1,8 @@
 import { computeNatalChart } from "../ephemeris.mjs";
-import { callClaude } from "../claude.mjs";
+import { callClaude, noThinkingConfig } from "../claude.mjs";
 import {
   anthropicUsage,
+  estimateAnthropicCostUsd,
   recordAiUsage,
 } from "../ai-usage.mjs";
 import { buildNatalSystemPrompt, buildNatalUserPrompt } from "./prompts.mjs";
@@ -178,12 +179,23 @@ function mergeExpressionRepair(reading, targets, correction) {
 
 export const unmeiRepairInternals = Object.freeze({
   buildExpressionRepairPrompt,
+  parseJsonObject,
   expressionRepairMaxTokens,
   expressionRepairTargets,
   hasExpressionRepairTargets,
   mergeExpressionRepair,
   structuralReadingErrors,
 });
+
+// 運命の設計図の生成モデル。費用削減のため既定は Claude Haiku 5.5 (2026-11-24、
+// Sonnet 4.6 と10人分を読み比べて決定)。UNMEI_MODEL で上書きでき、戻すときは
+// Vercel の環境変数に UNMEI_MODEL=claude-sonnet-4-6 を入れるだけでよい。
+// 言い回しの直し (unmei_reading_repair) も同じモデルを使う。
+export const DEFAULT_UNMEI_MODEL = "claude-haiku-5-5";
+
+export function unmeiModel() {
+  return process.env.UNMEI_MODEL?.trim() || DEFAULT_UNMEI_MODEL;
+}
 
 // 生成状態マシン用の定数 (reading.ts と一致させること)。
 const MAX_GEN_ATTEMPTS = 3; // 自動再生成の上限。超えたら opts.force(手動)でのみ再試行。
@@ -295,7 +307,49 @@ function parseJsonObject(text) {
   if (first > 0 || (last >= 0 && last < jsonText.length - 1)) {
     if (first >= 0 && last > first) jsonText = jsonText.slice(first, last + 1);
   }
-  return JSON.parse(jsonText);
+  try {
+    return JSON.parse(jsonText);
+  } catch (error) {
+    // Haiku 5.5 は段落区切りの改行を文字列内にそのまま書くことがある (2026-11-24 の比較で30件中1件)。
+    // 文字列リテラル内の生の改行・タブだけをエスケープして読み直す。直せなければ元のエラーを投げる。
+    const repaired = escapeRawControlCharsInStrings(jsonText);
+    if (repaired === jsonText) throw error;
+    try {
+      return JSON.parse(repaired);
+    } catch {
+      throw error;
+    }
+  }
+}
+
+function escapeRawControlCharsInStrings(jsonText) {
+  let out = "";
+  let inString = false;
+  let escaped = false;
+  for (const char of jsonText) {
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === '"') {
+        inString = false;
+      } else if (char === "\n") {
+        out += "\\n";
+        continue;
+      } else if (char === "\r") {
+        out += "\\r";
+        continue;
+      } else if (char === "\t") {
+        out += "\\t";
+        continue;
+      }
+    } else if (char === '"') {
+      inString = true;
+    }
+    out += char;
+  }
+  return out;
 }
 
 // Claude 応答をパースし、最低限の鑑定構造を検証する。
@@ -381,11 +435,7 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
       scores = u?.scores ?? null;
     }
 
-    const model = process.env.CLAUDE_MODEL ?? null;
-    if (!model) {
-      // モデル未設定は構成ミス。ダミーを書かずエラーで返す(待機のまま)。
-      return { error: "CLAUDE_MODEL not set" };
-    }
+    const model = unmeiModel();
 
     // 4a. DB行ロック内で生成権を取得する。read→upsert では同時起動を防げないため、
     //     RPCがready/in_progress/失敗上限を再確認し、世代キーを1実行だけに発行する。
@@ -460,6 +510,7 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
           model,
           maxTokens: 4500, // v2: 4章×550〜900字 + subline + hitokoto
           timeoutMs: 120_000,
+          thinking: noThinkingConfig(model),
         });
       } catch (e) {
         lastErr = e;
@@ -502,6 +553,7 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
           durationMs: Date.now() - callStartedAt,
           providerRequestId: resp.raw?.id,
           ...usage,
+          estimatedCostUsd: estimateAnthropicCostUsd(model, usage),
           metadata: {
             locale,
             generation_attempt: attempts + 1,
@@ -531,6 +583,7 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
           durationMs: Date.now() - callStartedAt,
           providerRequestId: resp.raw?.id,
           ...usage,
+          estimatedCostUsd: estimateAnthropicCostUsd(model, usage),
           metadata: {
             locale,
             generation_attempt: attempts + 1,
@@ -556,6 +609,7 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
         durationMs: Date.now() - callStartedAt,
         providerRequestId: resp.raw?.id,
         ...usage,
+        estimatedCostUsd: estimateAnthropicCostUsd(model, usage),
         metadata: {
           locale,
           generation_attempt: attempts + 1,
@@ -613,6 +667,7 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
             model,
             maxTokens: expressionRepairMaxTokens(repairTargets),
             timeoutMs: 60_000,
+            thinking: noThinkingConfig(model),
           });
         } catch (error) {
           await recordAiUsage(supabaseAdmin, {
@@ -681,6 +736,7 @@ export async function runForUser(supabaseAdmin, userId, opts = {}) {
           durationMs: Date.now() - repairStartedAt,
           providerRequestId: repairResponse.raw?.id,
           ...repairUsage,
+          estimatedCostUsd: estimateAnthropicCostUsd(model, repairUsage),
           metadata: {
             locale,
             target_fields: repairLabels,
