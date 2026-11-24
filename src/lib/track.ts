@@ -297,38 +297,6 @@ export function track(
   }
 }
 
-/**
- * ほかの記録と束ねず、この1件だけを単独で送る。
- * 受け口は束の中に1件でも不正があると束ごと捨てるため、受け付けられるか確証が弱い記録を
- * 試すときに使う (はじかれても、同じ時刻のほかの記録を巻き込まない)。GA へは転送しない。
- */
-export function trackIsolated(eventName: string, metadata: Record<string, unknown>) {
-  if (isPreviewMode()) return;
-  try {
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
-    const row: EventRow = {
-      event_name: eventName,
-      session_id: getSessionId(),
-      invite_code: null,
-      owner_token: null,
-      locale: "ja",
-      metadata: { ...metadata, locale: "ja" },
-    };
-    fetch(`${SUPABASE_URL}/rest/v1/rpc/ingest_client_events`, {
-      method: "POST",
-      keepalive: true,
-      headers: {
-        "Content-Type": "application/json",
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-      body: JSON.stringify({ p_events: [row] }),
-    }).catch(() => {});
-  } catch {
-    // tracking never blocks UX
-  }
-}
-
 export function trackLineAliceEvent(
   eventName: LineAliceClientEventName,
   metadata: LineAliceTrackingMetadata,
