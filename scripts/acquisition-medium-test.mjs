@@ -1,5 +1,5 @@
-// No remote services: execute production capture, API handlers, session insert and Apps Script
-// against in-memory browser/DB/Sheets adapters. Run: node scripts/acquisition-medium-test.mjs
+// No remote services: execute production capture, the diagnosis API handler and session insert
+// against in-memory browser/DB adapters. Run: node scripts/acquisition-medium-test.mjs
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { resolve, dirname } from "node:path";
@@ -9,7 +9,6 @@ import vm from "node:vm";
 import ts from "typescript";
 const require = createRequire(import.meta.url);
 const root = resolve(import.meta.dirname, "..");
-const plain = (value) => JSON.parse(JSON.stringify(value));
 
 function loader(stubs = {}) {
   const cache = new Map();
@@ -112,14 +111,13 @@ console.log("PASS capture: JP/KR navigation, reload, LIFF, legacy, tuple isolati
 
 const users = [];
 let existing = null;
-let reads = 0;
 const db = {
   from(table) {
     assert.equal(table, "users");
     let insert, update, id, limit = Infinity, after, afterId;
     const query = {
       insert(value) { insert = value; return this; }, update(value) { update = value; return this; },
-      select(columns) { if (columns.includes("acquisition_medium")) reads++; return this; },
+      select() { return this; },
       eq(column, value) { if (column === "id") id = value; return this; },
       not() { return this; }, order() { return this; }, limit(value) { limit = value; return this; },
       gt(column, value) { after = value; return this; },
@@ -188,125 +186,4 @@ existing = null;
 console.log("PASS save: actual diagnosis handler → createSession insert, JP/KR, normalization, retest, first placeholder completion");
 
 // Exercise the timestamp tie breaker, not only different completion times.
-users.forEach((row) => { row.diagnosis_completed_at = "2026-09-12T01:00:00.123456+00:00"; });
-process.env.SHEETS_METRICS_KEY = "local-test-only";
-const { GET } = loader(serverStubs)("src/app/api/metrics/diagnoses/route.ts");
-async function exported(query = "after=2026-01-01T00:00:00Z&limit=999", authorized = true) {
-  const response = await GET(new NextRequest("http://localhost/api/metrics/diagnoses?" + query, {
-    headers: authorized ? { Authorization: "Bearer local-test-only" } : {},
-  }));
-  return { response, payload: await response.json() };
-}
-const beforeReads = reads;
-const { payload } = await exported();
-assert.equal(reads - beforeReads, 1);
-assert.equal(payload.rows.length, users.length);
-assert.deepEqual(payload.columns.slice(8), ["acq_medium", "acq_channel"]);
-assert.equal(payload.rows.find((r) => r.acq_medium === "organic_search").acq_channel, "自然流入");
-assert.equal(payload.rows.find((r) => r.acq_medium === "").acq_channel, "不明");
-assert.ok(payload.rows.every((r) => !r.id && !r.session_token));
-assert.equal((await exported(undefined, false)).response.status, 401);
-assert.equal((await exported("after=invalid")).response.status, 400);
-assert.equal((await exported("after=2026-01-01&after_id=bad")).response.status, 400);
-const page = (await exported("after=2026-01-01&limit=2")).payload;
-assert.equal(page.rows.length, 2);
-assert.equal(page.hasMore, true);
-const next = (await exported(`after=${encodeURIComponent(page.nextCursor.at)}&after_id=${page.nextCursor.id}&limit=999`)).payload;
-assert.equal(page.rows.length + next.rows.length, users.length);
-assert.equal(new Set([...page.rows, ...next.rows].map((r) => r.diagnosis_ref)).size, users.length);
-console.log("PASS export: same DB query, append-only columns, classifications, auth, seek pagination, stable references");
-
-class Sheet {
-  constructor(headers, cols = headers.length) { this.cells = [headers.slice()]; this.cols = cols; this.maxRows = 100; }
-  getLastRow() { return this.cells.length; }
-  getMaxRows() { return this.maxRows; }
-  getMaxColumns() { return this.cols; }
-  insertRowsAfter(_, count) { this.maxRows += count; }
-  insertColumnsAfter(_, count) { this.cols += count; }
-  setFrozenRows() {}
-  getRange(row, col, height = 1, width = 1) {
-    assert.ok(col + width - 1 <= this.cols);
-    const { cells } = this;
-    return {
-      getDisplayValues() { return Array.from({ length: height }, (_, r) => Array.from({ length: width }, (_, c) => String(cells[row - 1 + r]?.[col - 1 + c] ?? ""))); },
-      isBlank() { return this.getDisplayValues().flat().every((x) => !x); },
-      setValues(values) { assert.equal(values.length, height); values.forEach((valuesRow, r) => { assert.equal(valuesRow.length, width); cells[row - 1 + r] ??= []; valuesRow.forEach((value, c) => { cells[row - 1 + r][col - 1 + c] = value; }); }); return this; },
-      setFontWeight() { return this; }, setBackground() { return this; },
-    };
-  }
-}
-const sheet = new Sheet(payload.columns.slice(0, 8));
-sheet.cells.push(["historical", "2026-09-01", 1, "old-ref", "type", "ko", "tiktok", "campaign"]);
-const props = new Map([["SHEETS_METRICS_KEY", "test"], ["DIAGNOSIS_CURSOR_AT", "2026-01-01T00:00:00Z"]]);
-let fetches = 0, served = payload;
-const context = vm.createContext({
-  URLSearchParams, console,
-  SpreadsheetApp: { getActiveSpreadsheet: () => ({ getSheetByName: () => sheet }) },
-  PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => props.get(k), getProperties: () => Object.fromEntries(props), setProperties: (data) => Object.entries(data).forEach(([k, v]) => props.set(k, v)) }) },
-  UrlFetchApp: { fetch: () => { fetches++; return { getResponseCode: () => 200, getContentText: () => JSON.stringify(served) }; } },
-});
-const gas = readFileSync(resolve(root, "scripts/google-sheets-diagnosis-sync.gs"), "utf8");
-vm.runInContext(gas, context);
-const run = (code) => vm.runInContext(code, context);
-run("syncJob_(RAW_SYNC_JOBS.diagnoses)");
-assert.equal(fetches, 1);
-assert.deepEqual(sheet.cells[0], payload.columns);
-assert.equal(sheet.cells.length, users.length + 2);
-assert.equal(sheet.cells[1].length, 8); // historical row not touched
-assert.ok(sheet.cells.slice(2).every((row) => row.length === 10));
-assert.equal(props.get("DIAGNOSIS_CURSOR_AT"), payload.nextCursor.at);
-run("syncJob_(RAW_SYNC_JOBS.diagnoses)");
-assert.equal(sheet.cells.length, users.length + 2); // retry dedup
-served = { ...payload, columns: payload.columns.slice(0, 8), rows: [{ ...payload.rows[0], diagnosis_ref: "legacy-response", acq_medium: undefined, acq_channel: undefined }] };
-run("syncJob_(RAW_SYNC_JOBS.diagnoses)");
-assert.deepEqual(sheet.cells.at(-1).slice(8), ["", "不明"]);
-served = { ...payload, columns: ["unexpected"] };
-assert.throws(() => run("syncJob_(RAW_SYNC_JOBS.diagnoses)"), /列定義/);
-assert.equal(run('safeCellValue_("=IMPORTDATA(test)")'), "'=IMPORTDATA(test)");
-const salesBefore = require("node:child_process").execFileSync("git", ["show", "HEAD:scripts/google-sheets-diagnosis-sync.gs"], { cwd: root, encoding: "utf8" });
-const oldContext = vm.createContext({}); vm.runInContext(salesBefore, oldContext);
-assert.deepEqual(plain(run("RAW_SYNC_JOBS.sales")), plain(vm.runInContext("RAW_SYNC_JOBS.sales", oldContext)));
-assert.equal(gas.slice(gas.indexOf("function createQuarterHourlyTrigger")), salesBefore.slice(salesBefore.indexOf("function createQuarterHourlyTrigger")));
-new vm.Script(readFileSync(resolve(root, "scripts/google-sheets-acquisition-upgrade.gs"), "utf8"));
-console.log("PASS sync: 8→10 columns, one fetch, old API compatibility, cursor, dedup, history unchanged, sales/trigger unchanged");
 console.log("All acquisition-medium integration checks passed (local adapters; no remote writes).");
-
-// Execute the one-time JP→KR migration against the inspected formula layout.
-const jpId = "1J7257eFLp8nhO6aUtZyML6hoNltbjHKg4D-nLkxoKec";
-const formulaSheet = (initialFormula = "", initialCols = 8) => {
-  let formula = initialFormula, columns = initialCols, rows = 1000;
-  return {
-    getLastRow: () => formula ? 1 : 0, getMaxRows: () => rows, getMaxColumns: () => columns,
-    insertRowsAfter: (_, count) => { rows += count; }, insertColumnsAfter: (_, count) => { columns += count; }, hideSheet() {},
-    getRange: (range) => { assert.equal(range, "A1"); return { getFormula: () => formula, setFormula: (value) => { formula = value; } }; },
-  };
-};
-const krSheet = formulaSheet(`=ARRAYFORMULA(IFERROR(IMPORTRANGE("${jpId}","'_KR共有データ'!A1:H10000"),'_作成時点データ'!A1:H1307))`);
-let shared;
-context.SpreadsheetApp = {
-  getActiveSpreadsheet: () => ({
-    getId: () => jpId,
-    getSheetByName: (name) => { assert.ok(["diagnoses_raw", "_KR診断共有"].includes(name)); return name === "diagnoses_raw" ? sheet : shared; },
-    insertSheet: (name) => { assert.equal(name, "_KR診断共有"); shared = formulaSheet(); return shared; },
-  }),
-  openById: (id) => { assert.equal(id, "13uBekL9JZfzNWFxqiCQHOxTalFxBhx3scWFfdj6cGoU"); return { getSheetByName: (name) => { assert.equal(name, "diagnoses_raw"); return krSheet; } }; },
-  flush() {},
-};
-context.ScriptApp = { getProjectTriggers: () => ["existing-trigger"] };
-context.LockService = { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) };
-vm.runInContext(readFileSync(resolve(root, "scripts/google-sheets-acquisition-upgrade.gs"), "utf8"), context);
-const fetchCountBeforeUpgrade = fetches;
-run("upgradeAcquisitionMediumSheets()");
-assert.equal(fetches, fetchCountBeforeUpgrade);
-const formula = krSheet.getRange("A1").getFormula();
-assert.equal((formula.match(/IMPORTRANGE/g) || []).length, 1);
-assert.ok(formula.includes("'_KR診断共有'!A:J"));
-assert.ok(formula.includes("https://docs.google.com/spreadsheets/d/"));
-assert.ok(formula.includes('VSTACK({"acq_medium","acq_channel"},MAKEARRAY(1306,2'));
-assert.equal(krSheet.getMaxColumns(), 10);
-assert.equal(shared.getMaxRows(), 10000);
-assert.ok(shared.getRange("A1").getFormula().includes('diagnoses_raw!F2:F="ko"'));
-run("upgradeAcquisitionMediumSheets()"); // idempotent
-krSheet.getRange("A1").setFormula("=USER_CHANGED_FORMULA()");
-assert.throws(() => run("upgradeAcquisitionMediumSheets()"), /調査時点から変更/);
-console.log("PASS JP→KR migration: exact target, non-overlapping shared tab, single import, 10-column fallback, no fetch, idempotence, stale-formula guard");

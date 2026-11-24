@@ -1,5 +1,7 @@
 # 診断完了の流入medium・日報連携
 
+> 2026-11-24 追記: 日報 (スプレッドシート) への取り込みは止め、取り込み用の API と Apps Script (`scripts/google-sheets-*`) は削除した。流入 medium の取得・保存 (`users.acquisition_medium`) と分類ルール (`src/lib/acquisition-channel.ts`) は今も有効。シート側の記述は当時の記録。
+
 2026-09-12実装・本番反映済み。DB、Web、Apps Script、JP/KRのraw構造・参照式を更新。日報の表示追加は対象外。
 
 ## 調査結果
