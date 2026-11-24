@@ -318,9 +318,6 @@ function FriendContent({
     } else {
       // おまけ choice 3 問は 2026-07-20 に廃止。30問完了後はメッセージ入力へ直行。
       setPhase("message");
-      if (!previewMode) {
-        track("friend_answer_scale_completed", { inviteCode });
-      }
     }
   };
 

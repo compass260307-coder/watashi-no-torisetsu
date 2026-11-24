@@ -1114,7 +1114,7 @@ async function MeResultPageContent({
       {isOwnedResult && showUnmeiPromo && <PaidMeChatPreload />}
       {/* 運命(占星術)の赤バッジは 2026-11-19 に廃止 (赤バッジは友達診断だけ)。 */}
 
-      {/* 表示計測 (result_viewed / result_revisited / three_friends_unlocked)。
+      {/* 表示計測 (result_viewed / result_revisited)。
           プレビュー (?previewType) はモック描画なので計測しない。 */}
       {isOwnedResult && (
         <>

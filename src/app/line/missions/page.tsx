@@ -7,9 +7,8 @@
 
 import type { Metadata } from "next";
 import Image from "next/image";
-import { headers } from "next/headers";
 
-import { hasLineEventOnce, recordLineEvent } from "@/lib/line-events";
+import { hasLineEventOnce } from "@/lib/line-events";
 import {
   fortuneStreak,
   hasTalkedToAlice,
@@ -82,12 +81,6 @@ type RetentionState = {
 
 // Alice Plus訴求カード (加入済みなら非表示)
 type PlusPromoState = { isMember: boolean; href: string };
-
-function isPreviewBot(userAgent: string): boolean {
-  return /bot|facebookexternalhit|line-poker|crawler|spider|preview/i.test(
-    userAgent,
-  );
-}
 
 function FallbackCard({ title, body }: { title: string; body: string }) {
   return (
@@ -224,14 +217,6 @@ export default async function LineMissionsPage({
       hasLineEventOnce("line_mission_reward", `${userId}:streak3`),
       hasActiveLinePlus(userId),
     ]);
-
-  const userAgent = (await headers()).get("user-agent") ?? "";
-  if (!isPreviewBot(userAgent)) {
-    await recordLineEvent({
-      eventName: "line_mission_page_viewed",
-      metadata: { line_user_id: lineUserId, user_id: userId, answers },
-    });
-  }
 
   const inviteUrl = user?.invite_code
     ? `${resolveSiteUrl()}/friend/${user.invite_code}`
