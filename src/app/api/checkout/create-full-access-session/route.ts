@@ -193,12 +193,15 @@ const JA_COURSE_COUPON_NAME = "リリース記念";
 // 日本版完全版のStripe Checkoutは、2026-11-16の明示判断により二重価格（クーポン）を
 // 表示せず、実売価格だけを「商品名 → 価格」の2段で見せる。請求額は変えない。
 // 表示変更の前後を比較できるよう、Checkoutの表示バージョンとして記録する。
+// 2026-11-24の明示判断で、商品名と支払いボタンの直上の一言を変えた（宝箱・課金カードの「7つ全部で」とつなげる）。
+// 作りは同じ（¥499だけを直接表示）。文言の変更の前後を比べられるよう、表示バージョンを v2 にする。
+// 変更前は ja_full_access_checkout_plain_499_v1_20261116（¥699の群は ja_full_access_checkout_plain_699_v1_20261122）。
 const JA_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION =
-  "ja_full_access_checkout_plain_499_v1_20261116";
+  "ja_full_access_checkout_plain_499_v2_20261124";
 // 価格テスト（FULL_ACCESS_PRICE_TEST_VERSION）で¥699の群に入った人の決済画面。¥499の画面と同じ作りで、
 // ¥699だけを直接表示・課金する。
 const JA_FULL_ACCESS_TEST_CHECKOUT_DISPLAY_VERSION =
-  "ja_full_access_checkout_plain_699_v1_20261122";
+  "ja_full_access_checkout_plain_699_v2_20261124";
 // 韓国版完全版も、2026-11-17の明示判断により日本版と同じ表示にする。通常価格₩12,900と
 // 「출시 기념」クーポンを出さず、実売価格₩4,900だけを表示・課金する。請求額は変えない。
 const KO_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION =
@@ -257,12 +260,13 @@ const CHECKOUT_COPY: Record<
 
 const CURRENT_FULL_ACCESS_COPY = {
   ja: {
-    // 店舗名「ワタシのトリセツ」はCheckout左上に出るため、商品名は安心材料に使う。
+    // 店舗名「ワタシのトリセツ」はCheckout左上に出るため、商品名は手に入るもの（宝箱・課金カードの
+    // 「7つ全部で」と同じ言葉）と安心材料に使う。スマホで1行に収まるよう、20字ほどにとどめる。
     // 説明文は価格の下に出て「文章→価格→文章」になり読みにくいので表示しない。
-    productName: "完全版｜買い切り・30日間返金保証つき",
+    productName: "7つの特典すべて｜買い切り・30日返金保証",
     productDescription: null,
     submitMessage:
-      "お支払い後、すべての診断結果が解放されます。**自動更新・追加請求はありません。**",
+      "お支払い後すぐ、7つの特典がすべて利用可能になります。**自動更新・追加請求はありません。**",
   },
   ko: {
     // 日本語版と同じ構成。店舗名「앨리스 진단」がCheckout左上に出るため、商品名は安心材料に使い、
@@ -1110,7 +1114,10 @@ export async function POST(request: NextRequest) {
             ? `${checkoutCopy.productName} upgrade`
             : checkoutLocale === "id"
               ? `Upgrade ke ${checkoutCopy.productName}`
-            : `${checkoutCopy.productName}へのアップグレード`
+            : checkoutCopy === CURRENT_FULL_ACCESS_COPY.ja
+              // 現行の商品名は安心材料まで含むので、差額での購入には短い名前を使う。
+              ? "完全版へのアップグレード"
+              : `${checkoutCopy.productName}へのアップグレード`
         : checkoutCopy.productName,
     ...(productDescription ? { description: productDescription } : {}),
     ...(productImage ? { images: [productImage] } : {}),

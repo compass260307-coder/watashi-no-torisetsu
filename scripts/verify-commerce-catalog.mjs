@@ -100,8 +100,8 @@ const contractChecks = [
       catalogIncludes("2026-11-26 0:00 JST") &&
       read("src/app/api/checkout/full-access-price/route.ts").includes("resolveJaFullAccessPriceAssignmentForRequest(request, ownerToken)") &&
       checkoutRoute.includes("resolveJaFullAccessPriceAssignment(buyer)") &&
-      checkoutRoute.includes('"ja_full_access_checkout_plain_699_v1_20261122"') &&
-      catalogIncludes("`ja_full_access_checkout_plain_699_v1_20261122`") &&
+      checkoutRoute.includes('"ja_full_access_checkout_plain_699_v2_20261124"') &&
+      catalogIncludes("`ja_full_access_checkout_plain_699_v2_20261124`") &&
       commercePage.includes("FULL_ACCESS_TEST_PRICE_JPY.toLocaleString"),
   },
   {
@@ -182,9 +182,9 @@ const contractChecks = [
       ) &&
       checkoutRoute.includes("!usesPlainJapaneseFullAccessCheckout &&") &&
       checkoutRoute.includes(
-        '"ja_full_access_checkout_plain_499_v1_20261116"',
+        '"ja_full_access_checkout_plain_499_v2_20261124"',
       ) &&
-      catalogIncludes("`ja_full_access_checkout_plain_499_v1_20261116`"),
+      catalogIncludes("`ja_full_access_checkout_plain_499_v2_20261124`"),
   },
   {
     label: "English Stripe Checkout uses the frozen reference price",
