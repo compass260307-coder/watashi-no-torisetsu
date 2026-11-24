@@ -186,6 +186,12 @@ Project ID `prj_4a4NYE4o9zlnDVz8pa8FGeUwq90s`。
 `purchase_cta_clicked` は配信率の監視にだけ使う。Checkout作成はSession数に加えて
 `owner_token` / `user_id` ベースのユーザー数も出力する。
 
+`checkout_session_created` の `metadata.available_payment_methods` には、その決済画面が受け付ける
+支払い方法の一覧（Stripeが作成時に返す `payment_method_types`）を残す（2026-11-24〜）。
+PayPay などが全員の画面で使えるかを確かめるための値で、端末や地域による実際の表示の絞り込み
+（Apple Pay など）は表れない。`metadata.payment_method_configuration_id` は、その一覧の元になった
+Stripe管理画面の設定のID。
+
 `meta_purchase` はMeta Purchase・GA4 Purchase・Yahoo検索広告へ送る前提とし、
 TikTok Purchaseはアプリから直接補完する。GTMを変更する場合も次の対応を維持する。
 

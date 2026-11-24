@@ -1559,6 +1559,12 @@ export async function POST(request: NextRequest) {
       // Stripe API呼び出しの所要時間。遅延調査用で、挙動には影響しない。
       server_duration_ms: Date.now() - requestReceivedAt,
       stripe_create_ms: stripeCreateMs,
+      // この決済画面が受け付ける支払い方法の一覧（Stripeが作成時に確定して返す値）と、
+      // その元になった管理画面の設定のID。PayPay などが全員の画面で使えるかの調査用で、挙動には影響しない。
+      // 端末や地域で実際の表示がさらに絞られる分（Apple Pay など）は、ここには表れない。
+      available_payment_methods: stripeSession.payment_method_types ?? [],
+      payment_method_configuration_id:
+        stripeSession.payment_method_configuration_details?.id ?? null,
       ...regionalOfferMetadata,
       ...checkoutDisplayMetadata,
       source: paywallSource,
