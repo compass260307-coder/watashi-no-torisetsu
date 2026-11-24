@@ -4,6 +4,8 @@ import "server-only";
 // 広告費 (billed_charge_local_micro) は 3 日ほど見込みの値で、あとから少し動くので、
 // 毎回「直近 N 日の 0 時から、いまの時間帯の手前まで」を取り直して上書きする。
 // アカウント記号は、xlsx の取り込みと同じくキャンペーン名から決める。
+import { unstable_cache } from "next/cache";
+
 import { supabaseAdmin } from "./supabase-server";
 import {
   X_ADS_PLACEMENTS,
@@ -19,6 +21,38 @@ import { accountCodeFromCampaignNames } from "./x-ads-export";
 
 const HOUR_MS = 3_600_000;
 const JST_OFFSET_MS = 9 * HOUR_MS;
+
+/** アカウントの記号と通貨 (キャンペーン名から決める)。1 日に 1 回だけ調べ直す。 */
+interface XAdsAccountProfile {
+  campaigns: number;
+  code: string | null;
+  currency: string | null;
+}
+
+/**
+ * アカウントの記号と通貨を、キャンペーンの一覧から決める。記号と通貨は日々変わらないので、
+ * 結果を 1 日覚えておき、毎時の取り込みでキャンペーンの一覧を取り直さない (X への問い合わせを
+ * 減らすため。2026-11-24)。新しく作ったアカウントの記号は、最大 1 日遅れて分かる (取り込みは
+ * 直近 3 日を取り直すので、その間の広告費も入る)。鍵は引数に入れない (覚えておく値の目印に
+ * 引数が使われるため)。
+ */
+const xAdsAccountProfile = unstable_cache(
+  async (accountId: string): Promise<XAdsAccountProfile> => {
+    const credentials = xAdsCredentials();
+    if (!credentials) throw new Error("missing_credentials");
+    const campaigns = await listXAdsCampaigns(accountId, credentials);
+    const currencies = new Set(
+      campaigns.map((c) => c.currency).filter(Boolean) as string[],
+    );
+    return {
+      campaigns: campaigns.length,
+      code: accountCodeFromCampaignNames(campaigns.map((c) => c.name)),
+      currency: currencies.size === 1 ? [...currencies][0] : null,
+    };
+  },
+  ["x-ads-account-profile-v1"],
+  { revalidate: 24 * 60 * 60 },
+);
 
 interface SpendRow {
   day: string;
@@ -145,13 +179,16 @@ export async function syncXAdsSpend({
     };
     report.accounts.push(entry);
     try {
-      const campaigns = await listXAdsCampaigns(account.id, credentials);
-      entry.campaigns = campaigns.length;
-      entry.code = accountCodeFromCampaignNames(campaigns.map((c) => c.name));
-      const currencies = new Set(
-        campaigns.map((c) => c.currency).filter(Boolean) as string[],
-      );
-      entry.currency = currencies.size === 1 ? [...currencies][0] : null;
+      const profile = await xAdsAccountProfile(account.id);
+      entry.campaigns = profile.campaigns;
+      entry.code = profile.code;
+      entry.currency = profile.currency;
+      // 記号の無いアカウント (このサービスの広告でないもの) は、統計を問い合わせない。
+      // 記号があって未登録のものは、取り漏れに気づけるよう金額までは調べる (保存はしない)。
+      if (!entry.code) {
+        entry.skipped = "code_not_found";
+        continue;
+      }
 
       const spendMicro = new Array<number>(hours).fill(0);
       const impressions = new Array<number>(hours).fill(0);
@@ -207,10 +244,9 @@ export async function syncXAdsSpend({
       }));
       entry.spend = Math.round(rows.reduce((sum, row) => sum + row.spend, 0));
 
-      if (!entry.code) entry.skipped = "code_not_found";
-      else if (!knownCodes.has(entry.code)) entry.skipped = "code_not_registered";
+      if (!knownCodes.has(entry.code)) entry.skipped = "code_not_registered";
       else if (entry.currency !== "JPY") entry.skipped = "currency_not_jpy";
-      if (entry.skipped || !entry.code) continue;
+      if (entry.skipped) continue;
 
       const merged = byCode.get(entry.code);
       if (!merged) {
