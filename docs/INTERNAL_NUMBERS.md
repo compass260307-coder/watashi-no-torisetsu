@@ -153,6 +153,14 @@ Vercel Cron (`/api/cron/x-ads-spend`、毎時 20 分) が X Ads API から、直
   `X_ADS_ACCESS_TOKEN_SECRET` (OAuth 1.0a、アプリ `torisetsu-ads-reporting`、Standard Access)
 - アカウント記号: xlsx の取り込みと同じく、キャンペーン名 (`MMDD_PULSE24h_{記号}{単価}_...`) で
   いちばん多い記号。`ad_accounts` に無い記号、通貨が JPY でないアカウントは保存しない
+- 問い合わせを減らす工夫 (2026-11-24): アカウントの記号と通貨は、キャンペーンの一覧から
+  1 日 1 回だけ調べ直し、Next.js のキャッシュ (`unstable_cache`) に覚えておく。記号の無い
+  アカウント (このサービスの広告でないもの) は統計を問い合わせない。記号があって `ad_accounts`
+  に未登録のものは、取り漏れに気づけるよう金額までは調べる (試しの入口で `code_not_registered`
+  と金額が出る。保存はしない)。新しく作ったアカウントの記号は最大 1 日遅れて分かるが、
+  直近 3 日を取り直すので、その間の広告費も入る。1 時間あたりの問い合わせは約 50 回から約 20 回
+- 記号を登録したのに保存されないとき: 記号の登録 (`ad_accounts`) はすぐ効く。アカウントの記号
+  自体が「無し」と覚えられている場合は、最大 1 日待つ
 - 配信面: `ALL_ON_TWITTER` と `PUBLISHER_NETWORK` を足す (後者を断られたら X 本体だけ)
 - 確かめ方: 許可リストの人がログインして `GET /api/internal/numbers/x-ads` (保存しない試し)、
   `POST` で 1 回保存
