@@ -2,7 +2,10 @@
 
 import { useEffect } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
-import { isThirdPartyMeasurementEnabled } from "@/lib/third-party-measurement";
+import {
+  isMeasurementExcludedPath,
+  isThirdPartyMeasurementEnabled,
+} from "@/lib/third-party-measurement";
 
 declare global {
   interface Window {
@@ -27,6 +30,8 @@ export default function GoogleAnalyticsTracker() {
   useEffect(() => {
     if (!isProduction || !gaId || typeof window === "undefined") return;
     if (!window.gtag) return;
+    // 社内向けページ (/internal/) へ移ったときは送らない。
+    if (isMeasurementExcludedPath(pathname)) return;
 
     const queryString = searchParams.toString();
     const url = queryString ? `${pathname}?${queryString}` : pathname;

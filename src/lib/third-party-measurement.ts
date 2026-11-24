@@ -28,3 +28,16 @@ export function isThirdPartyMeasurementEnabled(): boolean {
   }
   return true;
 }
+
+// 社内向けページ (/internal/ 以下) では、広告・解析タグを読み込まない。社内の閲覧が
+// 広告媒体や GA の計測に混ざらないようにし、数値画面を軽くするため (2026-11-24)。
+// 静的に描画するページの共通レイアウトから使うので、判定はブラウザ側で行う
+// (サーバーで URL を読むと、全ページが動的な描画になってしまう)。
+export const MEASUREMENT_EXCLUDED_PATH = /^\/internal(\/|$)/;
+
+/** ブラウザで実行するスクリプトに埋め込む判定式 (今の URL が社内向けページなら true)。 */
+export const MEASUREMENT_EXCLUDED_PATH_JS = `${MEASUREMENT_EXCLUDED_PATH.toString()}.test(window.location.pathname)`;
+
+export function isMeasurementExcludedPath(pathname: string): boolean {
+  return MEASUREMENT_EXCLUDED_PATH.test(pathname);
+}
