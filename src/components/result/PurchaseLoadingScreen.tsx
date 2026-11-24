@@ -81,25 +81,12 @@ const INITIAL_POLL_INTERVAL_MS = 2000;
 const POLL_BACKOFF_FACTOR = 1.5;
 const MAX_POLL_INTERVAL_MS = 10_000;
 
+// 見出しはお礼の1行だけ (2026-11-24 本人指示でシンプルに)。準備中であることは下の進行バーで伝わる。
 function Header() {
   return (
-    <div className="mb-6 flex flex-col items-center text-center">
-      <span
-        className="mb-3 inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[11px] font-black tracking-[0.14em] text-white shadow-[0_4px_14px_rgba(201,143,42,0.35)]"
-        style={{ background: "linear-gradient(135deg, #E8B84A, #C98F2A)" }}
-      >
-        <svg width="11" height="11" viewBox="0 0 24 24" aria-hidden>
-          <path d="M12 1.5 14.2 9.8 22.5 12 14.2 14.2 12 22.5 9.8 14.2 1.5 12 9.8 9.8Z" fill="currentColor" />
-        </svg>
-        COMPLETE EDITION
-      </span>
-      <p className="text-[20px] font-black leading-[1.5] text-[#2E2E5C]">
-        ご購入ありがとうございます！
-      </p>
-      <p className="mt-1 text-[13px] font-bold leading-[1.6] text-[#9A6A24]">
-        あなたの完全版を準備しています...
-      </p>
-    </div>
+    <p className="mb-6 text-center text-[20px] font-black leading-[1.5] text-[#2E2E5C]">
+      ご購入ありがとうございます！
+    </p>
   );
 }
 
