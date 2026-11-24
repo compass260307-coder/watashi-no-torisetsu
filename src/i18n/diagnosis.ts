@@ -16,6 +16,8 @@ export interface DiagnosisCopy {
   heroTitle: string;
   heroSubtitle: string;
   heroImageAlt: string;
+  // 冒頭に出す「3つの手順」。省略した言語は、これまでどおりイラストを出す。
+  heroSteps?: { label: string; title: string; body: string }[];
   nicknameLabel: string;
   // 最終カード (16P 風): ニックネーム説明 + 任意のジェンダー設問
   nicknameHelper: string;
