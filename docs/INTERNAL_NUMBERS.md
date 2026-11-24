@@ -10,7 +10,7 @@
 
 | 役割 | 場所 |
 |---|---|
-| 表と集計関数 | `supabase/migrations/` の `20261122140000_internal_numbers_dashboard.sql`、`20261122180000_internal_numbers_snapshots.sql`、`20261122200000_internal_numbers_ad_costs.sql` |
+| 表と集計関数 | `supabase/migrations/` の `20261122140000_internal_numbers_dashboard.sql`、`20261122180000_internal_numbers_snapshots.sql`、`20261122200000_internal_numbers_ad_costs.sql`、`20261123210000_internal_numbers_nightly.sql`、`20261124140000_internal_numbers_yesterday_snapshot.sql` |
 | 広告費の保存 | `src/app/api/internal/numbers/costs/route.ts`、`src/lib/x-ads-export.ts` |
 | 月の推移 | `src/app/internal/numbers/daily/page.tsx`、`src/components/internal/NumbersDaily.tsx`、`src/app/api/internal/numbers/daily/route.ts`、`supabase/migrations/20261122230000_internal_numbers_daily.sql` |
 | データの入口 | `src/app/api/internal/numbers/route.ts` |
@@ -34,7 +34,13 @@
 
 ### 終わった日は控えから出す
 
-古い日は 1 日分の読み出しに 8〜19 秒かかる (2026-11-22 実測)。終わった日の数字は `metrics_day_snapshots` に控え、2 日以上前の日は控えから出す。友達診断・シェア・返金はあとから少し動くので、直近 7 日は 1 日、それより前は 30 日たったら数え直す。イベント (ファネル) は控えに入れず、出すときに集計表の最新を足す。
+古い日は 1 日分の読み出しに 8〜19 秒かかる (2026-11-22 実測)。前日も、元の表から数えると何度呼んでも 8〜12 秒かかる (2026-11-24 実測)。終わった日の数字は `metrics_day_snapshots` に控え、**前日を含む終わった日は、控えがあれば控えから出す**。比べる相手の「同じ時刻まで」の小計 (診断数・売上) だけは、分単位で切るため元の表から数える (`internal_numbers_until_cut`、1 日分の範囲を読むだけで速い)。
+
+- 控えは古さに関係なく使う。数え直しは定期実行が受け持ち、前日〜7 日前は 1 日 1 回 (日付が変わった直後の 0:40 に前日を作る)。前日の友達診断・シェア・返金・流入元ごとの購入者は、控えを作った時点の値になる。定期実行の回数は増やさない (2026-11-24 本人の指定)
+- 前日の控えがまだ無いとき (0:00〜0:40 など) は、元の表から数えて控える
+- イベント (ファネル) は控えに入れず、出すときに集計表の最新を足す
+
+(SQL: `20261124140000_internal_numbers_yesterday_snapshot.sql`)
 
 表示日と比較日の両方が古く、1 回の呼び出しで数え切れないときは、比較日を次の呼び出しに回す (応答の `compare_pending`)。画面は自動で呼び直す。
 
@@ -133,7 +139,7 @@ API からの呼び出しは約 8 秒で打ち切られるため、数えるの�
 1. イベント (ファネル): 前日を最後まで数える (過去の日はさかのぼらない)
 2. 控え: 前日〜7 日前を 1 日 1 回、32 日前 (シェアの集計期間の終わり) を 1 回。過去の日はさかのぼらない
 
-画面側 (`internal_numbers_block`) は、2 日以上前の日は控えがあれば古さに関係なく控えから出す。
+画面側 (`internal_numbers_block`) は、終わった日 (前日を含む) は控えがあれば古さに関係なく控えから出す。
 実行の記録は `metrics_job_runs` に残る (`detail.errors` に失敗した日、`detail.more` が true なら
 時間切れで残した仕事あり)。手で流すときは SQL Editor で `call public.metrics_nightly_run();`。
 
