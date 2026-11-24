@@ -3,10 +3,10 @@
 // 完全版 (日本語 Web) を買った直後の「完全版の準備画面」。設定と A/B は src/lib/purchase-loading.ts。
 //
 // - 自己診断の解析待ち画面 (DiagnosisAnalyzingLoader) を金色の豪華版 (theme="premium") で使い、
-//   15秒のあいだ、結果アップグレードの手順 (3枚) と「完全版でできること」(1枚) を流す。
-// - 権利がもう反映済みでも、15秒は必ず見せる。終わったら ?paid= を外して自己診断結果を出す。
+//   20秒 (1枚5秒) のあいだ、結果アップグレードの手順 (3枚) と「完全版でできること」(1枚) を流す。
+// - 権利がもう反映済みでも、20秒は必ず見せる。終わったら ?paid= を外して自己診断結果を出す。
 // - 戻った時点でまだ反映されていない (webhook 待ち) ときは、裏で反映を確かめる。
-//   15秒たっても反映されていなければ、今までの「決済処理中...」(PaidUnlockWatcher) に引き継ぐ。
+//   20秒たっても反映されていなければ、今までの「決済処理中...」(PaidUnlockWatcher) に引き継ぐ。
 // - スライドはボタンを持たない。紹介だけにして、買ったもの (自己診断結果) を先に見せる。
 
 import { useEffect, useRef, useState } from "react";
@@ -16,10 +16,10 @@ import type { AnalyzingSlide } from "@/i18n/diagnosis";
 import { requestFullAccessStatus } from "@/lib/full-access-status-client";
 import { startVisiblePolling } from "@/lib/visible-polling";
 
-export const PURCHASE_LOADING_MS = 15_000;
+export const PURCHASE_LOADING_MS = 20_000; // 4枚 × 5秒 (2026-11-24 本人指示で15秒から延長)
 
 // 結果アップグレードの手順を3枚 + 完全版でできることを1枚 (2026-11-24 本人指示)。
-// 値段の手順は入れない (本人指示)。15秒を4枚で割るので、文は短くする。
+// 値段の手順は入れない (本人指示)。1枚5秒なので、文は短くする。
 const SLIDES: AnalyzingSlide[] = [
   {
     visual: {

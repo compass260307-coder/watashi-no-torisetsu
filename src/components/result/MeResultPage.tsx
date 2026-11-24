@@ -1107,7 +1107,7 @@ async function MeResultPageContent({
         )}
       {/* 決済直後 (?paid=1) だが webhook 反映がまだで未課金表示のとき、「決済処理中...」を出して
           status をポーリング → full 反映で自動的にロック解除表示へ (払ったのにロック→再購入 を防ぐ)。 */}
-      {/* 完全版の準備画面の群は、反映待ちも準備画面の中で扱う (15秒後に反映前なら PaidUnlockWatcher へ)。 */}
+      {/* 完全版の準備画面の群は、反映待ちも準備画面の中で扱う (20秒後に反映前なら PaidUnlockWatcher へ)。 */}
       {showPurchaseLoading && (
         <PurchaseLoadingScreen ownerToken={token} waitingForAccess={waitingForPaidAccess} />
       )}
