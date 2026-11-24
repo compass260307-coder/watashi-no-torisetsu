@@ -6,7 +6,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { isInternalDashboardViewer } from "@/lib/internal-numbers-access";
 import { getSession } from "@/lib/session";
-import { xAdsCredentials, xAdsGet } from "@/lib/x-ads-api";
+import { listXAdsAccounts, xAdsCredentials, xAdsGet } from "@/lib/x-ads-api";
 import {
   syncXAdsSpend,
   xAdsBackfillWindow,
@@ -129,6 +129,63 @@ export async function GET(request: NextRequest) {
         ? await stats("CAMPAIGN", active.map((c) => c.id).join(","))
         : null,
     });
+  }
+
+  // funding=1: 各アカウントの支払い方法 (funding instruments) を返す。クーポンの類が API で
+  // 見えるかを確かめるため (2026-11-24)。読むだけ。カード番号などが混ざりうる文字の項目
+  // (description・name など) は値を返さず、項目名だけを返す。
+  if (request.nextUrl.searchParams.get("funding") !== null) {
+    const credentials = xAdsCredentials();
+    if (!credentials) return json({ error: "missing_credentials" }, 400);
+    const SAFE_KEYS = new Set([
+      "id",
+      "type",
+      "currency",
+      "entity_status",
+      "deleted",
+      "cancelled",
+      "able_to_fund",
+      "paused",
+      "start_time",
+      "end_time",
+      "created_at",
+      "updated_at",
+      "credit_limit_local_micro",
+      "credit_remaining_local_micro",
+      "funded_amount_local_micro",
+      "reasons_not_able_to_fund",
+    ]);
+    const accounts = await listXAdsAccounts(credentials);
+    const result = [];
+    for (const account of accounts) {
+      try {
+        const body = await xAdsGet<{ data?: Record<string, unknown>[] }>(
+          `/accounts/${encodeURIComponent(account.id)}/funding_instruments`,
+          { with_deleted: "true", count: "200" },
+          credentials,
+        );
+        result.push({
+          account: account.name,
+          id: account.id,
+          instruments: (body.data ?? []).map((item) => {
+            const safe: Record<string, unknown> = {};
+            const other: string[] = [];
+            for (const [key, value] of Object.entries(item)) {
+              if (SAFE_KEYS.has(key)) safe[key] = value;
+              else other.push(`${key}:${value === null ? "null" : typeof value}`);
+            }
+            return { ...safe, other_keys: other };
+          }),
+        });
+      } catch (error) {
+        result.push({
+          account: account.name,
+          id: account.id,
+          error: error instanceof Error ? error.message.slice(0, 200) : "unknown",
+        });
+      }
+    }
+    return json({ funding: result });
   }
 
   const range = rangeParam(request);
