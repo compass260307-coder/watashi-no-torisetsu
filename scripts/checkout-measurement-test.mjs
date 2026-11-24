@@ -59,15 +59,4 @@ assert.match(cancellation, /event_name: "checkout_cancelled"/);
 const webhook = source("src/app/api/webhook/stripe/route.ts");
 assert.match(webhook, /session\.metadata\?\.checkout_attempt_id/);
 
-const metrics = source("src/app/api/metrics/route.ts");
-assert.doesNotMatch(metrics, /paywallFunnel\[[0-9]+\]/);
-for (const field of [
-  "checkoutRequests",
-  "checkoutUsers",
-  "anonymousCheckouts",
-  "checkoutCancelled",
-]) {
-  assert.match(metrics, new RegExp(`coursePaywall\\.${field}`));
-}
-
 console.log("Checkout measurement regression checks passed.");

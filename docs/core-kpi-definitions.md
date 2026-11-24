@@ -1,5 +1,7 @@
 # 経営KPIの定義と運用
 
+> 2026-11-24 追記: `/api/metrics` (スプレッドシート連携) は削除した。以下の `/api/metrics` に関する記述は当時の記録。KPI の定義と `src/lib/core-kpis.ts` の保存処理は今も使う。数字は `/internal/numbers` で見る (`docs/INTERNAL_NUMBERS.md`)。
+
 `/api/metrics` は `src/lib/core-kpis.ts` の集計結果を利用する。
 
 ## 期間の意味
