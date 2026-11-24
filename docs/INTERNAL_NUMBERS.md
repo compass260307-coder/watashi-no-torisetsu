@@ -150,6 +150,9 @@ Vercel Cron (`/api/cron/x-ads-spend`、毎時 20 分) が X Ads API から、直
 - 配信面: `ALL_ON_TWITTER` と `PUBLISHER_NETWORK` を足す (後者を断られたら X 本体だけ)
 - 確かめ方: 許可リストの人がログインして `GET /api/internal/numbers/x-ads` (保存しない試し)、
   `POST` で 1 回保存
+- さかのぼって入れる: `?from=YYYY-MM-DD&to=YYYY-MM-DD` を付けると、終わった日を 7 日まで
+  (X の統計の 1 回の上限) 取り直す。GET は試し、POST で保存。長い期間は 7 日ずつ分けて呼ぶ。
+  その期間の `ad_spend_hourly` (そのアカウントの分) は X の値で上書きされる
 
 ## まだ入っていないもの
 

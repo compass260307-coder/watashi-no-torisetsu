@@ -1,12 +1,17 @@
 // 社内向け数値画面: X Ads API からの広告費の取り込みを、許可リストの人が確かめる入口。
 //   GET  : 取るだけで保存しない (アカウントの一覧・記号・通貨・期間の合計を返す)
 //   POST : 取って保存する (毎時の定期実行と同じ処理を、いま 1 回)
+//   どちらも ?from=YYYY-MM-DD&to=YYYY-MM-DD で、終わった日を 7 日までさかのぼって取れる
 import { NextResponse, type NextRequest } from "next/server";
 
 import { isInternalDashboardViewer } from "@/lib/internal-numbers-access";
 import { getSession } from "@/lib/session";
 import { xAdsCredentials, xAdsGet } from "@/lib/x-ads-api";
-import { syncXAdsSpend, xAdsSyncWindow } from "@/lib/x-ads-spend";
+import {
+  syncXAdsSpend,
+  xAdsBackfillWindow,
+  xAdsSyncWindow,
+} from "@/lib/x-ads-spend";
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
@@ -19,6 +24,19 @@ const PRIVATE_HEADERS = {
 
 const json = (body: unknown, status = 200) =>
   NextResponse.json(body, { status, headers: PRIVATE_HEADERS });
+
+/**
+ * ?from=YYYY-MM-DD&to=YYYY-MM-DD: さかのぼって取り込む期間 (終わった日、7 日まで)。
+ * 無ければ null (直近 days 日)。形がおかしければ理由。
+ */
+function rangeParam(
+  request: NextRequest,
+): { from: number; to: number } | { error: string } | null {
+  const from = request.nextUrl.searchParams.get("from");
+  const to = request.nextUrl.searchParams.get("to");
+  if (from === null && to === null) return null;
+  return xAdsBackfillWindow(from ?? "", to ?? from ?? "");
+}
 
 function daysParam(request: NextRequest): number {
   const value = Number(request.nextUrl.searchParams.get("days") ?? "3");
@@ -113,9 +131,12 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  const range = rangeParam(request);
+  if (range && "error" in range) return json(range, 400);
   const report = await syncXAdsSpend({
     days: daysParam(request),
     dryRun: true,
+    range: range ?? undefined,
   });
   return json({ ...report, credentials: credentialShape() });
 }
@@ -129,5 +150,9 @@ export async function POST(request: NextRequest) {
   if (!origin || new URL(origin).host !== request.nextUrl.host) {
     return json({ error: "forbidden" }, 403);
   }
-  return json(await syncXAdsSpend({ days: daysParam(request) }));
+  const range = rangeParam(request);
+  if (range && "error" in range) return json(range, 400);
+  return json(
+    await syncXAdsSpend({ days: daysParam(request), range: range ?? undefined }),
+  );
 }
