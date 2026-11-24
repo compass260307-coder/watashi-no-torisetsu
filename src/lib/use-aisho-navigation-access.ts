@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SESSION_MARKER_COOKIE_NAME } from "@/lib/session-constants";
 
 type AccessState = {
   pathname: string;
@@ -28,6 +29,20 @@ function requestAccess(ownerToken: string | null): Promise<boolean> {
   return request;
 }
 
+/**
+ * この端末にログインの目印 (cookie) があるか。読めないときは「あるかもしれない」として true。
+ * 目印は 2026-09-10 から発行しているので、それより前にログインしたままの端末では false になる。
+ */
+function hasSessionMarker(): boolean {
+  try {
+    return document.cookie
+      .split(";")
+      .some((part) => part.trim() === `${SESSION_MARKER_COOKIE_NAME}=1`);
+  } catch {
+    return true;
+  }
+}
+
 /** 未確認・未購入は false に倒し、相性診断への導線を表示しない。 */
 export function useAishoNavigationAccess(
   pathname: string,
@@ -40,11 +55,17 @@ export function useAishoNavigationAccess(
 
     let cancelled = false;
     let ownerToken: string | null = null;
+    let storageReadable = true;
     try {
       ownerToken = localStorage.getItem("torisetsu_owner_token");
     } catch {
       // Cookie session の判定へフォールバックする。
+      storageReadable = false;
     }
+
+    // 診断もログインもしていない端末は、問い合わせても必ず false。APIを呼ばずに済ませる
+    // (メニューの導線を出すかどうかだけの判定。相性ページの入口は useAishoEntryAccess が別に確かめる)。
+    if (storageReadable && !ownerToken && !hasSessionMarker()) return;
 
     void requestAccess(ownerToken).then((unlocked) => {
       if (!cancelled) setState({ pathname, unlocked });
