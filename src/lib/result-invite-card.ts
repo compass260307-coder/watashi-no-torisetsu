@@ -11,8 +11,11 @@
 
 export const RESULT_INVITE_CARD_VERSION = "ja_result_invite_card_v1";
 
-/** 一番下の課金カードが見えてから、招待カードを出すまでの待ち時間。 */
-export const RESULT_INVITE_CARD_DELAY_MS = 8000;
+/**
+ * 一番下の課金カードが見えてから、招待カードを出すまでの待ち時間。
+ * 2026-11-25: 8秒 → 5秒。カードが出る前に離れる人を減らすため。
+ */
+export const RESULT_INVITE_CARD_DELAY_MS = 5000;
 
 /**
  * 計測の surface / source。既存イベント (tako_invite_ui_shown / friend_invite_clicked) に載せる。
