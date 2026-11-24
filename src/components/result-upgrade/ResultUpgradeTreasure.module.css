@@ -40,6 +40,13 @@
   object-fit: cover;
 }
 
+/* 縦長の画面では舞台が画面を覆い、ぼかした背景は見えない。重いぼかしを描かず、絵も読み込まない。 */
+@media (max-aspect-ratio: 900 / 1599) {
+  .sceneBlur {
+    display: none;
+  }
+}
+
 .scene {
   position: absolute;
   top: 0;
@@ -936,15 +943,6 @@
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
-}
-
-.glyphPreload {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  opacity: 0;
-  pointer-events: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

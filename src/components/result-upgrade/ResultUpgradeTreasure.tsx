@@ -1,6 +1,6 @@
 "use client";
 
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import styles from "./ResultUpgradeTreasure.module.css";
@@ -115,6 +115,71 @@ export const RESULT_UPGRADE_TREASURE_OFFER: TreasureOffer = {
   offerSummary: (priceJpy, count) => `クーポンを使うと ${priceJpy.toLocaleString("ja-JP")}円で、次の${count}つの特典が手に入ります。`,
   benefits: BENEFITS,
 };
+// 絵ごとの sizes（ブラウザが取りにいく絵の幅を決める）。先読みと表示で同じ絵を取るよう、ここの値を両方で使う。
+// 舞台は画面の高さに合わせて決まる（幅は高さの約56%）ので、舞台の中の絵は vh で指定する。
+// 画素が3倍の画面（最近のスマホ）では、表示の2倍ぶんの幅の絵を取る。フェルトの絵は細部が柔らかく、
+// 3倍ぶん（約2倍の重さ）を取っても見た目が変わらないため。条件が分からない古いブラウザは、うしろの実寸の指定を使う。
+const DENSE = "(min-resolution: 2.5dppx)";
+const ROOM_SIZES = `${DENSE} 32vh, 57vh`;
+// 横長の画面の左右に敷く、ぼかした背景。ぼかすので小さな絵で足りる。
+const ROOM_BLUR_SIZES = "256px";
+const CHEST_SIZES = `${DENSE} 21vh, 31vh`;
+const ALICE_SIZES = "(max-width: 520px) 28vw, 140px";
+const PRICE_TAG_SIZES = `${DENSE} and (max-width: 520px) 59vw, (max-width: 520px) 88vw, 360px`;
+const COUPON_SIZES = `${DENSE} and (max-width: 520px) 56vw, (max-width: 520px) 84vw, 330px`;
+// 特典カードの絵は、積み重ねるときも1枚ずつ見せるときも、枠の中で約200px以下に収まる。
+// どちらも同じ指定にして、同じ絵を2通りの幅で取らないようにする。
+const BENEFIT_SIZES = `${DENSE} 128px, 200px`;
+
+// 先読みした絵。捨てられないよう持っておく。
+const warmedImages = new Map<string, HTMLImageElement>();
+
+/** 画面に出す前に絵を読み込んでおく。<Image> が取るのと同じ絵（同じ幅）を取る。 */
+function warmImage(src: string, sizes: string, urgency: "high" | "low" = "low") {
+  if (typeof window === "undefined") return;
+  const key = `${src}|${sizes}`;
+  if (warmedImages.has(key)) return;
+  const { props } = getImageProps({ src, alt: "", fill: true, sizes });
+  const image = new window.Image();
+  image.decoding = "async";
+  image.fetchPriority = urgency;
+  // sizes を先に入れてから srcset を入れる（順が逆だと、幅が決まる前に取りにいく）。
+  if (props.sizes) image.sizes = props.sizes;
+  if (props.srcSet) image.srcset = props.srcSet;
+  image.src = props.src;
+  warmedImages.set(key, image);
+}
+
+function warmRawImage(src: string) {
+  if (typeof window === "undefined" || warmedImages.has(src)) return;
+  const image = new window.Image();
+  image.decoding = "async";
+  image.fetchPriority = "low";
+  image.src = src;
+  warmedImages.set(src, image);
+}
+
+/**
+ * 宝箱を開く前（ページを読んでいる間）に、最初の場面の絵（書斎・閉じた宝箱・Alice）を読み込んでおく。
+ * 押してから読み込むと、宝箱が落ちてくる動きの間に絵が出ない。
+ */
+export function preloadTreasureScene() {
+  warmImage(ROOM_SRC, ROOM_SIZES);
+  warmImage(CHEST_CLOSED_SRC, CHEST_SIZES);
+  warmImage(ALICE_SRC, ALICE_SIZES);
+}
+
+/** 宝箱を開けたあとの場面の絵（開いた宝箱・クーポン・値札・数字・特典）を、宝箱を見ている間に読み込んでおく。 */
+function preloadTreasureOffer(offer: TreasureOffer) {
+  warmImage(CHEST_OPEN_SRC, CHEST_SIZES, "high");
+  warmImage(offer.couponSrc, COUPON_SIZES);
+  warmImage(PRICE_TAG_SRC, PRICE_TAG_SIZES);
+  for (const name of GLYPHS) warmRawImage(`/result-upgrade/digits/${name}.webp`);
+  for (const benefit of offer.benefits) {
+    if (!benefit.beforeAfter && !benefit.screenshot) warmImage(benefit.image, BENEFIT_SIZES);
+  }
+}
+
 // 刺しゅうの数字（0〜9・¥・カンマ）を1文字ずつ切り出した絵。並べて金額を表示する。
 const GLYPHS = ["yen", "comma", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 function glyphSrc(char: string): string {
@@ -243,6 +308,11 @@ export function ResultUpgradeTreasure({
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
+
+  // 宝箱を見ている間に、このあとの場面の絵を読み込んでおく（クーポン・値札・特典が遅れて出ないように）。
+  useEffect(() => {
+    preloadTreasureOffer(offer);
+  }, [offer]);
 
   function later(callback: () => void, ms: number) {
     timers.current.push(window.setTimeout(callback, ms));
@@ -376,19 +446,11 @@ export function ResultUpgradeTreasure({
         </button>
       )}
       <div className={styles.sceneBlur} aria-hidden="true">
-        <Image src={ROOM_SRC} alt="" fill sizes="100vw" />
+        <Image src={ROOM_SRC} alt="" fill sizes={ROOM_BLUR_SIZES} />
       </div>
       <div className={styles.scene}>
-      <div className={styles.glyphPreload} aria-hidden="true">
-        {GLYPHS.map((name) => (
-          // eslint-disable-next-line @next/next/no-img-element -- 数字の絵を先に読み込み、数える間に表示が欠けないようにする
-          <img key={name} src={`/result-upgrade/digits/${name}.webp`} alt="" />
-        ))}
-        {/* eslint-disable-next-line @next/next/no-img-element -- 値札の絵を先に読み込む */}
-        <img src={PRICE_TAG_SRC} alt="" />
-      </div>
       <div className={styles.backdrop} aria-hidden="true">
-        <Image src={ROOM_SRC} alt="" fill priority sizes="(max-width: 520px) 100vw, 60vh" />
+        <Image src={ROOM_SRC} alt="" fill priority sizes={ROOM_SIZES} />
       </div>
       <div className={`${styles.backdropShade} ${opened ? styles.backdropShadeOpen : ""}`} aria-hidden="true" />
       <div className={`${styles.rays} ${opened ? styles.raysOn : ""}`} aria-hidden="true" />
@@ -442,7 +504,7 @@ export function ResultUpgradeTreasure({
               alt=""
               fill
               priority
-              sizes="(max-width: 520px) 74vw, 380px"
+              sizes={CHEST_SIZES}
               className={`${styles.chestImage} ${opened ? styles.hidden : ""}`}
             />
             <Image
@@ -450,7 +512,7 @@ export function ResultUpgradeTreasure({
               alt=""
               fill
               priority
-              sizes="(max-width: 520px) 74vw, 380px"
+              sizes={CHEST_SIZES}
               className={`${styles.chestImage} ${opened ? "" : styles.hidden}`}
             />
             <div
@@ -461,7 +523,7 @@ export function ResultUpgradeTreasure({
         </button>
       </div>
       <div key={landed ? "alice-landed" : "alice"} className={`${styles.alice} ${opened ? styles.aliceHop : ""}`} aria-hidden="true">
-        <Image src={ALICE_SRC} alt="" fill priority sizes="(max-width: 520px) 28vw, 140px" />
+        <Image src={ALICE_SRC} alt="" fill priority sizes={ALICE_SIZES} />
       </div>
       {phase === "open" && (
         <div className={styles.couponRise}>
@@ -481,7 +543,7 @@ export function ResultUpgradeTreasure({
           role="img"
           aria-label={`通常価格 ${listPriceJpy.toLocaleString("ja-JP")}円が、クーポンで ${priceJpy.toLocaleString("ja-JP")}円`}
         >
-          <Image src={PRICE_TAG_SRC} alt="" fill priority sizes="(max-width: 520px) 88vw, 360px" />
+          <Image src={PRICE_TAG_SRC} alt="" fill priority sizes={PRICE_TAG_SIZES} />
           <div className={`${styles.oldPrice} ${counting ? styles.oldPriceSmall : ""}`}>
             <EmbroideredPrice value={listPriceJpy} />
             <div className={`${styles.strike} ${struck ? styles.strikeOn : ""}`} aria-hidden="true">
@@ -642,7 +704,7 @@ export function CouponTicket({
         role="img"
         aria-label={`${label}${variant === "chat" ? "（受け取り済み）" : ""}`}
       >
-        <Image src={src} alt="" fill sizes="(max-width: 520px) 84vw, 330px" priority={variant === "reveal"} />
+        <Image src={src} alt="" fill sizes={COUPON_SIZES} priority={variant === "reveal"} />
         {variant === "chat" && (
           <span className={styles.ticketStamp} aria-hidden="true">受け取り<br />済み</span>
         )}
@@ -678,7 +740,7 @@ function BenefitFace({ benefit, compact = false }: { benefit: TreasureBenefit; c
             {!compact && <span className={styles.sampleBadge}>見本</span>}
           </>
         ) : (
-          <Image src={benefit.image} alt="" fill sizes="(max-width: 520px) 70vw, 260px" />
+          <Image src={benefit.image} alt="" fill sizes={BENEFIT_SIZES} />
         )}
       </span>
       <span className={styles.benefitTitle}>{benefit.title}</span>

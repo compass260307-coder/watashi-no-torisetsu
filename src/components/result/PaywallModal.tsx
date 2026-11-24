@@ -23,6 +23,7 @@ import { paywallCardMode, type PaywallCardMode } from "@/lib/feature-flags";
 import { jaFullAccessOfferForQuote, type JaFullAccessPriceArm } from "@/lib/full-access-pricing";
 import { useFullAccessQuote } from "@/lib/use-full-access-quote";
 import { FullAccessTreasure } from "./FullAccessTreasure";
+import { preloadTreasureScene } from "@/components/result-upgrade/ResultUpgradeTreasure";
 import { PAYWALL_OPEN_EVENT } from "@/lib/scroll-to-paywall";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
 import { useEffect, useRef, useState } from "react";
@@ -355,6 +356,36 @@ export function PaywallModal(props: PaywallModalProps) {
     window.addEventListener(PAYWALL_OPEN_EVENT, handler);
     return () => window.removeEventListener(PAYWALL_OPEN_EVENT, handler);
   }, []);
+
+  // このページのどのCTAからも宝箱が開くとき（自己診断結果ページ）は、ページを読んでいる間の空き時間に
+  // 最初の場面の絵を読み込んでおく。押してから読み込むと、宝箱が出るまで間が空く。
+  // 通信量を節約する設定の人には先読みしない。
+  const warmsTreasure =
+    Boolean(props.treasureEntry) &&
+    props.surface !== "tako" &&
+    (props.locale ?? "ja") === "ja" &&
+    !props.previewMode &&
+    !props.legacyPlanStyle &&
+    props.variant !== "aisho" &&
+    (props.cardMode ?? paywallCardMode()) === "legacy";
+  useEffect(() => {
+    if (!warmsTreasure) return;
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection;
+    if (connection?.saveData) return;
+    let idle: number | null = null;
+    // ページ自体の読み込みを邪魔しないよう、少し待ってから手の空いたときに始める。
+    const timer = window.setTimeout(() => {
+      if (typeof window.requestIdleCallback === "function") {
+        idle = window.requestIdleCallback(() => preloadTreasureScene(), { timeout: 3000 });
+      } else {
+        preloadTreasureScene();
+      }
+    }, 1500);
+    return () => {
+      window.clearTimeout(timer);
+      if (idle !== null) window.cancelIdleCallback(idle);
+    };
+  }, [warmsTreasure]);
 
   if (!open) return null;
 
