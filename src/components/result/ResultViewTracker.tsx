@@ -6,12 +6,9 @@
 // 発火するイベント (いずれも ownerToken 付き → 計測処理は owner_token 単位で集計):
 //   result_viewed        セッション内で当該 token 初表示 (metadata.friendCount)
 //   result_revisited     セッション内で 2 回目以降の表示
-//   three_friends_unlocked  friendCount >= 3 に到達した token を 1 回だけ (localStorage で永続 dedup)
 //
 // dedup 方針:
 //   - viewed/revisited は sessionStorage (タブを閉じるまで) 単位。
-//   - three_friends_unlocked は localStorage 単位 (端末で 1 回)。stats は unique owner_token を
-//     数えるので多重発火でも二重計上されないが、無駄な POST を避けるため client でも抑止する。
 
 import { useEffect } from "react";
 import { track } from "@/lib/track";
@@ -39,17 +36,6 @@ export function ResultViewTracker({
           ownerToken,
           metadata: { friendCount, funnelVersion: "share_v3" },
         });
-      }
-
-      if (friendCount >= 3) {
-        const unlockedKey = `torisetsu_unlocked3_${ownerToken}`;
-        if (localStorage.getItem(unlockedKey) !== "1") {
-          localStorage.setItem(unlockedKey, "1");
-          track("three_friends_unlocked", {
-            ownerToken,
-            metadata: { friendCount },
-          });
-        }
       }
     } catch {
       // 計測は UX を阻害しない

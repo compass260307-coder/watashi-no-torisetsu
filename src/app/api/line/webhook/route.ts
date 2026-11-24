@@ -550,10 +550,6 @@ async function handleAishoCommand(
     ]);
     return;
   }
-  await recordLineEvent({
-    eventName: "line_aisho_started",
-    metadata: { line_user_id: lineUserId, user_id: userId },
-  });
   await replyLineMessages(replyToken, [
     {
       type: "text",
@@ -784,18 +780,8 @@ async function handleAishoSessionMessage(
       session,
       youName: user?.display_name?.trim() || "あなた",
     });
-    // 鑑定結果を組み立てた時点で出生情報を削除。分析イベントにも保存しない。
+    // 鑑定結果を組み立てた時点で出生情報を削除。
     await deleteLineAishoSession(lineUserId);
-    await recordLineEvent({
-      eventName: "line_aisho_generated",
-      metadata: {
-        line_user_id: lineUserId,
-        user_id: userId,
-        relationship: session.data.relationship,
-        score: result.score,
-        surface: "chat",
-      },
-    });
     await replyLineMessages(replyToken, [
       {
         type: "text",
@@ -1145,11 +1131,6 @@ async function handleLineCommand(
   // contact / help / talk は未連携 (null) でも応答する
   userId: string | null,
 ): Promise<void> {
-  await recordLineEvent({
-    eventName: "line_menu_command",
-    metadata: { command, line_user_id: lineUserId, user_id: userId },
-  });
-
   if (command === "talk") {
     await replyLineMessages(replyToken, [
       {

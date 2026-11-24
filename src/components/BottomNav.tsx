@@ -33,7 +33,6 @@ import {
   TAKO_ATTENTION_GRANTED_EVENT,
   TAKO_BUBBLE_REPLAY_EVENT,
   TAKO_ATTENTION_PENDING_KEY,
-  takoAttentionImpressionKey,
 } from "@/lib/tako-attention";
 import { track } from "@/lib/track";
 import { trackingPageFromPathname } from "@/lib/tracking-page";
@@ -395,17 +394,6 @@ export function BottomNav() {
           attentionPending = Boolean(
             token && pendingToken === token && !navHidden,
           );
-          if (attentionPending && token) {
-            const impressionKey = takoAttentionImpressionKey(token);
-            if (localStorage.getItem(impressionKey) !== "1") {
-              localStorage.setItem(impressionKey, "1");
-              // ui: 日本語は吹き出し付き (2026-11-17〜)。バッジだけの時期・言語と分けて見る。
-              track("tako_nav_badge_shown", {
-                ownerToken: token,
-                metadata: { ui: locale === "ja" ? "bubble" : "badge" },
-              });
-            }
-          }
         }
 
         // 運命(占星術)タブの赤バッジは 2026-11-19 に廃止 (赤バッジは友達診断だけ)。
@@ -994,7 +982,7 @@ export function BottomNav() {
           //   - me (自己診断の誘い / 未診断=ownerToken 無し): pending を消して1回きりにし、
           //     既存の評価者→診断KPI (friend_to_diagnosis_clicked) に source 違いで載せる
           //     (新イベント名は events テーブルの RLS 変更が要るため増やさない)。
-          //   - friend: 従来どおり tako_nav_badge_clicked (ownerToken 必須)。
+          //   - friend: 記録しない (バッジの表示・タップの計測は 2026-11-24 に廃止)。
           const handleAttentionClick = !hasAttention
             ? undefined
             : it.key === "me"
@@ -1009,13 +997,7 @@ export function BottomNav() {
                     metadata: { source: "nav_badge", destination: it.href },
                   });
                 }
-              : ownerToken
-                ? () =>
-                    track("tako_nav_badge_clicked", {
-                      ownerToken,
-                      metadata: { destination: it.href, ui: locale === "ja" ? "bubble" : "badge" },
-                    })
-                : undefined;
+              : undefined;
           return (
             <Link
               key={it.key}

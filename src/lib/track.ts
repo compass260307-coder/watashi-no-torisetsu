@@ -75,7 +75,6 @@ export function isPreviewMode(): boolean {
 //   diagnosis_completed          自己診断の完了 (metadata.typeId)
 //   friend_landing_viewed        友達招待ページ到達 (inviteCode)
 //   friend_answer_started        友達回答の開始            (旧 friend_v2_started)
-//   friend_answer_scale_completed 友達スケール回答の完了   (旧 friend_v2_scale_completed) ※内部計測
 //   friend_answer_completed      友達回答の完了            (旧 friend_v2_completed)
 //   friend_to_diagnosis_clicked  友達→自分も診断 CTA       (旧 friend_v2_self_cta_clicked)
 //   friend_to_diagnosis_invite_clicked 本人が回答済みの友達へ自己診断を案内
@@ -86,9 +85,6 @@ export function isPreviewMode(): boolean {
 //   share_to_diagnosis_clicked   /share/[code] → 自己診断 CTA
 //   result_viewed                結果(/me)の初回表示 (metadata.friendCount/funnelVersion, ownerToken)
 //   result_revisited             結果(/me)の再訪 (ownerToken)
-//   three_friends_unlocked       友達3人達成 (ownerToken)
-//   tako_nav_badge_shown         診断完了後「友達診断」未確認バッジ表示 (ownerToken)
-//   tako_nav_badge_clicked       未確認バッジ付き「友達診断」タップ (ownerToken)
 //   tako_viewed                  本人の友達診断ページ (/tako/[token]) 到達 (ownerToken)
 //   tako_invite_ui_shown         招待送信UIの露出 (metadata.surface: locked_gate / sticky_modal / tako_unlocked / send_sheet)
 //   unmei_nav_badge_shown        課金後「運命」未確認バッジ表示 (ownerToken)
@@ -292,38 +288,6 @@ export function track(
     } else if (!flushTimer) {
       flushTimer = setTimeout(flush, FLUSH_DELAY_MS);
     }
-  } catch {
-    // tracking never blocks UX
-  }
-}
-
-/**
- * ほかの記録と束ねず、この1件だけを単独で送る。
- * 受け口は束の中に1件でも不正があると束ごと捨てるため、受け付けられるか確証が弱い記録を
- * 試すときに使う (はじかれても、同じ時刻のほかの記録を巻き込まない)。GA へは転送しない。
- */
-export function trackIsolated(eventName: string, metadata: Record<string, unknown>) {
-  if (isPreviewMode()) return;
-  try {
-    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return;
-    const row: EventRow = {
-      event_name: eventName,
-      session_id: getSessionId(),
-      invite_code: null,
-      owner_token: null,
-      locale: "ja",
-      metadata: { ...metadata, locale: "ja" },
-    };
-    fetch(`${SUPABASE_URL}/rest/v1/rpc/ingest_client_events`, {
-      method: "POST",
-      keepalive: true,
-      headers: {
-        "Content-Type": "application/json",
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-      body: JSON.stringify({ p_events: [row] }),
-    }).catch(() => {});
   } catch {
     // tracking never blocks UX
   }
