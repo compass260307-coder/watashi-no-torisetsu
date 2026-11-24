@@ -188,6 +188,32 @@ export interface AnalyzingSlide {
         rowLabels?: [string, string, string];
       }
     | {
+        // 完全版の購入後の準備画面用。左の宝箱から、ひらいた中身の札が順に飛び出す図。
+        kind: "unlock";
+        // 宝箱の絵 (public 以下のパス)。
+        art: string;
+        // 札の文言 (4つまで)。上から順に出る。
+        items: string[];
+      }
+    | {
+        // 完全版の購入後の準備画面用 (結果アップグレードの手順)。結果ページの一番下の金色のボタンを指す図。
+        kind: "upgradeButton";
+        selfFace: string;
+        pageLabel: string;
+        buttonLabel: string;
+        // ボタンを指す吹き出し。
+        bubble: string;
+      }
+    | {
+        // 完全版の購入後の準備画面用 (結果アップグレードの手順)。Aliceの質問に答えるトークの図。
+        kind: "aliceQa";
+        aliceArt: string;
+        // 質問の番号の札 (例: "質問 1 / 7")。
+        counter: string;
+        question: string;
+        answer: string;
+      }
+    | {
         // 完全版の購入後の準備画面用。いつものキャラの顔が、あなた専用のキャラに変わる図。
         kind: "upgrade";
         // 左: いつものキャラの顔と札。
