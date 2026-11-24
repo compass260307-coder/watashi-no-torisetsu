@@ -8,7 +8,7 @@ export default function InternalLayout({
 }) {
   return (
     <>
-      <style>{"body{background:#f2f4f6}"}</style>
+      <style>{"body{background:#ffffff}"}</style>
       {children}
     </>
   );

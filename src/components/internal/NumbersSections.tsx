@@ -17,10 +17,10 @@ import {
 
 import {
   AnimatedNumber,
-  Card,
-  DataBar,
   DeltaBadge,
   DeltaText,
+  MiniBar,
+  Section,
   numberFormat,
   percent,
   yen,
@@ -46,11 +46,13 @@ export function KpiRow({
   onSelect: (key: HeadlineKey) => void;
   isToday: boolean;
 }) {
+  // すぐ下のグラフに出す指標を選ぶタブ。枠では囲まず、縦の細い線で区切り、
+  // 選んでいるものの下に線を引いてグラフとつなげる。
   return (
     <div
       role="tablist"
       aria-label="グラフに出す指標"
-      className="grid grid-cols-2 overflow-hidden rounded-lg border border-[var(--nb-border)] bg-[var(--nb-border)] [gap:1px] md:grid-cols-5"
+      className="grid grid-cols-2 border-b border-[var(--nb-border)] md:grid-cols-5"
     >
       {HEADLINES.map((item, index) => {
         const value = headlineValue(item, day.until_cut);
@@ -58,6 +60,8 @@ export function KpiRow({
           ? headlineValue(item, comparison.untilCut)
           : null;
         const active = item.key === selected;
+        // スマホでは 1 つ目を横いっぱい、残りを 2 列に並べる。
+        const rightColumn = index > 0 && index % 2 === 0;
         return (
           <button
             key={item.key}
@@ -65,49 +69,55 @@ export function KpiRow({
             role="tab"
             aria-selected={active}
             onClick={() => onSelect(item.key)}
-            className={`relative flex min-w-0 flex-col px-4 pb-4 pt-3.5 text-left transition-colors xl:px-5 ${
-              index === 0 ? "col-span-2 md:col-span-1" : ""
-            } ${
-              active
-                ? "bg-[var(--nb-surface)]"
-                : "bg-[var(--nb-surface-2)] hover:bg-[var(--nb-surface)]"
-            }`}
+            className={`group relative flex min-w-0 flex-col pb-5 text-left md:border-l md:border-t-0 md:border-[var(--nb-border)] md:px-3.5 md:pt-0 lg:px-5 xl:px-6 ${
+              index === 0
+                ? "col-span-2 md:col-span-1 md:border-l-0 md:!pl-0"
+                : "border-t border-[var(--nb-border)] pt-4"
+            } ${rightColumn ? "border-l pl-4 md:pl-3.5" : ""}`}
           >
             <span
-              aria-hidden
-              className="absolute inset-x-0 top-0 h-[3px]"
-              style={{
-                background: active ? "var(--nb-accent)" : "transparent",
-              }}
-            />
-            <span
-              className={`text-[13px] font-semibold ${active ? "text-[var(--nb-text)]" : "text-[var(--nb-text-2)]"}`}
+              className={`text-sm transition-colors ${
+                active
+                  ? "font-semibold text-[var(--nb-text)]"
+                  : "text-[var(--nb-text-2)] group-hover:text-[var(--nb-text)]"
+              }`}
             >
               {item.label}
             </span>
-            <span className="mt-1.5 text-[1.75rem] font-semibold leading-none tracking-tight tabular-nums text-[var(--nb-text)] xl:text-[2rem]">
+            <span className="mt-1.5 text-[2rem] font-semibold leading-[1.15] tracking-[-0.03em] tabular-nums text-[var(--nb-text)] md:text-[1.5rem] lg:text-[1.875rem] xl:text-[2.375rem]">
               <AnimatedNumber
                 value={value}
                 format={(shown) => formatNumbersValue(shown, item.kind)}
               />
             </span>
-            <span className="mt-2 flex flex-wrap items-baseline gap-x-2 text-[13px] tabular-nums text-[var(--nb-text-2)]">
+            <span className="mt-1 flex flex-wrap items-baseline gap-x-2.5 text-sm tabular-nums text-[var(--nb-text-3)]">
               {comparison ? (
                 <>
                   <DeltaBadge
-                    size="sm"
                     delta={numbersDelta(value, previous, item.kind)}
                   />
                   <span className="truncate">
                     {comparison.shortLabel}
                     {isToday ? "同時刻" : ""}{" "}
-                    {formatNumbersValue(previous, item.kind)}
+                    <span className="text-[var(--nb-text)]">
+                      {formatNumbersValue(previous, item.kind)}
+                    </span>
                   </span>
                 </>
               ) : (
                 "比較を用意しています..."
               )}
             </span>
+            <span
+              aria-hidden
+              className={`absolute bottom-[-1px] right-4 h-0.5 transition-colors md:right-3.5 lg:right-5 xl:right-6 ${
+                index === 0
+                  ? "left-0"
+                  : rightColumn
+                    ? "left-4 md:left-3.5 lg:left-5 xl:left-6"
+                    : "left-0 md:left-3.5 lg:left-5 xl:left-6"
+              } ${active ? "bg-[var(--nb-text)]" : "bg-transparent"}`}
+            />
           </button>
         );
       })}
@@ -253,9 +263,51 @@ const FLOW_COLUMNS: Record<number, string> = {
   6: "lg:grid-cols-6",
 };
 
+/** 率を長さで見せる細い棒。棒をまたぐ短い線は、比較日の率。 */
+function RateBar({
+  rate,
+  compareRate,
+}: {
+  rate: number | null;
+  compareRate: number | null;
+}) {
+  return (
+    <div className="relative my-3 h-[3px] rounded-full bg-[var(--nb-border)]">
+      <div
+        className="h-full rounded-full bg-[var(--nb-text)] transition-[width] duration-500 ease-out"
+        style={{
+          width: `${Math.max(rate && rate > 0 ? 1.5 : 0, Math.min(1, rate ?? 0) * 100)}%`,
+        }}
+      />
+      {compareRate !== null && (
+        <span
+          aria-hidden
+          className="absolute top-[-4px] h-[11px] w-[2px] rounded-full bg-[var(--nb-text-3)] ring-1 ring-[var(--nb-bg)]"
+          style={{ left: `calc(${Math.min(1, compareRate) * 100}% - 1px)` }}
+        />
+      )}
+    </div>
+  );
+}
+
+// 1 つの段階 (または 1 つの率) の箱の、文字の形。ファネルと口コミで同じものを使う。
+const STEP_LABEL = "text-sm font-semibold text-[var(--nb-text)]";
+const STEP_BASE = "min-h-[1.25rem] text-[13px] text-[var(--nb-text-3)]";
+const STEP_VALUE =
+  "mt-2 flex items-baseline gap-1.5 text-[1.75rem] font-semibold leading-[1.2] tracking-[-0.025em] tabular-nums text-[var(--nb-text)] xl:text-[1.875rem]";
+const STEP_NOTES =
+  "grid gap-0.5 text-[13px] tabular-nums text-[var(--nb-text-3)]";
+/** 横に並べる箱の区切り。狭い画面では 2 列、広い画面では縦の細い線で区切る。 */
+const stepCell = (index: number, count: number) =>
+  `flex min-w-0 flex-col lg:border-l lg:border-[var(--nb-border)] lg:px-5 ${
+    index === 0 ? "lg:border-l-0 lg:!pl-0" : ""
+  } ${index % 2 === 1 ? "max-lg:border-l max-lg:border-[var(--nb-border)] max-lg:pl-4" : "max-lg:pr-4"} ${
+    count % 2 === 1 && index === count - 1 ? "max-lg:col-span-2" : ""
+  }`;
+
 /**
- * 段階を左から右へ並べる (狭い画面では 2 列)。1 つの段階が 1 つの箱で、主役は率の大きな数字。
- * 率は「その段階の数 ÷ 基準の段階の数」。棒は率の長さ、棒の上の線は比較日の率。
+ * 段階を左から右へ並べる (狭い画面では 2 列)。主役は率の大きな数字。
+ * 率は「その段階の数 ÷ 基準の段階の数」。棒は率の長さ、棒をまたぐ線は比較日の率。
  * 件数は診断数が増えれば一緒に増えて良し悪しが読めないので、小さく添えるだけにする。
  */
 function Flow({
@@ -271,7 +323,7 @@ function Flow({
 }) {
   return (
     <ol
-      className={`grid grid-cols-2 gap-px bg-[var(--nb-border)] ${FLOW_COLUMNS[steps.length] ?? "lg:grid-cols-4"}`}
+      className={`grid grid-cols-2 gap-y-8 ${FLOW_COLUMNS[steps.length] ?? "lg:grid-cols-4"}`}
     >
       {steps.map((step, index) => {
         const value = step.value(day);
@@ -293,23 +345,12 @@ function Flow({
         // 率が小さい段階 (数 %) は 2 桁まで出す。
         const digits = rate !== null && rate < 0.1 ? 2 : 1;
         return (
-          <li
-            key={step.label}
-            className={`relative flex min-w-0 flex-col bg-[var(--nb-surface)] px-4 py-4 2xl:px-5 ${
-              steps.length % 2 === 1 && index === steps.length - 1
-                ? "col-span-2 lg:col-span-1"
-                : ""
-            }`}
-          >
+          <li key={step.label} className={stepCell(index, steps.length)}>
             <p className="flex min-w-0 flex-col">
-              <span className="text-[13px] font-semibold text-[var(--nb-text)]">
-                {step.label}
-              </span>
-              <span className="min-h-[1.25rem] text-[13px] text-[var(--nb-text-3)]">
-                {step.base?.label ?? ""}
-              </span>
+              <span className={STEP_LABEL}>{step.label}</span>
+              <span className={STEP_BASE}>{step.base?.label ?? ""}</span>
             </p>
-            <p className="mt-2 flex items-baseline gap-1.5 text-[1.75rem] font-semibold leading-none tracking-tight tabular-nums text-[var(--nb-text)]">
+            <p className={STEP_VALUE}>
               {step.base ? (
                 <AnimatedNumber
                   value={rate}
@@ -325,38 +366,19 @@ function Flow({
                         : numberFormat.format(Math.round(shown))
                     }
                   />
-                  <span className="text-sm font-medium tracking-normal text-[var(--nb-text-2)]">
+                  <span className="text-sm font-normal tracking-normal text-[var(--nb-text-3)]">
                     {step.unit}
                   </span>
                 </>
               )}
             </p>
             {/* 起点には率が無い。ほかの箱と高さをそろえるため、棒の場所だけ空けておく。 */}
-            <div
-              className="relative mt-3 h-1"
-              style={{
-                background: step.base ? "var(--nb-surface-2)" : "transparent",
-              }}
-            >
-              {step.base && (
-                <div
-                  className="h-full bg-[var(--nb-accent)] transition-[width] duration-500 ease-out"
-                  style={{
-                    width: `${Math.max(rate && rate > 0 ? 1.5 : 0, Math.min(1, rate ?? 0) * 100)}%`,
-                  }}
-                />
-              )}
-              {step.base && compareRate !== null && (
-                <span
-                  aria-hidden
-                  className="absolute top-[-3px] h-[10px] w-px bg-[var(--nb-text)]"
-                  style={{
-                    left: `calc(${Math.min(1, compareRate) * 100}% - 1px)`,
-                  }}
-                />
-              )}
-            </div>
-            <div className="mt-3 grid gap-0.5 text-[13px] tabular-nums text-[var(--nb-text-2)]">
+            {step.base ? (
+              <RateBar rate={rate} compareRate={compareRate} />
+            ) : (
+              <div className="my-3 h-[3px]" />
+            )}
+            <div className={STEP_NOTES}>
               <p className="flex flex-wrap items-baseline gap-x-2">
                 <span>{compareLabel}</span>
                 <span className="text-[var(--nb-text)]">
@@ -370,7 +392,7 @@ function Flow({
               </p>
               {step.base && (
                 <p>
-                  <span className="font-semibold text-[var(--nb-text)]">
+                  <span className="text-[var(--nb-text)]">
                     {numberFormat.format(value)}
                   </span>{" "}
                   {step.unit}
@@ -379,7 +401,7 @@ function Flow({
               {step.overall && (
                 <p>
                   {step.overall.label}{" "}
-                  <span className="font-semibold text-[var(--nb-text)]">
+                  <span className="text-[var(--nb-text)]">
                     {percent(overall, 2)}
                   </span>
                 </p>
@@ -392,7 +414,7 @@ function Flow({
   );
 }
 
-const FLOW_HINT = "大きな数字は、前の段階から進んだ割合。棒の上の線は比較日";
+const FLOW_HINT = "大きな数字は、前の段階から進んだ割合。棒をまたぐ線は比較日";
 
 export function FunnelCard({
   day,
@@ -408,25 +430,21 @@ export function FunnelCard({
   className?: string;
 }) {
   return (
-    <Card
+    <Section
       title="課金ファネル"
       hint={`${FLOW_HINT}。セッション数で集計（同じ訪問は1回）。上の「課金率」は人数で割るため、一致しません`}
-      action={
-        partial ? (
-          <span className="text-[13px] text-[var(--nb-text-2)]">
-            集計の途中（数え終わるまで少なく出ます）
-          </span>
-        ) : null
-      }
+      note={partial ? "集計の途中（数え終わるまで少なく出ます）" : null}
       className={className}
     >
-      <Flow
-        steps={PURCHASE_FLOW}
-        day={day}
-        compare={compare}
-        compareLabel={compareLabel}
-      />
-    </Card>
+      <div className="pt-5">
+        <Flow
+          steps={PURCHASE_FLOW}
+          day={day}
+          compare={compare}
+          compareLabel={compareLabel}
+        />
+      </div>
+    </Section>
   );
 }
 
@@ -442,13 +460,13 @@ export function FriendFlowCard({
   className?: string;
 }) {
   return (
-    <Card
+    <Section
       title="友達診断の流れ"
       hint="大きな数字は、基準の段階から進んだ割合。回数で集計"
       className={className}
     >
       {/* 招待する本人 (4 段階) と、招待された友達 (3 段階)。広い画面では横に並べる。 */}
-      <div className="grid flex-1 gap-px bg-[var(--nb-border)] xl:grid-cols-7">
+      <div className="grid gap-x-14 gap-y-10 pt-5 xl:grid-cols-7">
         {[
           { title: "招待する本人", steps: INVITER_FLOW, span: "xl:col-span-4" },
           {
@@ -457,32 +475,41 @@ export function FriendFlowCard({
             span: "xl:col-span-3",
           },
         ].map((flow) => (
-          <div
-            key={flow.title}
-            className={`flex flex-col bg-[var(--nb-surface)] ${flow.span}`}
-          >
-            <h3 className="border-b border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-4 py-2 text-[13px] font-semibold text-[var(--nb-text-2)] 2xl:px-5">
+          <div key={flow.title} className={flow.span}>
+            <h3 className="mb-4 text-[13px] font-semibold text-[var(--nb-text-3)]">
               {flow.title}
             </h3>
-            <div className="flex-1 bg-[var(--nb-surface)]">
-              <Flow
-                steps={flow.steps}
-                day={day}
-                compare={compare}
-                compareLabel={compareLabel}
-              />
-            </div>
+            <Flow
+              steps={flow.steps}
+              day={day}
+              compare={compare}
+              compareLabel={compareLabel}
+            />
           </div>
         ))}
       </div>
-    </Card>
+    </Section>
   );
 }
 
 /* ---------------------------------------------------------------- 時間別 */
 
 /** 0 の値は薄くする (表の中で、意味のある数字だけが目に入るように)。 */
-const quiet = (value: number) => (value === 0 ? "text-[var(--nb-text-3)]" : "");
+const quiet = (value: number) => (value === 0 ? "text-[var(--nb-faint)]" : "");
+
+// 表の形。枠や見出しの地色は使わず、行の下の細い線だけで区切る。
+// 左右の端は、ページの余白にそろえて詰める。
+const TABLE = "w-full min-w-max border-separate border-spacing-0 text-base";
+const TH =
+  "whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-bg)] px-2 py-2.5 text-[13px] font-medium text-[var(--nb-text-3)] last:pr-0 2xl:px-3";
+const TD =
+  "whitespace-nowrap border-b border-[var(--nb-border)] px-2 py-[11px] text-right tabular-nums last:pr-0 2xl:px-3";
+const ROW_HEAD =
+  "sticky left-0 whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-bg)] py-[11px] pl-0 pr-2 text-left font-medium tabular-nums group-hover:bg-[var(--nb-surface-2)]";
+const ROW = "group hover:bg-[var(--nb-surface-2)]";
+const TAG =
+  "ml-2 rounded-[5px] bg-[var(--nb-surface-2)] px-1.5 py-0.5 text-[13px] font-normal leading-none text-[var(--nb-text-2)]";
+const EMPTY = "py-12 text-center text-base text-[var(--nb-text-2)]";
 
 export function HoursCard({
   day,
@@ -512,14 +539,13 @@ export function HoursCard({
     { label: "課金率" },
     { label: "アップグレード" },
   ];
-  const cell =
-    "whitespace-nowrap border-b border-[var(--nb-border)] px-3.5 py-2.5 text-right tabular-nums";
   // 前日の数字は、すぐ左の数字の続きとして読めるよう左の余白を詰め、今日の数字より
   // 一段控えめにする (主役は今日)。
-  const besideCell = `${cell} pl-0 text-[var(--nb-text-2)]`;
+  const besideCell = `${TD} pl-0 text-[var(--nb-text-3)]`;
   return (
-    <Card
+    <Section
       title="時間帯別"
+      plain
       hint={
         previous
           ? `「前日」は ${previous.label.replace(/^前日\s*/, "")} の同じ時間帯の数字。広告 ＝ 流入元が X・TikTok`
@@ -529,15 +555,15 @@ export function HoursCard({
     >
       <div className="relative flex min-h-0 flex-1 flex-col">
         <div className="overflow-auto xl:min-h-[22rem] xl:flex-1 xl:basis-0">
-          <table className="w-full min-w-max border-separate border-spacing-0 text-base">
+          <table className={TABLE}>
             <thead>
               <tr>
                 {head.map((column, index) => (
                   <th
                     key={index}
                     scope="col"
-                    className={`sticky top-0 z-[1] whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-3.5 py-2 text-[13px] font-semibold text-[var(--nb-text-2)] ${
-                      index === 0 ? "left-0 z-[2] text-left" : "text-right"
+                    className={`sticky top-0 z-[1] ${TH} ${
+                      index === 0 ? "left-0 z-[2] pl-0 text-left" : "text-right"
                     } ${column.beside ? "pl-0" : ""}`}
                   >
                     {column.label}
@@ -553,48 +579,43 @@ export function HoursCard({
                 const before = previous?.hours[hour.h] ?? null;
                 const rate = ratio(hour.purchases_full, hour.diagnoses);
                 return (
-                  <tr key={hour.h} className="hover:bg-[var(--nb-surface-2)]">
-                    <th
-                      scope="row"
-                      // 横に送っても、どの行かが分かるように先頭の列は固定する。
-                      className="sticky left-0 whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-surface)] px-3.5 py-2.5 text-left font-semibold tabular-nums"
-                    >
+                  <tr key={hour.h} className={ROW}>
+                    {/* 横に送っても、どの行かが分かるように先頭の列は固定する。 */}
+                    <th scope="row" className={ROW_HEAD}>
                       {hour.h}時台
-                      {live && (
-                        <span className="ml-2 rounded-sm border border-[var(--nb-border-strong)] px-1 py-px text-[13px] leading-none font-normal text-[var(--nb-text-2)]">
-                          途中
-                        </span>
-                      )}
+                      {live && <span className={TAG}>途中</span>}
                     </th>
-                    <td className={`${cell} font-semibold`}>
-                      <DataBar share={hour.diagnoses / peak}>
+                    <td className={`${TD} font-semibold`}>
+                      <MiniBar share={hour.diagnoses / peak}>
                         {numberFormat.format(hour.diagnoses)}
-                      </DataBar>
+                      </MiniBar>
                     </td>
                     <td className={besideCell}>
                       {before ? numberFormat.format(before.diagnoses) : "–"}
                     </td>
-                    <td className={`${cell} ${quiet(hour.ad_diagnoses)}`}>
+                    <td className={`${TD} ${quiet(hour.ad_diagnoses)}`}>
                       {numberFormat.format(hour.ad_diagnoses)}
                     </td>
                     <td
-                      className={`${cell} ${quiet(hour.diagnoses - hour.ad_diagnoses)}`}
+                      className={`${TD} ${quiet(hour.diagnoses - hour.ad_diagnoses)}`}
                     >
                       {numberFormat.format(hour.diagnoses - hour.ad_diagnoses)}
                     </td>
-                    <td className={`${cell} font-semibold ${quiet(hour.net)}`}>
+                    <td
+                      className={`${TD} ${hour.net === 0 ? quiet(0) : "font-semibold"}`}
+                    >
                       {yen(hour.net)}
                     </td>
                     <td className={besideCell}>
                       {before ? yen(before.net) : "–"}
                     </td>
-                    <td className={`${cell} ${quiet(hour.purchases_full)}`}>
+                    <td className={`${TD} ${quiet(hour.purchases_full)}`}>
                       {numberFormat.format(hour.purchases_full)}
                     </td>
-                    <td className={`${cell} ${quiet(hour.purchases_full)}`}>
+                    <td className={`${TD} ${quiet(hour.purchases_full)}`}>
                       {percent(rate, 2)}
                     </td>
-                    <td className={`${cell} ${quiet(hour.purchases_upgrade)}`}>
+                    <td className={`${TD} ${quiet(hour.purchases_upgrade)}`}>
                       {numberFormat.format(hour.purchases_upgrade)}
                     </td>
                   </tr>
@@ -603,17 +624,15 @@ export function HoursCard({
             </tbody>
           </table>
           {rows.length === 0 && (
-            <p className="px-4 py-10 text-center text-base text-[var(--nb-text-2)]">
-              この日のデータはまだありません
-            </p>
+            <p className={EMPTY}>この日のデータはまだありません</p>
           )}
         </div>
         <span
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-10 bg-gradient-to-t from-[var(--nb-surface)] to-transparent xl:block"
+          className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-10 bg-gradient-to-t from-[var(--nb-bg)] to-transparent xl:block"
         />
       </div>
-    </Card>
+    </Section>
   );
 }
 
@@ -650,50 +669,44 @@ export function SourcesCard({
       net: rest.reduce((sum, s) => sum + s.net, 0),
     });
   }
-  const peak = Math.max(1, ...rows.map((row) => row.diagnoses));
-  const cell =
-    "whitespace-nowrap border-b border-[var(--nb-border)] px-3.5 py-2.5 text-right tabular-nums";
   return (
-    <Card
+    <Section
       title="流入経路"
-      hint="売上は、その日に診断した人の購入額"
+      plain
+      // 上の「純売上」「買い切り」(その日に買われた分) とは数え方が違い、合計が合わない。
+      // 読み違えないよう、i の中だけでなく見出しの横にも出す。
+      note="購入者・純売上は、その日に診断した人の分"
+      hint="購入者と純売上は、その日に診断した人が買った分（買った日は問いません）。上の「純売上」「買い切り」は、その日に買われた分なので、合計は一致しません"
       className={className}
     >
-      <div className="px-4 py-3.5 sm:px-5">
-        <div className="flex h-1.5 gap-px overflow-hidden">
+      {/* 広告と非広告の割合。色のついた側が広告。 */}
+      <div className="pb-2 pt-3">
+        <div className="flex h-2 gap-0.5 overflow-hidden rounded-full">
           <div
             className="bg-[var(--nb-accent)] transition-[width] duration-500 ease-out"
             style={{ width: `${(adShare ?? 0) * 100}%` }}
           />
-          <div className="flex-1 bg-[var(--nb-compare)] opacity-60" />
+          <div className="flex-1 bg-[var(--nb-faint)]" />
         </div>
-        <div className="mt-2 flex justify-between text-[13px] tabular-nums text-[var(--nb-text-2)]">
+        <div className="mt-2 flex justify-between text-sm tabular-nums text-[var(--nb-text-2)]">
           <span>
-            <span
-              aria-hidden
-              className="mr-1.5 inline-block h-2 w-2 rounded-[2px] bg-[var(--nb-accent)]"
-            />
             広告{" "}
             <span className="font-semibold text-[var(--nb-text)]">
               {percent(adShare)}
-            </span>{" "}
-            ({numberFormat.format(ads)})
+            </span>
+            （{numberFormat.format(ads)}）
           </span>
           <span>
-            <span
-              aria-hidden
-              className="mr-1.5 inline-block h-2 w-2 rounded-[2px] bg-[var(--nb-compare)] opacity-60"
-            />
             非広告{" "}
             <span className="font-semibold text-[var(--nb-text)]">
               {percent(adShare === null ? null : 1 - adShare)}
-            </span>{" "}
-            ({numberFormat.format(total - ads)})
+            </span>
+            （{numberFormat.format(total - ads)}）
           </span>
         </div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-max border-separate border-spacing-0 text-base">
+        <table className={TABLE}>
           <thead>
             <tr>
               {[
@@ -707,8 +720,10 @@ export function SourcesCard({
                 <th
                   key={index}
                   scope="col"
-                  className={`whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-3.5 py-2 text-[13px] font-semibold text-[var(--nb-text-2)] ${
-                    index === 0 ? "sticky left-0 z-[1] text-left" : "text-right"
+                  className={`${TH} ${
+                    index === 0
+                      ? "sticky left-0 z-[1] pl-0 text-left"
+                      : "text-right"
                   }`}
                 >
                   {label}
@@ -718,31 +733,24 @@ export function SourcesCard({
           </thead>
           <tbody>
             {rows.map((row) => (
-              <tr key={row.name} className="hover:bg-[var(--nb-surface-2)]">
-                <th
-                  scope="row"
-                  className="sticky left-0 max-w-[11rem] truncate whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-surface)] px-3.5 py-2.5 text-left font-semibold"
-                >
+              <tr key={row.name} className={ROW}>
+                <th scope="row" className={`${ROW_HEAD} max-w-[8.5rem] truncate 2xl:max-w-[10rem] min-[1800px]:max-w-[16rem]`}>
                   {row.name}
                   {row.tag && (
-                    <span className="ml-2 rounded-sm border border-[var(--nb-accent)] px-1 py-px text-[13px] leading-none text-[var(--nb-accent)]">
+                    <span className="ml-2 rounded-[5px] bg-[color-mix(in_srgb,var(--nb-accent)_12%,transparent)] px-1.5 py-0.5 text-[13px] font-semibold leading-none text-[var(--nb-accent)]">
                       {row.tag}
                     </span>
                   )}
                 </th>
-                <td className={`${cell} font-semibold`}>
-                  <DataBar share={row.diagnoses / peak}>
-                    {numberFormat.format(row.diagnoses)}
-                  </DataBar>
+                <td className={`${TD} font-semibold`}>
+                  {numberFormat.format(row.diagnoses)}
                 </td>
-                <td className={cell}>{percent(ratio(row.diagnoses, total))}</td>
-                <td className={`${cell} ${quiet(row.purchasers)}`}>
+                <td className={TD}>{percent(ratio(row.diagnoses, total))}</td>
+                <td className={`${TD} ${quiet(row.purchasers)}`}>
                   {numberFormat.format(row.purchasers)}
                 </td>
-                <td className={`${cell} font-semibold ${quiet(row.net)}`}>
-                  {yen(row.net)}
-                </td>
-                <td className={`${cell} ${quiet(row.net)}`}>
+                <td className={`${TD} ${quiet(row.net)}`}>{yen(row.net)}</td>
+                <td className={`${TD} ${quiet(row.net)}`}>
                   {row.diagnoses > 0
                     ? `¥${(row.net / row.diagnoses).toFixed(2)}`
                     : "–"}
@@ -752,12 +760,10 @@ export function SourcesCard({
           </tbody>
         </table>
         {rows.length === 0 && (
-          <p className="px-4 py-10 text-center text-base text-[var(--nb-text-2)]">
-            この日のデータはまだありません
-          </p>
+          <p className={EMPTY}>この日のデータはまだありません</p>
         )}
       </div>
-    </Card>
+    </Section>
   );
 }
 
@@ -812,59 +818,41 @@ export function SocialCards({
     },
   ];
   return (
-    <Card
+    <Section
       title="口コミ・シェア"
       hint="友達診断率とシェア率は、診断のあと日がたつほど増えます"
       className={className}
     >
       {/* ファネルの箱と同じ形: 名前、何の割合か、大きな数字、棒、比較と内訳。 */}
-      <div className="grid flex-1 gap-px bg-[var(--nb-border)] sm:grid-cols-3">
-        {items.map((item) => {
+      <div className="grid gap-y-8 pt-5 sm:grid-cols-3">
+        {items.map((item, index) => {
           const now = item.pick(day);
           const before = item.pick(compare);
           return (
             <div
               key={item.label}
-              className="flex min-w-0 flex-col bg-[var(--nb-surface)] px-4 py-4 2xl:px-5"
+              className={`flex min-w-0 flex-col sm:border-l sm:border-[var(--nb-border)] sm:px-5 ${
+                index === 0 ? "sm:border-l-0 sm:!pl-0" : ""
+              }`}
             >
               <p className="flex min-w-0 flex-col">
-                <span className="text-[13px] font-semibold text-[var(--nb-text)]">
-                  {item.label}
-                </span>
-                <span className="text-[13px] text-[var(--nb-text-3)]">
-                  {item.note}
-                </span>
+                <span className={STEP_LABEL}>{item.label}</span>
+                <span className={STEP_BASE}>{item.note}</span>
               </p>
-              <p className="mt-2 text-[1.75rem] font-semibold leading-none tracking-tight tabular-nums text-[var(--nb-text)]">
+              <p className={STEP_VALUE}>
                 <AnimatedNumber
                   value={now.value}
                   format={(shown) => percent(shown)}
                 />
               </p>
-              <div className="relative mt-3 h-1 bg-[var(--nb-surface-2)]">
-                <div
-                  className="h-full bg-[var(--nb-accent)] transition-[width] duration-500 ease-out"
-                  style={{
-                    width: `${Math.min(1, now.value ?? 0) * 100}%`,
-                  }}
-                />
-                {before.value !== null && (
-                  <span
-                    aria-hidden
-                    className="absolute top-[-3px] h-[10px] w-px bg-[var(--nb-text)]"
-                    style={{
-                      left: `calc(${Math.min(1, before.value) * 100}% - 1px)`,
-                    }}
-                  />
-                )}
-              </div>
-              <div className="mt-3 grid gap-0.5 text-[13px] tabular-nums text-[var(--nb-text-2)]">
+              <RateBar rate={now.value} compareRate={before.value} />
+              <div className={STEP_NOTES}>
                 <p className="flex flex-wrap items-baseline gap-x-2">
                   <span>
                     {compareLabel}
                     {item.comparable ? "" : "に診断した人"}
                   </span>
-                  <span className="font-semibold text-[var(--nb-text)]">
+                  <span className="text-[var(--nb-text)]">
                     {percent(before.value)}
                   </span>
                   {item.comparable && (
@@ -874,21 +862,17 @@ export function SocialCards({
                   )}
                 </p>
                 <p>
-                  <span className="font-semibold text-[var(--nb-text)]">
+                  <span className="text-[var(--nb-text)]">
                     {numberFormat.format(now.part)}
                   </span>{" "}
                   ÷ {numberFormat.format(now.whole)} 人
                 </p>
-                {!item.comparable && (
-                  <p className="text-[13px] text-[var(--nb-text-3)]">
-                    日数が違うため、比較は参考
-                  </p>
-                )}
+                {!item.comparable && <p>日数が違うため、比較は参考</p>}
               </div>
             </div>
           );
         })}
       </div>
-    </Card>
+    </Section>
   );
 }
