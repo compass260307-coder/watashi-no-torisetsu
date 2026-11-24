@@ -464,7 +464,13 @@ export function NumbersDaily() {
                 }}
               />
             )}
-            <MonthSummary rows={rows} today={data.today} />
+            <MonthSummary
+              rows={rows}
+              today={data.today}
+              month={shownMonth}
+              coupon={data.coupon ?? null}
+              onCouponSaved={() => void load(shownMonth)}
+            />
             <Card
               title={`${metric.label}トレンド`}
               hint={metric.hint}
@@ -607,12 +613,129 @@ function FillNotice({
 
 /* -------------------------------------------------------------- 月の合計 */
 
+/** その月に使ったクーポンの額を保存する (null で取り消し)。 */
+async function saveCoupon(month: string, amount: number | null): Promise<void> {
+  const response = await fetch("/api/internal/numbers/costs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ action: "coupon", month, amount }),
+  });
+  if (!response.ok) throw new Error(`coupon ${response.status}`);
+}
+
+/** 月の合計の「クーポン」の入力。その月に X の請求で差し引かれたクーポンの合計を入れる。 */
+function CouponEditor({
+  month,
+  amount,
+  onSaved,
+}: {
+  month: string;
+  amount: number | null;
+  onSaved: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const parsed = Number(value.replace(/[,，¥￥\s]/g, ""));
+  const valid = value.trim() !== "" && Number.isFinite(parsed) && parsed >= 0;
+  const link =
+    "text-[13px] font-semibold text-[var(--nb-accent)] underline-offset-2 hover:underline disabled:opacity-50";
+
+  const submit = async (next: number | null) => {
+    setBusy(true);
+    setFailed(false);
+    try {
+      await saveCoupon(month, next);
+      setEditing(false);
+      onSaved();
+    } catch {
+      setFailed(true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <button
+          type="button"
+          className={link}
+          onClick={() => {
+            setValue(amount === null ? "" : String(Math.round(amount)));
+            setFailed(false);
+            setEditing(true);
+          }}
+        >
+          {amount === null ? "入力する" : "直す"}
+        </button>
+        {amount === null ? <span>この月に使った額</span> : null}
+      </span>
+    );
+  }
+  return (
+    <form
+      className="flex flex-wrap items-center gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (valid && !busy) void submit(Math.round(parsed));
+      }}
+    >
+      <label className="sr-only" htmlFor={`coupon-${month}`}>
+        この月に使ったクーポンの額 (円)
+      </label>
+      <input
+        id={`coupon-${month}`}
+        inputMode="numeric"
+        autoFocus
+        placeholder="例: 182592"
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        className="h-8 w-28 rounded-md border border-[var(--nb-border-strong)] bg-[var(--nb-surface)] px-2 text-[13px] tabular-nums text-[var(--nb-text)]"
+      />
+      <button type="submit" className={link} disabled={!valid || busy}>
+        {busy ? "保存中" : "保存"}
+      </button>
+      {amount !== null ? (
+        <button
+          type="button"
+          className={link}
+          disabled={busy}
+          onClick={() => void submit(null)}
+        >
+          消す
+        </button>
+      ) : null}
+      <button
+        type="button"
+        className={link}
+        disabled={busy}
+        onClick={() => setEditing(false)}
+      >
+        やめる
+      </button>
+      {failed ? (
+        <span className="text-[var(--nb-down)]">保存できませんでした</span>
+      ) : null}
+    </form>
+  );
+}
+
 function MonthSummary({
   rows,
   today,
+  month,
+  coupon,
+  onCouponSaved,
 }: {
   rows: NumbersDailyRow[];
   today: string;
+  month: string;
+  /** null なら、保存先がまだ無い (クーポンの欄を出さない)。 */
+  coupon: { amount: number | null } | null;
+  onCouponSaved: () => void;
 }) {
   const total = sumDailyRows(rows);
   const includesToday = rows.some((row) => row.day === today && row.amounts);
@@ -669,14 +792,49 @@ function MonthSummary({
       value: total.cpaAd === null ? "–" : unitYen(total.cpaAd),
       note: "広告流入の診断1件",
     },
-  ];
+  ] as {
+    label: string;
+    value: string;
+    tone?: string;
+    note: React.ReactNode;
+  }[];
+  // クーポン (手入力、月ごと)。利益には足し戻した「控除後」も出す。
+  if (coupon) {
+    const amount = coupon.amount;
+    const afterCoupon = total.profit + (amount ?? 0);
+    tiles.push(
+      {
+        label: "クーポン",
+        value: amount === null ? "未入力" : signedYen(amount),
+        tone: amount === null ? "var(--nb-text-2)" : undefined,
+        note: (
+          <CouponEditor month={month} amount={amount} onSaved={onCouponSaved} />
+        ),
+      },
+      {
+        label: "利益（クーポン控除後）",
+        value: hasCost && amount !== null ? signedYen(afterCoupon) : "–",
+        tone:
+          hasCost && amount !== null && total.costPlan <= 0
+            ? afterCoupon < 0
+              ? "var(--nb-down)"
+              : "var(--nb-up)"
+            : undefined,
+        note: amount === null ? "クーポンを入れると出ます" : "利益 ＋ クーポン",
+      },
+    );
+  }
   return (
     <section aria-label="月の合計">
       <p className="mb-2 text-[13px] text-[var(--nb-text-2)]">
         月の合計 ・ {total.days} 日分
         {includesToday ? "（今日の途中までを含む）" : ""}
       </p>
-      <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[var(--nb-border)] bg-[var(--nb-border)] md:grid-cols-3 xl:grid-cols-6">
+      <dl
+        className={`grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[var(--nb-border)] bg-[var(--nb-border)] ${
+          tiles.length > 6 ? "md:grid-cols-4" : "md:grid-cols-3 xl:grid-cols-6"
+        }`}
+      >
         {tiles.map((tile) => (
           <div
             key={tile.label}
@@ -692,9 +850,9 @@ function MonthSummary({
               >
                 {tile.value}
               </span>
-              <span className="mt-2 block min-h-5 text-[13px] leading-snug tabular-nums text-[var(--nb-text-2)]">
+              <div className="mt-2 min-h-5 text-[13px] leading-snug tabular-nums text-[var(--nb-text-2)]">
                 {tile.note}
-              </span>
+              </div>
             </dd>
           </div>
         ))}
