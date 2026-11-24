@@ -35,12 +35,21 @@ assert.match(
   /server_duration_ms: Date\.now\(\) - requestReceivedAt/,
 );
 assert.match(checkout, /stripe_create_ms: stripeCreateMs/);
+// 決済画面が受け付ける支払い方法の一覧を、Stripeの応答から checkout_session_created に記録している。
+assert.match(
+  checkout,
+  /available_payment_methods: stripeSession\.payment_method_types \?\? \[\]/,
+);
 const sessionCreatedEventAt = checkout.indexOf(
   'event_name: "checkout_session_created"',
 );
 assert.ok(
   checkout.indexOf("server_duration_ms:") > sessionCreatedEventAt,
   "server_duration_ms must live in checkout_session_created metadata",
+);
+assert.ok(
+  checkout.indexOf("available_payment_methods:") > sessionCreatedEventAt,
+  "available_payment_methods must live in checkout_session_created metadata",
 );
 
 const cancellation = source("src/app/api/checkout/cancelled/route.ts");
