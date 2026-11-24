@@ -588,6 +588,11 @@ export interface NumbersDailyPayload {
   settings: NumbersSettings | null;
   /** サーバーが見た今日 (JST)。 */
   today: string;
+  /**
+   * その月に使ったクーポンの額 (手入力)。amount が null なら未入力。
+   * coupon 自体が null・無しなら、保存先がまだ無い (入力欄を出さない)。
+   */
+  coupon?: { amount: number | null } | null;
 }
 
 /** 表の 1 行。数字がまだ無い項目は null。 */
