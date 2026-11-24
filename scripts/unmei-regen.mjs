@@ -12,7 +12,7 @@
 // 明示的にやり直したい場合は natal_readings / natal_charts の行を先に削除してもよい。
 
 import { createClient } from "@supabase/supabase-js";
-import { runForUser } from "../src/lib/unmei/generateWorker.mjs";
+import { runForUser, unmeiModel } from "../src/lib/unmei/generateWorker.mjs";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -36,7 +36,7 @@ const { data: user } = await sb
   .maybeSingle();
 const locale = user?.preferred_locale === "ko" ? "ko" : "ja";
 
-console.log(`[regen] user=${userId} locale=${locale} model=${process.env.CLAUDE_MODEL}`);
+console.log(`[regen] user=${userId} locale=${locale} model=${unmeiModel()}`);
 const result = await runForUser(sb, userId, { locale });
 console.log("[regen] runForUser ->", JSON.stringify(result));
 

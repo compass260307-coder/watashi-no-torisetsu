@@ -35,6 +35,30 @@ export function anthropicUsage(raw) {
   };
 }
 
+// Anthropic API の単価 (USD / 100万トークン、2026-11-03時点): [入力, 出力, キャッシュ読込, キャッシュ書込(5分)]。
+// 費用の概算を ai_usage_events に残すための値で、請求額の正本は Claude Console。
+const ANTHROPIC_USD_PER_MTOK = {
+  "claude-haiku-5-5": [0.1, 0.5, 0.01, 0.125],
+  "claude-haiku-4-5": [1, 5, 0.1, 1.25],
+  "claude-sonnet-5-5": [2, 10, 0.1, 2.5],
+  "claude-sonnet-4-6": [3, 15, 0.3, 3.75],
+};
+
+/** anthropicUsage() の結果から概算費用 (USD) を出す。単価の分からないモデルは null。 */
+export function estimateAnthropicCostUsd(model, usage) {
+  const rates = ANTHROPIC_USD_PER_MTOK[String(model ?? "")];
+  if (!rates || usage?.inputTokens == null || usage?.outputTokens == null) {
+    return null;
+  }
+  return (
+    (usage.inputTokens * rates[0] +
+      usage.outputTokens * rates[1] +
+      (usage.cacheReadInputTokens ?? 0) * rates[2] +
+      (usage.cacheWriteInputTokens ?? 0) * rates[3]) /
+    1_000_000
+  );
+}
+
 export function aiSdkUsage(usage) {
   return {
     inputTokens: nonNegativeInteger(usage?.inputTokens),
