@@ -31,7 +31,7 @@ import {
   type XAdsHourlyRow,
 } from "@/lib/x-ads-export";
 
-import { Card, numberFormat, yen } from "./numbers-ui";
+import { GHOST_BASE, Section, numberFormat, yen } from "./numbers-ui";
 
 interface Account {
   code: string;
@@ -79,11 +79,11 @@ const LOCALE_LABELS: Record<string, string> = {
 };
 
 const field =
-  "h-9 rounded-lg border border-[var(--nb-border-strong)] bg-transparent px-2.5 text-base text-[var(--nb-text)] outline-none transition-colors focus:border-[var(--nb-accent)]";
+  "h-10 rounded-lg border border-[var(--nb-border-strong)] bg-transparent px-3 text-base text-[var(--nb-text)] outline-none transition-colors focus:border-[var(--nb-accent)]";
 const primaryButton =
-  "h-9 rounded-lg bg-[var(--nb-text)] px-4 text-base font-bold text-[var(--nb-bg)] transition-opacity hover:opacity-90 disabled:opacity-40";
+  "h-10 rounded-lg bg-[var(--nb-text)] px-4 text-[15px] font-semibold text-[var(--nb-bg)] transition-opacity hover:opacity-90 disabled:opacity-30";
 const quietButton =
-  "h-8 rounded-lg border border-[var(--nb-border-strong)] px-3 text-sm font-bold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)] disabled:opacity-40";
+  "h-8 rounded-lg border border-[var(--nb-border-strong)] px-3 text-sm font-semibold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)] disabled:opacity-40";
 const accentTint = (percent: number) =>
   `color-mix(in srgb, var(--nb-accent) ${percent}%, transparent)`;
 
@@ -271,7 +271,7 @@ export function NumbersCostEntry({
 
   return (
     <div
-      className="fixed inset-0 z-50 overflow-y-auto bg-black/75 sm:p-4 xl:p-6"
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/45 backdrop-blur-[3px] sm:p-4 xl:p-6"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -280,7 +280,7 @@ export function NumbersCostEntry({
         role="dialog"
         aria-modal="true"
         aria-label="広告費を入れる"
-        className="relative mx-auto flex min-h-full w-full max-w-[1480px] flex-col bg-[var(--nb-bg)] text-[var(--nb-text)] shadow-[0_24px_80px_rgba(0,0,0,0.8)] sm:min-h-0 sm:rounded-lg sm:border sm:border-[var(--nb-border-strong)]"
+        className="relative mx-auto flex min-h-full w-full max-w-[1480px] flex-col bg-[var(--nb-bg)] text-[var(--nb-text)] shadow-[0_24px_80px_rgba(0,0,0,0.35)] sm:min-h-0 sm:rounded-2xl"
         onDragEnter={(event) => {
           if (!hasFiles(event)) return;
           event.preventDefault();
@@ -303,26 +303,42 @@ export function NumbersCostEntry({
           void addFiles(Array.from(event.dataTransfer.files));
         }}
       >
-        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-[var(--nb-border)] bg-[var(--nb-bg)] px-4 py-3 sm:rounded-t-2xl sm:px-5">
+        <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-[var(--nb-border)] bg-[var(--nb-header)] px-5 py-4 backdrop-blur-xl sm:rounded-t-2xl sm:px-8 xl:px-10">
           <div className="mr-auto min-w-0">
-            <h2 className="text-base font-bold">広告費を入れる</h2>
-            <p className="mt-0.5 text-sm text-[var(--nb-text-2)]">
+            <h2 className="text-xl font-bold leading-tight tracking-[0.01em]">
+              広告費を入れる
+            </h2>
+            <p className="mt-1 text-sm text-[var(--nb-text-3)]">
               入れた内容はすぐに保存され、数値画面に反映されます。
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="h-8 shrink-0 whitespace-nowrap rounded-lg border border-[var(--nb-border-strong)] px-3 text-sm font-bold text-[var(--nb-text)] transition-colors hover:bg-[var(--nb-surface-2)]"
+            aria-label="閉じる"
+            className={`${GHOST_BASE} -mr-2 w-9 shrink-0`}
           >
-            閉じる
+            <svg
+              aria-hidden
+              width="18"
+              height="18"
+              viewBox="0 0 16 16"
+              fill="none"
+            >
+              <path
+                d="m3.5 3.5 9 9m0-9-9 9"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
         </header>
 
         {failed && (
           <p
             role="alert"
-            className="mx-4 mt-4 rounded-lg border border-[var(--nb-down)] px-3 py-2 text-base text-[var(--nb-down)] sm:mx-5"
+            className="mx-5 mt-5 rounded-xl bg-[color-mix(in_srgb,var(--nb-down)_9%,transparent)] px-4 py-3 text-base text-[var(--nb-down)] sm:mx-8 xl:mx-10"
           >
             登録内容を取得できませんでした。
             <button
@@ -335,20 +351,21 @@ export function NumbersCostEntry({
           </p>
         )}
         {!state && !failed && (
-          <p className="flex items-center gap-2 px-5 py-10 text-base text-[var(--nb-text-2)]">
+          <p className="flex items-center gap-2 px-5 py-12 text-base text-[var(--nb-text-2)] sm:px-8 xl:px-10">
             <Spinner />
             読み込んでいます...
           </p>
         )}
 
         {state && (
-          <div className="grid gap-3 p-3 sm:p-4 xl:grid-cols-12 xl:gap-4 xl:p-5">
-            <div className="grid min-w-0 content-start gap-3 xl:col-span-7 xl:gap-4">
-              <Card
+          <div className="grid gap-x-14 gap-y-12 px-5 pb-10 pt-7 sm:px-8 xl:grid-cols-12 xl:px-10">
+            <div className="grid min-w-0 content-start gap-12 xl:col-span-7">
+              <Section
                 title="実績を入れる"
                 hint="X広告マネージャーの時間別エクスポート（xlsx）"
+                plain
               >
-                <div className="grid gap-3 px-4 pb-4 sm:px-5 sm:pb-5">
+                <div className="grid gap-3 pt-2">
                   <DropZone dragging={dragging} onFiles={addFiles} />
                   <ImportList
                     items={items}
@@ -368,33 +385,34 @@ export function NumbersCostEntry({
                     }}
                   />
                 </div>
-              </Card>
-              <Card
+              </Section>
+              <Section
                 title="入っている実績"
                 hint="直近7日。帯の1目盛りが1時間で、左が0時台、右が23時台です"
               >
-                <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+                <div className="pt-5">
                   <Coverage state={state} />
                 </div>
-              </Card>
-              <Card
+              </Section>
+              <Section
                 title="そのほかの媒体"
                 hint="エクスポートを置けない媒体は、1日分の金額を入れます"
               >
-                <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+                <div className="pt-5">
                   <OtherMedia state={state} onSaved={changed} />
                 </div>
-              </Card>
+              </Section>
             </div>
-            <div className="grid min-w-0 content-start gap-3 xl:col-span-5 xl:gap-4">
-              <Card
+            <div className="grid min-w-0 content-start gap-12 xl:col-span-5">
+              <Section
                 title="配信計画"
                 hint="Xの時間帯ごとの予算（全アカウントの合計）。実績が入っていない時間帯の広告費を、この金額で補います"
+                plain
               >
-                <div className="px-4 pb-4 sm:px-5 sm:pb-5">
+                <div className="pt-2">
                   <PlanEditor state={state} onSaved={changed} />
                 </div>
-              </Card>
+              </Section>
             </div>
           </div>
         )}
@@ -402,7 +420,7 @@ export function NumbersCostEntry({
         {dragging && (
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-20 grid place-items-center border-2 border-dashed border-[var(--nb-accent)] sm:rounded-lg"
+            className="pointer-events-none absolute inset-0 z-20 grid place-items-center border-2 border-dashed border-[var(--nb-accent)] sm:rounded-2xl"
             style={{
               background: "color-mix(in srgb, var(--nb-bg) 82%, transparent)",
             }}
@@ -426,7 +444,7 @@ function DropZone({
 }) {
   return (
     <label
-      className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-md border border-dashed px-4 py-7 text-center transition-colors hover:bg-[var(--nb-surface-2)]"
+      className="group flex cursor-pointer flex-col items-center gap-1.5 rounded-2xl border border-dashed px-4 py-9 text-center transition-colors hover:bg-[var(--nb-surface-2)]"
       style={{
         borderColor: dragging ? "var(--nb-accent)" : "var(--nb-border-strong)",
         background: dragging ? accentTint(10) : undefined,
@@ -444,8 +462,8 @@ function DropZone({
       >
         <path d="M12 16V4m0 0-4 4m4-4 4 4M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3" />
       </svg>
-      <span className="text-base font-bold">エクスポートをここに置く</span>
-      <span className="text-sm leading-relaxed text-[var(--nb-text-2)]">
+      <span className="text-base font-semibold">エクスポートをここに置く</span>
+      <span className="text-sm leading-relaxed text-[var(--nb-text-3)]">
         クリックして選ぶこともできます。複数まとめて置けます。
         <br />
         アカウントは自動で判別し、日本時間に直して保存します。同じ期間を置き直すと上書きされます。
@@ -480,7 +498,7 @@ function ImportList({
       {items.map((item) => (
         <li
           key={item.id}
-          className="rounded-md border border-[var(--nb-border)] bg-[var(--nb-surface-2)] px-3.5 py-3"
+          className="rounded-xl bg-[var(--nb-surface-2)] px-4 py-3"
         >
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
             {item.status === "saved" ? (
@@ -495,7 +513,7 @@ function ImportList({
             <p className="mr-auto min-w-0 text-base tabular-nums">
               {item.summary ? (
                 <>
-                  <span className="font-bold">
+                  <span className="font-semibold">
                     {item.accountName ?? item.code}
                   </span>
                   <span className="ml-2 text-[var(--nb-text-2)]">
@@ -514,12 +532,12 @@ function ImportList({
               )}
             </p>
             {item.summary && (
-              <span className="text-base font-bold tabular-nums">
+              <span className="text-base font-semibold tabular-nums">
                 {yen(item.summary.spend)}
               </span>
             )}
             <span
-              className="text-sm font-bold"
+              className="text-sm font-semibold"
               style={{
                 color:
                   item.status === "saved"
@@ -680,7 +698,7 @@ function HourStrip({
       aria-label={label}
       viewBox="0 0 24 6"
       preserveAspectRatio="none"
-      className="h-3 w-full"
+      className="h-3.5 w-full"
     >
       <title>{label}</title>
       {Array.from({ length: 24 }, (_, hour) => {
@@ -728,7 +746,7 @@ function Coverage({ state }: { state: CostsState }) {
     <div>
       <div className="overflow-x-auto">
         <div
-          className="grid items-center gap-x-2 gap-y-2.5"
+          className="grid items-center gap-x-3 gap-y-3.5"
           style={{
             gridTemplateColumns: columns,
             minWidth: `${12.75 + accounts.length * 3.25}rem`,
@@ -739,12 +757,12 @@ function Coverage({ state }: { state: CostsState }) {
             <span
               key={account.code}
               title={`${account.name}（${account.code}）`}
-              className="truncate text-[13px] font-bold text-[var(--nb-text-2)]"
+              className="truncate text-[13px] font-medium text-[var(--nb-text-3)]"
             >
               {account.name}
             </span>
           ))}
-          <span className="text-right text-[13px] font-bold text-[var(--nb-text-2)]">
+          <span className="text-right text-[13px] font-medium text-[var(--nb-text-3)]">
             実績の合計
           </span>
           {days.map((day, back) => {
@@ -761,7 +779,7 @@ function Coverage({ state }: { state: CostsState }) {
                 <span className="whitespace-nowrap text-sm tabular-nums text-[var(--nb-text)]">
                   {formatNumbersDay(day)}
                   {back === 0 && (
-                    <span className="ml-1 text-[13px] text-[var(--nb-text-2)]">
+                    <span className="ml-1.5 text-[13px] text-[var(--nb-text-3)]">
                       今日
                     </span>
                   )}
@@ -782,7 +800,7 @@ function Coverage({ state }: { state: CostsState }) {
                   );
                 })}
                 <span
-                  className="text-right text-sm font-bold tabular-nums"
+                  className="text-right text-[15px] font-semibold tabular-nums"
                   style={{
                     color: entered ? "var(--nb-text)" : "var(--nb-text-3)",
                   }}
@@ -794,7 +812,7 @@ function Coverage({ state }: { state: CostsState }) {
           })}
         </div>
       </div>
-      <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-[var(--nb-text-2)]">
+      <p className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-1 text-[13px] text-[var(--nb-text-3)]">
         <span className="flex items-center gap-1.5">
           <span
             className="h-2.5 w-2.5 rounded-[2px]"
@@ -916,7 +934,7 @@ function OtherMedia({
           {busy ? "保存中..." : "保存する"}
         </button>
       </form>
-      <p className="text-sm leading-relaxed text-[var(--nb-text-2)]">
+      <p className="text-sm leading-relaxed text-[var(--nb-text-3)]">
         配信していない日は 0 を入れると「実績
         0円」になります。Xは、エクスポートを置いた日はそちらが優先されます。
       </p>
@@ -926,7 +944,7 @@ function OtherMedia({
         </p>
       )}
       {state.daily.length > 0 && (
-        <ul className="grid gap-1 border-t border-[var(--nb-border)] pt-3 text-base tabular-nums">
+        <ul className="grid gap-2 border-t border-[var(--nb-border)] pt-4 text-base tabular-nums">
           {state.daily.map((entry) => (
             <li
               key={`${entry.day}-${entry.medium}`}
@@ -938,7 +956,7 @@ function OtherMedia({
               <span className="w-16">
                 {MEDIUM_LABELS[entry.medium] ?? entry.medium}
               </span>
-              <span className="mr-auto font-bold">
+              <span className="mr-auto font-semibold">
                 {yen(Number(entry.spend_jpy))}
               </span>
               <button
@@ -1107,10 +1125,10 @@ function PlanEditor({
 
   return (
     <div className="grid gap-3">
-      <p className="flex min-h-5 flex-wrap items-baseline gap-x-3 text-sm tabular-nums text-[var(--nb-text-2)]">
+      <p className="flex min-h-[2.75rem] flex-wrap items-baseline gap-x-3 text-sm leading-relaxed tabular-nums text-[var(--nb-text-3)]">
         {hover !== null ? (
           <>
-            <span className="text-base font-bold text-[var(--nb-text)]">
+            <span className="text-base font-semibold text-[var(--nb-text)]">
               {hover}時台{" "}
               {Number.isFinite(hoverAmount) ? yen(hoverAmount as number) : "–"}
             </span>
@@ -1126,7 +1144,7 @@ function PlanEditor({
       </p>
 
       {/* 棒グラフ。なぞった位置の高さを、その時間帯の金額にする。 */}
-      <div className="rounded-md border border-[var(--nb-border)] bg-[var(--nb-bg)] px-3 pb-2 pt-3">
+      <div className="pb-1 pt-2">
         <div className="relative pr-11">
           <span className="pointer-events-none absolute -top-1.5 right-0 text-[13px] tabular-nums text-[var(--nb-text-3)]">
             {yen(scale)}
@@ -1137,8 +1155,8 @@ function PlanEditor({
           >
             {yen(scale / 2)}
           </span>
-          <div className="pointer-events-none absolute left-0 right-11 top-0 border-t border-dashed border-[var(--nb-border)]" />
-          <div className="pointer-events-none absolute left-0 right-11 top-1/2 border-t border-dashed border-[var(--nb-border)]" />
+          <div className="pointer-events-none absolute left-0 right-11 top-0 border-t border-dashed border-[var(--nb-border-strong)]" />
+          <div className="pointer-events-none absolute left-0 right-11 top-1/2 border-t border-dashed border-[var(--nb-border-strong)]" />
           <div
             role="img"
             aria-label={`配信計画の棒グラフ。1日の合計 ${yen(total)}`}
@@ -1176,11 +1194,11 @@ function PlanEditor({
               return (
                 <div key={hour} className="relative h-full flex-1">
                   <div
-                    className="absolute inset-x-0 bottom-0 rounded-t-[3px]"
+                    className="absolute inset-x-0 bottom-0 rounded-t-[4px]"
                     style={{
                       height: `${height}%`,
                       background:
-                        hover === hour ? "var(--nb-accent)" : accentTint(62),
+                        hover === hour ? "var(--nb-accent)" : accentTint(55),
                     }}
                   />
                   {/* 変える前 (いまの計画) の高さ。変えた時間帯だけ線で残す。 */}
@@ -1208,13 +1226,13 @@ function PlanEditor({
         {values.map((value, hour) => (
           <label
             key={hour}
-            className="block rounded-lg border px-2 pb-1 pt-1.5 transition-colors focus-within:border-[var(--nb-accent)]"
+            className="block rounded-lg border px-2.5 pb-1 pt-2 transition-colors focus-within:border-[var(--nb-accent)]"
             style={{
               borderColor:
-                hover === hour ? "var(--nb-accent)" : "var(--nb-border-strong)",
+                hover === hour ? "var(--nb-accent)" : "var(--nb-border)",
             }}
           >
-            <span className="block text-[13px] leading-none tabular-nums text-[var(--nb-text-2)]">
+            <span className="block text-[13px] leading-none tabular-nums text-[var(--nb-text-3)]">
               {hour}時台
             </span>
             <input
@@ -1239,7 +1257,7 @@ function PlanEditor({
                 event.preventDefault();
                 inputs.current[(hour + 1) % 24]?.focus();
               }}
-              className="h-7 w-full bg-transparent text-right text-base font-bold tabular-nums text-[var(--nb-text)] outline-none"
+              className="h-7 w-full bg-transparent text-right text-base font-semibold tabular-nums text-[var(--nb-text)] outline-none"
             />
           </label>
         ))}
@@ -1273,28 +1291,26 @@ function PlanEditor({
         </button>
       </div>
 
-      <div className="flex flex-wrap items-end gap-x-5 gap-y-3 border-t border-[var(--nb-border)] pt-3">
+      <div className="mt-2 flex flex-wrap items-end gap-x-6 gap-y-3 border-t border-[var(--nb-border)] pt-5">
         <div>
-          <p className="text-[13px] font-bold text-[var(--nb-text-2)]">
-            1日の合計
-          </p>
-          <p className="mt-0.5 text-xl font-bold leading-none tabular-nums">
+          <p className="text-sm text-[var(--nb-text-2)]">1日の合計</p>
+          <p className="mt-1 text-[1.75rem] font-semibold leading-none tracking-[-0.02em] tabular-nums">
             {yen(total)}
           </p>
-          <p className="mt-1 min-h-4 text-[13px] tabular-nums text-[var(--nb-text-2)]">
+          <p className="mt-1.5 min-h-4 text-[13px] tabular-nums text-[var(--nb-text-3)]">
             {current && total !== savedTotal
               ? `いまの計画より ${total > savedTotal ? "+" : "−"}${yen(Math.abs(total - savedTotal))}`
               : ""}
           </p>
         </div>
-        <label className="grid gap-1 text-[13px] font-bold text-[var(--nb-text-2)]">
+        <label className="grid gap-1.5 text-sm text-[var(--nb-text-2)]">
           いつから使うか
           <input
             type="date"
             aria-label="計画の開始日"
             value={effectiveFrom}
             onChange={(event) => setEffectiveFrom(event.target.value)}
-            className={`${field} font-normal`}
+            className={field}
           />
         </label>
         <button
@@ -1325,7 +1341,7 @@ function PlanEditor({
       </div>
       <p
         role="status"
-        className="min-h-4 text-sm font-bold"
+        className="min-h-4 text-sm font-semibold"
         style={{
           color: notice?.tone === "ng" ? "var(--nb-down)" : "var(--nb-up)",
         }}
@@ -1333,8 +1349,8 @@ function PlanEditor({
         {notice?.text ?? (valid ? "" : "金額は 0 以上の数字で入れてください")}
       </p>
 
-      <div className="border-t border-[var(--nb-border)] pt-3">
-        <h3 className="text-[13px] font-bold text-[var(--nb-text-2)]">
+      <div className="border-t border-[var(--nb-border)] pt-5">
+        <h3 className="text-sm font-semibold text-[var(--nb-text)]">
           登録済みの計画
         </h3>
         {plans.length === 0 ? (
@@ -1343,13 +1359,13 @@ function PlanEditor({
             として扱われます。
           </p>
         ) : (
-          <ul className="mt-1.5 grid gap-1 text-sm tabular-nums">
+          <ul className="mt-2.5 grid gap-2 text-[15px] tabular-nums">
             {plans.slice(0, 5).map((plan) => (
               <li key={plan.from} className="flex items-center gap-3">
                 <span className="w-28 text-[var(--nb-text-2)]">
                   {formatNumbersDay(plan.from)} から
                 </span>
-                <span className="font-bold">
+                <span className="font-semibold">
                   {yen(plan.hours.reduce((sum, value) => sum + value, 0))}
                   <span className="font-normal text-[var(--nb-text-2)]">
                     {" "}
@@ -1357,7 +1373,7 @@ function PlanEditor({
                   </span>
                 </span>
                 {plan.from === current?.from && (
-                  <span className="rounded-full border border-[var(--nb-border-strong)] px-2 py-0.5 text-[13px] font-bold text-[var(--nb-text)]">
+                  <span className="rounded-[5px] bg-[var(--nb-surface-2)] px-1.5 py-0.5 text-[13px] leading-none text-[var(--nb-text-2)]">
                     いま使っている計画
                   </span>
                 )}
