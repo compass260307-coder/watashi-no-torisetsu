@@ -67,5 +67,25 @@ export async function GET(request: NextRequest) {
       503,
     );
   }
-  return json({ ...(data as Record<string, unknown>), today });
+  // その月に使ったクーポン (手入力)。表がまだ無い・読めないときは null (画面は入力欄を出さない)。
+  const coupons = await supabaseAdmin
+    .from("ad_coupons_monthly")
+    .select("amount_jpy")
+    .eq("month", range.from)
+    .eq("locale", "ja");
+  if (coupons.error) {
+    console.error("[internal-numbers] coupons read failed", {
+      code: coupons.error.code,
+      message: coupons.error.message,
+    });
+  }
+  const coupon = coupons.error
+    ? null
+    : {
+        amount:
+          coupons.data.length > 0
+            ? coupons.data.reduce((sum, row) => sum + Number(row.amount_jpy), 0)
+            : null,
+      };
+  return json({ ...(data as Record<string, unknown>), today, coupon });
 }

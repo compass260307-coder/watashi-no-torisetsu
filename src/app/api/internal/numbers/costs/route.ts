@@ -209,6 +209,31 @@ export async function POST(request: NextRequest) {
     return error ? failed("upload", error) : json({ ok: true, saved: data });
   }
 
+  // その月に使ったクーポンの額 (X の請求で差し引かれる分)。月の推移の画面から入れる。
+  if (body.action === "coupon") {
+    const { month, amount } = body;
+    if (typeof month !== "string" || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month))
+      return invalid("month");
+    if (amount === null) {
+      const { error } = await supabaseAdmin
+        .from("ad_coupons_monthly")
+        .delete()
+        .eq("month", `${month}-01`)
+        .eq("medium", "x")
+        .eq("locale", "ja");
+      return error ? failed("coupon delete", error) : json({ ok: true });
+    }
+    if (!isAmount(amount)) return invalid("amount");
+    const { error } = await supabaseAdmin.from("ad_coupons_monthly").upsert({
+      month: `${month}-01`,
+      medium: "x",
+      locale: "ja",
+      amount_jpy: amount,
+      updated_at: new Date().toISOString(),
+    });
+    return error ? failed("coupon save", error) : json({ ok: true });
+  }
+
   if (body.action === "daily") {
     const { day, medium, spend } = body;
     if (typeof day !== "string" || !isValidNumbersDay(day))
