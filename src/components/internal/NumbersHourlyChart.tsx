@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import {
   formatNumbersValue,
@@ -11,14 +11,14 @@ import {
   type HeadlineSeriesMode,
 } from "@/lib/internal-numbers";
 
-import { DeltaBadge } from "./numbers-ui";
+import { DeltaBadge, InfoTip } from "./numbers-ui";
 
 // 表示日はアクセント色。比べる相手は 1 つ目が灰色、2 つ目がオレンジ。
 // 色だけに頼らないよう、相手ごとに線の種類 (実線・破線) も変え、凡例と吹き出しに名前を出す。
 // 色の組は、色覚の違いがあっても見分けられることを検証済み (青・灰・オレンジ)。
 const ACCENT = "var(--nb-accent)";
 export const COMPARISON_STYLES = [
-  { color: "#8b8b85", dash: undefined },
+  { color: "#9aa3ad", dash: undefined },
   { color: "#d95926", dash: "6 4" },
 ] as const;
 
@@ -68,6 +68,52 @@ function useElementWidth<T extends HTMLElement>() {
   return [ref, width] as const;
 }
 
+type Point = [number, number];
+
+/**
+ * 点をなめらかな線でつなぐ。山や谷を点より外へふくらませない計算 (単調な 3 次補間) なので、
+ * 実際の数字より高く・低く見えることがない。
+ */
+function smoothPath(points: Point[]): string {
+  const count = points.length;
+  if (count === 0) return "";
+  const at = (point: Point) => `${point[0].toFixed(1)},${point[1].toFixed(1)}`;
+  if (count === 1) return `M${at(points[0])}`;
+  const slopes: number[] = [];
+  for (let i = 0; i < count - 1; i += 1) {
+    const dx = points[i + 1][0] - points[i][0];
+    slopes.push(dx === 0 ? 0 : (points[i + 1][1] - points[i][1]) / dx);
+  }
+  const tangents: number[] = [slopes[0]];
+  for (let i = 1; i < count - 1; i += 1) {
+    tangents.push(
+      slopes[i - 1] * slopes[i] <= 0 ? 0 : (slopes[i - 1] + slopes[i]) / 2,
+    );
+  }
+  tangents.push(slopes[count - 2]);
+  for (let i = 0; i < count - 1; i += 1) {
+    if (slopes[i] === 0) {
+      tangents[i] = 0;
+      tangents[i + 1] = 0;
+      continue;
+    }
+    const a = tangents[i] / slopes[i];
+    const b = tangents[i + 1] / slopes[i];
+    const size = a * a + b * b;
+    if (size > 9) {
+      const shrink = 3 / Math.sqrt(size);
+      tangents[i] = shrink * a * slopes[i];
+      tangents[i + 1] = shrink * b * slopes[i];
+    }
+  }
+  let path = `M${at(points[0])}`;
+  for (let i = 0; i < count - 1; i += 1) {
+    const third = (points[i + 1][0] - points[i][0]) / 3;
+    path += `C${(points[i][0] + third).toFixed(1)},${(points[i][1] + tangents[i] * third).toFixed(1)} ${(points[i + 1][0] - third).toFixed(1)},${(points[i + 1][1] - tangents[i + 1] * third).toFixed(1)} ${at(points[i + 1])}`;
+  }
+  return path;
+}
+
 /** 上の角だけ丸めた棒。 */
 function barPath(left: number, top: number, width: number, bottom: number) {
   const radius = Math.min(4, bottom - top, width / 2);
@@ -87,6 +133,10 @@ interface Props {
   currentHour: number | null;
   /** 0 時からの経過時間 (時間単位、小数)。「現在」の位置。過去日は null。 */
   nowHours: number | null;
+  /** 凡例と同じ行の右端に置く操作 (線・棒、時間別・累計の切り替え)。 */
+  toolbar?: ReactNode;
+  /** この指標の数え方。凡例の横の「i」に入れる。 */
+  hint?: string;
 }
 
 export function NumbersHourlyChart({
@@ -98,18 +148,20 @@ export function NumbersHourlyChart({
   dayLabel,
   currentHour,
   nowHours,
+  toolbar,
+  hint,
 }: Props) {
   const [ref, width] = useElementWidth<HTMLDivElement>();
   const [active, setActive] = useState<number | null>(null);
   const gradientId = useId();
 
   const narrow = width > 0 && width < 560;
-  const height = narrow ? 240 : 360;
+  const height = narrow ? 240 : 330;
   const pad = {
-    top: 22,
-    right: narrow ? 6 : 16,
+    top: 24,
+    right: narrow ? 4 : 10,
     bottom: 30,
-    left: narrow ? 46 : 60,
+    left: narrow ? 44 : 54,
   };
   const plotW = Math.max(0, width - pad.left - pad.right);
   const plotH = height - pad.top - pad.bottom;
@@ -144,11 +196,11 @@ export function NumbersHourlyChart({
   };
 
   const linePoints = (series: (number | null)[], forDay: boolean) => {
-    const segments: string[][] = [];
-    let current: string[] = [];
+    const segments: Point[][] = [];
+    let current: Point[] = [];
     // 件数や金額の累計は 0 時の 0 から始める。率は始点を持たない。
     if (cumulative && !metric.denominator && series[0] !== null) {
-      current.push(`${pad.left.toFixed(1)},${bottom.toFixed(1)}`);
+      current.push([pad.left, bottom]);
     }
     series.forEach((value, h) => {
       if (value === null) {
@@ -156,7 +208,7 @@ export function NumbersHourlyChart({
         current = [];
         return;
       }
-      current.push(`${x(h, forDay).toFixed(1)},${y(value).toFixed(1)}`);
+      current.push([x(h, forDay), y(value)]);
     });
     if (current.length) segments.push(current);
     return segments;
@@ -200,7 +252,7 @@ export function NumbersHourlyChart({
 
   return (
     <div className="relative">
-      <div className="mb-1 flex flex-wrap items-center justify-end gap-x-4 gap-y-1 text-sm text-[var(--nb-text-2)]">
+      <div className="mb-1 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-[var(--nb-text-2)]">
         <span className="flex items-center gap-1.5">
           <LegendMark color={ACCENT} bar={bars} />
           {dayLabel}
@@ -215,6 +267,12 @@ export function NumbersHourlyChart({
             {comparison.label}
           </span>
         ))}
+        {hint && <InfoTip text={hint} />}
+        {toolbar && (
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {toolbar}
+          </div>
+        )}
       </div>
 
       <div ref={ref} style={{ height }} className="relative">
@@ -227,16 +285,6 @@ export function NumbersHourlyChart({
             className="block select-none"
           >
             <defs>
-              <linearGradient
-                id={`${gradientId}-bar`}
-                x1="0"
-                y1="0"
-                x2="0"
-                y2="1"
-              >
-                <stop offset="0" stopColor={ACCENT} stopOpacity="1" />
-                <stop offset="1" stopColor={ACCENT} stopOpacity="0.55" />
-              </linearGradient>
               <linearGradient
                 id={`${gradientId}-area`}
                 x1="0"
@@ -258,14 +306,15 @@ export function NumbersHourlyChart({
                   y2={y(max * t)}
                   stroke="var(--nb-border)"
                   strokeWidth={1}
+                  strokeDasharray={t === 0 ? undefined : "2 4"}
                 />
                 {(t === 0 || t === 0.5 || t === 1 || !narrow) && (
                   <text
-                    x={pad.left - 8}
-                    y={y(max * t) + 4}
+                    x={pad.left - (narrow ? 8 : 12)}
+                    y={y(max * t) + 4.5}
                     textAnchor="end"
                     fontSize={13}
-                    fill="var(--nb-text-2)"
+                    fill="var(--nb-text-3)"
                   >
                     {axisLabel(max * t, metric.kind)}
                   </text>
@@ -318,7 +367,7 @@ export function NumbersHourlyChart({
                     <path
                       key={h}
                       d={barPath(barLeft(h, 0), y(value), barW, bottom)}
-                      fill={`url(#${gradientId}-bar)`}
+                      fill={ACCENT}
                       // 途中の時間帯は薄くして、まだ増える数字だと分かるようにする。
                       opacity={
                         h === currentHour
@@ -335,12 +384,12 @@ export function NumbersHourlyChart({
               <>
                 {compared.map((comparison) =>
                   linePoints(comparison.values, false).map((points, index) => (
-                    <polyline
+                    <path
                       key={`${comparison.label}-${index}`}
-                      points={points.join(" ")}
+                      d={smoothPath(points)}
                       fill="none"
                       stroke={comparison.color}
-                      strokeWidth={1.75}
+                      strokeWidth={1.5}
                       strokeDasharray={comparison.dash}
                       strokeLinejoin="round"
                       strokeLinecap="round"
@@ -350,23 +399,23 @@ export function NumbersHourlyChart({
                 {daySegments.map((points, index) => (
                   <g key={index}>
                     {!metric.denominator && points.length > 1 && (
-                      <polygon
-                        points={`${points[0].split(",")[0]},${bottom} ${points.join(" ")} ${points[points.length - 1].split(",")[0]},${bottom}`}
+                      <path
+                        d={`${smoothPath(points)}L${points[points.length - 1][0].toFixed(1)},${bottom}L${points[0][0].toFixed(1)},${bottom}Z`}
                         fill={`url(#${gradientId}-area)`}
                       />
                     )}
-                    <polyline
-                      points={points.join(" ")}
+                    <path
+                      d={smoothPath(points)}
                       fill="none"
                       stroke={ACCENT}
-                      strokeWidth={2.5}
+                      strokeWidth={2}
                       strokeLinejoin="round"
                       strokeLinecap="round"
                     />
                     {points.length === 1 && (
                       <circle
-                        cx={Number(points[0].split(",")[0])}
-                        cy={Number(points[0].split(",")[1])}
+                        cx={points[0][0]}
+                        cy={points[0][1]}
                         r={3}
                         fill={ACCENT}
                       />
@@ -423,7 +472,7 @@ export function NumbersHourlyChart({
                   textAnchor={
                     nowHours > 21 ? "end" : nowHours < 2 ? "start" : "middle"
                   }
-                  fontSize={12}
+                  fontSize={13}
                   fill="var(--nb-text-2)"
                 >
                   現在
@@ -488,7 +537,7 @@ export function NumbersHourlyChart({
                 y={height - 9}
                 textAnchor={cumulative && h === 0 ? "start" : "middle"}
                 fontSize={13}
-                fill="var(--nb-text-2)"
+                fill="var(--nb-text-3)"
               >
                 {h}時
               </text>
@@ -524,7 +573,7 @@ export function NumbersHourlyChart({
         {active !== null && width > 0 && (
           <div
             role="status"
-            className="pointer-events-none absolute top-3 z-10 min-w-[12rem] rounded-xl border border-[var(--nb-border-strong)] bg-[var(--nb-surface-2)] px-3 py-2.5 text-sm shadow-[0_8px_30px_rgba(0,0,0,0.6)]"
+            className="pointer-events-none absolute top-3 z-10 min-w-[12rem] rounded-xl border border-[var(--nb-border)] bg-[var(--nb-bg)] px-3.5 py-3 text-sm shadow-[var(--nb-shadow)]"
             style={
               active < 12
                 ? {
@@ -567,7 +616,7 @@ export function NumbersHourlyChart({
                 <LegendMark color={ACCENT} bar={bars} small />
                 {dayLabel}
               </span>
-              <span className="text-base font-bold tabular-nums">
+              <span className="text-base font-semibold tabular-nums">
                 {active > lastHour
                   ? "–"
                   : formatNumbersValue(activeValue, metric.kind)}
