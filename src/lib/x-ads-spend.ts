@@ -114,11 +114,47 @@ export function xAdsSyncWindow(
   return { from: todayStartJst - (days - 1) * 24 * HOUR_MS, to };
 }
 
+/** 1 回に取り直せる長さ (X の統計は 1 回の問い合わせで 7 日まで)。 */
+export const X_ADS_MAX_WINDOW_DAYS = 7;
+
+/**
+ * さかのぼって取り込む期間。JST の fromDay の 0 時から、toDay の翌日 0 時まで
+ * (日付は YYYY-MM-DD)。形・順番・長さ (7 日まで)・未来でないことを確かめ、
+ * だめなら理由を返す。
+ */
+export function xAdsBackfillWindow(
+  fromDay: string,
+  toDay: string,
+  now = Date.now(),
+): { from: number; to: number } | { error: string } {
+  const pattern = /^\d{4}-\d{2}-\d{2}$/;
+  if (!pattern.test(fromDay) || !pattern.test(toDay)) return { error: "date_format" };
+  const from = Date.parse(`${fromDay}T00:00:00+09:00`);
+  const to = Date.parse(`${toDay}T00:00:00+09:00`) + 24 * HOUR_MS;
+  if (Number.isNaN(from) || Number.isNaN(to)) return { error: "date_format" };
+  if (new Date(from + JST_OFFSET_MS).toISOString().slice(0, 10) !== fromDay ||
+      new Date(to - 24 * HOUR_MS + JST_OFFSET_MS).toISOString().slice(0, 10) !== toDay) {
+    return { error: "date_format" };
+  }
+  if (to <= from) return { error: "from_after_to" };
+  if (to - from > X_ADS_MAX_WINDOW_DAYS * 24 * HOUR_MS) return { error: "too_long" };
+  // 今日の分は毎時の取り込みが受け持つ。終わった日だけにする。
+  if (to > xAdsSyncWindow(1, now).from) return { error: "not_ended" };
+  return { from, to };
+}
+
 export async function syncXAdsSpend({
   days = 3,
   dryRun = false,
-}: { days?: number; dryRun?: boolean } = {}): Promise<XAdsSyncReport> {
-  const window = xAdsSyncWindow(Math.min(7, Math.max(1, days)));
+  range,
+}: {
+  days?: number;
+  dryRun?: boolean;
+  /** さかのぼって取り込むときの期間 (xAdsBackfillWindow で作る)。無ければ直近 days 日。 */
+  range?: { from: number; to: number };
+} = {}): Promise<XAdsSyncReport> {
+  const window =
+    range ?? xAdsSyncWindow(Math.min(X_ADS_MAX_WINDOW_DAYS, Math.max(1, days)));
   const report: XAdsSyncReport = {
     ok: false,
     dryRun,

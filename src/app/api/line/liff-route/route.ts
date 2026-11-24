@@ -13,7 +13,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { consumeRateLimit } from "@/lib/api-security";
-import { recordLineEvent } from "@/lib/line-events";
 import {
   buildLineLoveFootprintsPageUrl,
   buildLineMissionsPageUrl,
@@ -89,10 +88,6 @@ export async function POST(request: NextRequest) {
   }
 
   if (dest === "menu") {
-    await recordLineEvent({
-      eventName: "line_liff_route",
-      metadata: { dest, line_user_id: lineUserId },
-    });
     return NextResponse.json({ url: `${resolveSiteUrl()}/line/menu` });
   }
 
@@ -125,11 +120,6 @@ export async function POST(request: NextRequest) {
     }
     url = `${resolveSiteUrl()}/me/${user.owner_token}`;
   }
-
-  await recordLineEvent({
-    eventName: "line_liff_route",
-    metadata: { dest, line_user_id: lineUserId, user_id: account.user_id },
-  });
 
   return NextResponse.json({ url });
 }

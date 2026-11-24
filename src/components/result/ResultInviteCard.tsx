@@ -7,7 +7,8 @@
 // - 出すタイミング: 一番下の課金カードが画面に入ってから 8 秒後。
 //   宝箱・課金カード・シェアなどのモーダルが開いている間と、タブが裏にある間は待つ。
 // - 出さない相手: すでに友達診断ページを見た人 (下部ナビの未確認バッジが消えている人)、
-//   このカードを一度見た人、出し分けで control の人。購入済み・友達の回答がある人は親が描画しない。
+//   このカードを一度見た人。購入済み・友達の回答がある人は親が描画しない。
+//   (11/23〜11/24 は半分の人にだけ出す A/B だった。友達診断率が上がったので全員に出す)
 // - 計測: 中身の LockedInviteShare が、既存の tako_invite_ui_shown / friend_invite_clicked を
 //   surface / source = "me_read_end" で送る (新しいイベント名は足さない)。
 
@@ -17,7 +18,6 @@ import { TakoEmptyInviteHeader } from "@/components/result/TakoEmptyInviteHeader
 import {
   RESULT_INVITE_CARD_DELAY_MS,
   RESULT_INVITE_CARD_SOURCE,
-  resultInviteCardArm,
   resultInviteCardShownKey,
 } from "@/lib/result-invite-card";
 import { TAKO_ATTENTION_PENDING_KEY } from "@/lib/tako-attention";
@@ -109,16 +109,8 @@ export function ResultInviteCard({
       setOpen(true);
     };
 
-    const start = async () => {
+    const start = () => {
       if (alreadyShown()) return;
-      if (!previewMode) {
-        try {
-          if ((await resultInviteCardArm(ownerToken)) !== "card") return;
-        } catch {
-          return; // 群を決められない環境では出さない
-        }
-      }
-      if (cancelled) return;
       observer = new IntersectionObserver(
         (entries) => {
           if (!entries.some((entry) => entry.isIntersecting)) return;
@@ -130,7 +122,7 @@ export function ResultInviteCard({
       );
       observer.observe(target);
     };
-    void start();
+    start();
 
     return () => {
       cancelled = true;

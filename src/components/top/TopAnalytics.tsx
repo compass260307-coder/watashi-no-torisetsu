@@ -4,7 +4,6 @@ import { useEffect, useRef, type ReactNode } from "react";
 import Link from "next/link";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import type { ResultLocale } from "@/i18n/result";
-import { topMeasureMetadata } from "@/lib/top-question-measure";
 import { track } from "@/lib/track";
 
 type TopLocale = ResultLocale | "en" | "id";
@@ -15,10 +14,7 @@ export function TopViewTracker({ locale }: { locale: TopLocale }) {
   useEffect(() => {
     if (tracked.current) return;
     tracked.current = true;
-    // 日本語版は、計測日だけ流入元を添える (それ以外の日・言語は今までと同じ内容)。
-    track("top_viewed", {
-      metadata: { locale, page: "top", ...(locale === "ja" ? topMeasureMetadata() : {}) },
-    });
+    track("top_viewed", { metadata: { locale, page: "top" } });
   }, [locale]);
 
   return null;
@@ -26,12 +22,7 @@ export function TopViewTracker({ locale }: { locale: TopLocale }) {
 
 export function trackTopCta(locale: TopLocale) {
   track("top_cta_clicked", {
-    metadata: {
-      locale,
-      page: "top",
-      destination: "diagnosis",
-      ...(locale === "ja" ? topMeasureMetadata() : {}),
-    },
+    metadata: { locale, page: "top", destination: "diagnosis" },
   });
 }
 
