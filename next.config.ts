@@ -52,6 +52,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: projectRoot,
   },
+  experimental: {
+    // 小さなJSファイルをまとめ、初回表示のリクエスト数を減らす (既定は 50000)。
+    // 2026-11-24 実測: トップ 16→12 本、/diagnosis 20→14 本、1ページあたりの転送量は同じ。
+    // 代わりにページ間で共有できるファイルが減るので、戻すときはこの1行を消す。
+    turbopackChunking: { minChunkSize: 200000 },
+  },
 
   async rewrites() {
     return {
