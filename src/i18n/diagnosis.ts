@@ -188,6 +188,42 @@ export interface AnalyzingSlide {
         rowLabels?: [string, string, string];
       }
     | {
+        // 完全版の購入後の準備画面用 (結果アップグレードの手順)。できあがる専用キャラと鑑定書が並ぶ図。
+        kind: "upgradeResult";
+        characterArt: string;
+        characterLabel: string;
+        bookArt: string;
+        bookLabel: string;
+      }
+    | {
+        // 完全版の購入後の準備画面用 (結果アップグレードの手順)。結果ページの一番下の金色のボタンを指す図。
+        kind: "upgradeButton";
+        selfFace: string;
+        pageLabel: string;
+        buttonLabel: string;
+        // ボタンを指す吹き出し。
+        bubble: string;
+      }
+    | {
+        // 完全版の購入後の準備画面用 (結果アップグレードの手順)。Aliceの質問に答えるトークの図。
+        kind: "aliceQa";
+        aliceArt: string;
+        // 質問の番号の札 (例: "質問 1 / 7")。
+        counter: string;
+        question: string;
+        answer: string;
+      }
+    | {
+        // 完全版の購入後の準備画面用。いつものキャラの顔が、あなた専用のキャラに変わる図。
+        kind: "upgrade";
+        // 左: いつものキャラの顔と札。
+        beforeFace: string;
+        beforeLabel: string;
+        // 右: あなた専用のキャラの絵と札。
+        afterArt: string;
+        afterLabel: string;
+      }
+    | {
         kind: "entry";
         // 結果ページの見立て (顔 + 見出し)。
         selfFace: string;

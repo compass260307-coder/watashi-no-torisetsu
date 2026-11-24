@@ -1,0 +1,182 @@
+"use client";
+
+// 完全版 (日本語 Web) を買った直後の「完全版の準備画面」。設定と A/B は src/lib/purchase-loading.ts。
+//
+// - 自己診断の解析待ち画面 (DiagnosisAnalyzingLoader) を金色の豪華版 (theme="premium") で使い、
+//   20秒 (1枚5秒) のあいだ、「結果をアップグレードできる」(1枚) とそのやり方 (3枚) を流す。
+// - 権利がもう反映済みでも、20秒は必ず見せる。終わったら ?paid= を外して自己診断結果を出す。
+// - 戻った時点でまだ反映されていない (webhook 待ち) ときは、裏で反映を確かめる。
+//   20秒たっても反映されていなければ、今までの「決済処理中...」(PaidUnlockWatcher) に引き継ぐ。
+// - スライドはボタンを持たない。紹介だけにして、買ったもの (自己診断結果) を先に見せる。
+
+import { useEffect, useRef, useState } from "react";
+import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader";
+import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
+import type { AnalyzingSlide } from "@/i18n/diagnosis";
+import { requestFullAccessStatus } from "@/lib/full-access-status-client";
+import { startVisiblePolling } from "@/lib/visible-polling";
+
+export const PURCHASE_LOADING_MS = 20_000; // 4枚 × 5秒 (2026-11-24 本人指示で15秒から延長)
+
+// 1枚目で「結果をアップグレードできる」と伝え、そのやり方を3枚で見せる (2026-11-24 本人指示)。
+// 値段の手順は入れない (本人指示)。1枚5秒なので、文は短くする。
+const SLIDES: AnalyzingSlide[] = [
+  {
+    visual: {
+      kind: "upgrade",
+      beforeFace: "/characters/face/penguin_N.webp",
+      beforeLabel: "いつものキャラ",
+      afterArt: "/result-upgrade/benefit-character.webp",
+      afterLabel: "あなた専用",
+    },
+    tint: "#F1ECFA",
+    text: "完全版を購入した方はさらに、\n結果をアップグレードできるよ！",
+    highlight: "結果をアップグレード",
+  },
+  {
+    visual: {
+      kind: "upgradeButton",
+      selfFace: "/characters/face/penguin_N.webp",
+      pageLabel: "あなたの診断結果",
+      buttonLabel: "結果をアップグレード",
+      bubble: "ここ！",
+    },
+    tint: "#FFF4DA",
+    text: "結果ページの一番下から\nアップグレード！",
+    highlight: "一番下",
+  },
+  {
+    visual: {
+      kind: "aliceQa",
+      aliceArt: "/result-upgrade/alice-cheer.webp",
+      counter: "質問 1 / 7",
+      question: "自分を動物にたとえるなら？",
+      answer: "ねこ！気まぐれだから",
+    },
+    tint: "#EEF0FD",
+    text: "Aliceの7つの質問に\n答えるだけ！",
+    highlight: "7つの質問",
+  },
+  {
+    visual: {
+      kind: "upgradeResult",
+      characterArt: "/result-upgrade/benefit-character.webp",
+      characterLabel: "専用キャラ",
+      bookArt: "/result-upgrade/benefit-book.webp",
+      bookLabel: "鑑定書",
+    },
+    tint: "#FFF4DA",
+    text: "Aliceが、あなた専用の\nキャラと鑑定書を作るよ！",
+    highlight: "あなた専用",
+  },
+];
+
+const STEPS = [
+  "お支払いを確認",
+  "完全版の特典をひらく",
+  "あなた専用のページを仕上げ",
+];
+
+// 反映待ちの確かめ方は PaidUnlockWatcher と同じ (2秒から ×1.5、上限10秒)。
+const FIRST_DELAY_MS = 1200;
+const INITIAL_POLL_INTERVAL_MS = 2000;
+const POLL_BACKOFF_FACTOR = 1.5;
+const MAX_POLL_INTERVAL_MS = 10_000;
+
+export function PurchaseLoadingScreen({
+  ownerToken,
+  waitingForAccess,
+  durationMs = PURCHASE_LOADING_MS,
+  preview = false,
+}: {
+  ownerToken: string;
+  // 戻った時点で、完全版の権利がまだ反映されていないか。
+  waitingForAccess: boolean;
+  durationMs?: number;
+  // dev のプレビュー: 反映の確かめも URL の書き換えもせず、時間がたったら最初から流し直す。
+  preview?: boolean;
+}) {
+  const [phase, setPhase] = useState<"loading" | "waiting" | "done">("loading");
+  const unlockedRef = useRef(!waitingForAccess);
+
+  // 準備画面のあいだは、うしろの結果ページを動かさない。
+  useEffect(() => {
+    if (phase !== "loading") return;
+    const root = document.documentElement;
+    const previous = root.style.overflow;
+    root.style.overflow = "hidden";
+    return () => {
+      root.style.overflow = previous;
+    };
+  }, [phase]);
+
+  // まだ反映されていなければ、裏で反映を確かめる。
+  useEffect(() => {
+    if (preview || !waitingForAccess) return;
+    let pollDelay = INITIAL_POLL_INTERVAL_MS;
+    return startVisiblePolling(async (signal) => {
+      try {
+        const data = await requestFullAccessStatus(ownerToken, { fresh: true });
+        if (signal.aborted) return false;
+        if (data && data.astrologer === true && data.unmei === true && data.tarot === true) {
+          unlockedRef.current = true;
+          return false;
+        }
+      } catch {
+        // ネットワークの一時的な失敗は無視して次へ
+      }
+      if (signal.aborted) return false;
+      const nextDelay = pollDelay;
+      pollDelay = Math.min(Math.round(pollDelay * POLL_BACKOFF_FACTOR), MAX_POLL_INTERVAL_MS);
+      return nextDelay;
+    }, FIRST_DELAY_MS);
+  }, [ownerToken, preview, waitingForAccess]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      if (preview) {
+        window.location.reload();
+        return;
+      }
+      if (!waitingForAccess) {
+        // 権利は反映済みで、うしろには解放後の結果ページが描かれている。
+        // 読み込み直さずに ?paid= と session_id を外し、再読み込みで準備画面が出直さないようにする。
+        const url = new URL(window.location.href);
+        url.searchParams.delete("paid");
+        url.searchParams.delete("session_id");
+        window.history.replaceState(window.history.state, "", url.toString());
+        setPhase("done");
+        return;
+      }
+      if (unlockedRef.current) {
+        // 待っているあいだに反映された。解放後の結果ページを読み込み直す。
+        window.location.replace(`/me/${encodeURIComponent(ownerToken)}`);
+        return;
+      }
+      // まだ反映されていない: 今までの「決済処理中...」に引き継ぐ。
+      setPhase("waiting");
+    }, durationMs);
+    return () => clearTimeout(timeout);
+  }, [durationMs, ownerToken, preview, waitingForAccess]);
+
+  if (phase === "done") return null;
+  if (phase === "waiting") {
+    return <PaidUnlockWatcher ownerToken={ownerToken} locale="ja" product="full_access" />;
+  }
+  return (
+    <div
+      className="fixed inset-0 z-[60] overflow-y-auto"
+      role="status"
+      aria-live="polite"
+      aria-label="完全版を準備しています"
+    >
+      <DiagnosisAnalyzingLoader
+        theme="premium"
+        steps={STEPS}
+        totalMs={durationMs}
+        slides={SLIDES}
+        slidesLabel="完全版を購入した方へ"
+      />
+    </div>
+  );
+}
