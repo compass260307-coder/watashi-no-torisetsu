@@ -103,6 +103,7 @@ import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import { TakoAttentionOnResult } from "@/components/result/TakoAttentionOnResult";
 import { TakoBubbleReplayTrigger } from "@/components/result/TakoBubbleReplayTrigger";
 import { ResultInviteCard } from "@/components/result/ResultInviteCard";
+import { withTakoEntry } from "@/lib/tako-entry";
 import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
 import { PreferredLocaleSync } from "@/components/result/PreferredLocaleSync";
 import TopHeader from "@/components/top/TopHeader";
@@ -1137,7 +1138,7 @@ async function MeResultPageContent({
       friendDiagnosisHref={
         (isOwnedResult ||
           (process.env.NODE_ENV === "development" && previewType !== null))
-          ? `${localePrefix}/tako/${encodeURIComponent(token)}`
+          ? withTakoEntry(`${localePrefix}/tako/${encodeURIComponent(token)}`, "me_sticky_header")
           : undefined
       }
       ownerToken={acquisition || publicPreview ? undefined : token}
@@ -1454,7 +1455,7 @@ async function MeResultPageContent({
                             (process.env.NODE_ENV === "development" &&
                               previewType !== null)) && (
                               <Link
-                                href={`${localePrefix}/tako/${encodeURIComponent(token)}`}
+                                href={withTakoEntry(`${localePrefix}/tako/${encodeURIComponent(token)}`, "me_pill")}
                                 className="inline-flex items-center gap-2 rounded-full border border-[#E3E6F5] bg-white px-6 py-3 text-[14px] font-black text-[#2E2E5C] shadow-[0_1px_4px_rgba(46,46,92,0.08)] transition-colors hover:bg-[#F4F4FE]"
                               >
                                 <svg
@@ -1926,7 +1927,7 @@ async function MeResultPageContent({
                   : "友達や家族に答えてもらって、「まわりから見たあなた」とのギャップを比べてみましょう。"}
               </p>
               <Link
-                href={`${localePrefix}/tako/${encodeURIComponent(token)}`}
+                href={withTakoEntry(`${localePrefix}/tako/${encodeURIComponent(token)}`, "me_friend_section")}
                 className="inline-flex items-center gap-1.5 rounded-full bg-[#5B5BEF] px-6 py-3 text-[14px] font-black text-white shadow-[0_4px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_2px_0_#3d3dc4]"
                 style={resultActionButtonStyle}
               >

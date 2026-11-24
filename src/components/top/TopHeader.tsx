@@ -1,5 +1,6 @@
 "use client";
 
+import { withTakoEntry } from "@/lib/tako-entry";
 import { useNavigationCopy, useNavigationText } from "@/i18n/ui/use-navigation-copy";
 // feat/top-page: 独立した白いヘッダーバー (16Personalities 型)。
 // 構造: ロゴ(左) | メニュー + ログイン + 言語切替(右寄せ)。PC は横並び、SP はハンバーガー。
@@ -166,7 +167,7 @@ export default function TopHeader({
       n.tako && ownerToken
         ? {
             ...n,
-            href: `${isKo ? "/ko" : isEn ? "/en" : isId ? "/id" : ""}/tako/${encodeURIComponent(ownerToken)}`,
+            href: withTakoEntry(`${isKo ? "/ko" : isEn ? "/en" : isId ? "/id" : ""}/tako/${encodeURIComponent(ownerToken)}`, "top_header"),
           }
         : n,
     );

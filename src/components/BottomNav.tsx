@@ -1,5 +1,6 @@
 "use client";
 
+import { withTakoEntry } from "@/lib/tako-entry";
 import { useNavigationCopy, useNavigationText } from "@/i18n/ui/use-navigation-copy";
 
 // 自己診断完了後に表示する下部固定ナビ (16personalities 風)。ハンバーガーメニューの代替。
@@ -424,7 +425,7 @@ export function BottomNav() {
       );
       setTakoUrl(
         token
-          ? `${localePrefix}/tako/${token}`
+          ? withTakoEntry(`${localePrefix}/tako/${token}`, "nav")
           : `${localePrefix}/tako`,
       );
       setHasToken(Boolean(token));

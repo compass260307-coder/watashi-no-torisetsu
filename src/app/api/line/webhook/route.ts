@@ -10,6 +10,7 @@
 // LINE Developers 側の設定: Webhook URL = <site>/api/line/webhook・Webhook ON・
 // 応答メッセージ OFF。検証リクエスト (events: []) にも 200 を返す。
 
+import { withTakoEntry } from "@/lib/tako-entry";
 import { NextRequest, NextResponse } from "next/server";
 
 import { consumeIdentifierRateLimit } from "@/lib/api-security";
@@ -1411,7 +1412,7 @@ async function handleLineCommand(
         `${site}/me/${user.owner_token}`,
         "",
         "👀 友達診断 (まわりから見えているあなた)",
-        `${site}/tako/${user.owner_token}`,
+        withTakoEntry(`${site}/tako/${user.owner_token}`, "line"),
         "",
         "友達の回答をもっと集めたいときは、メニューの「友達に招待」からどうぞ。",
       ].join("\n"),

@@ -1,5 +1,6 @@
 "use client";
 
+import { withTakoEntry } from "@/lib/tako-entry";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { useNavigationCopy, useNavigationText } from "@/i18n/ui/use-navigation-copy";
 import type { SiteLocale } from "@/lib/locale-switch";
@@ -136,7 +137,7 @@ export default function TopFooter({
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTakoUrl(
       token
-        ? `${content.takoBaseHref}/${encodeURIComponent(token)}`
+        ? withTakoEntry(`${content.takoBaseHref}/${encodeURIComponent(token)}`, "top_footer")
         : content.takoBaseHref,
     );
     setHasToken(Boolean(token));
