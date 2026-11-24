@@ -1,23 +1,30 @@
 "use client";
 
 // 自己診断結果ページ (/me) を一番下まで読んだ人に、友達診断ページの友達0人のときと同じ
-// 招待カード (見出し「友達から見たあなたは？」+ LINE で送る) を1回だけ開く (日本語のみ)。
+// 招待カード (見出し「友達から見たあなたは？」+ LINE で送る) を開く (日本語のみ・1人2回まで)。
 // 設定と背景は lib/result-invite-card.ts。
 //
-// - 出すタイミング: 一番下の課金カードが画面に入ってから 8 秒後。
+// - 出すタイミング: 一番下の課金カードが画面に入ってから 5 秒後 (2026-11-25 に 8 秒から短縮)。
 //   宝箱・課金カード・シェアなどのモーダルが開いている間と、タブが裏にある間は待つ。
+// - 2回目 (2026-11-25): 1回目を出してから30分以上あとに、もう一度結果ページを開いて
+//   一番下まで来た人に、同じ条件でもう一度だけ出す。3回目は出さない。
 // - 出さない相手: すでに友達診断ページを見た人 (下部ナビの未確認バッジが消えている人)、
-//   このカードを一度見た人。購入済み・友達の回答がある人は親が描画しない。
+//   このカードを2回見た人。購入済み・友達の回答がある人は親が描画しない。
 //   (11/23〜11/24 は半分の人にだけ出す A/B だった。友達診断率が上がったので全員に出す)
 // - 計測: 中身の LockedInviteShare が、既存の tako_invite_ui_shown / friend_invite_clicked を
-//   surface / source = "me_read_end" で送る (新しいイベント名は足さない)。
+//   surface / source = "me_read_end" (2回目は "me_read_end_again") で送る
+//   (新しいイベント名は足さない)。
 
 import { useCallback, useEffect, useState } from "react";
 import { LockedInviteShare } from "@/components/result/LockedInviteShare";
 import { TakoEmptyInviteHeader } from "@/components/result/TakoEmptyInviteHeader";
 import {
+  RESULT_INVITE_CARD_AGAIN_AFTER_MS,
+  RESULT_INVITE_CARD_AGAIN_SOURCE,
   RESULT_INVITE_CARD_DELAY_MS,
   RESULT_INVITE_CARD_SOURCE,
+  resultInviteCardAgainKey,
+  resultInviteCardShownAtKey,
   resultInviteCardShownKey,
 } from "@/lib/result-invite-card";
 import { TAKO_ATTENTION_PENDING_KEY } from "@/lib/tako-attention";
@@ -54,15 +61,23 @@ export function ResultInviteCard({
   previewDelayMs,
 }: ResultInviteCardProps) {
   const [open, setOpen] = useState(false);
+  // いま開いているのが何回目か (計測の surface / source を分けるため)。
+  const [round, setRound] = useState<1 | 2>(1);
   const delayMs = previewDelayMs ?? RESULT_INVITE_CARD_DELAY_MS;
 
-  // すでに一度出した人かどうか。保存領域が使えない環境では「1人1回」を守れないので、出した扱いにする。
-  const alreadyShown = useCallback((): boolean => {
-    if (previewMode) return false;
+  // 次に出すなら何回目か。もう出さない人は null。
+  // 保存領域が使えない環境では回数を守れないので、出さない。
+  const nextRound = useCallback((): 1 | 2 | null => {
+    if (previewMode) return 1;
     try {
-      return localStorage.getItem(resultInviteCardShownKey(ownerToken)) === "1";
+      if (localStorage.getItem(resultInviteCardShownKey(ownerToken)) !== "1") return 1;
+      if (localStorage.getItem(resultInviteCardAgainKey(ownerToken)) === "1") return null;
+      // 1回目の時刻が無いのは、時刻を残す前 (2026-11-25 より前) に出した人。もう十分あいている。
+      const shownAt = Number(localStorage.getItem(resultInviteCardShownAtKey(ownerToken)));
+      if (shownAt > 0 && Date.now() - shownAt < RESULT_INVITE_CARD_AGAIN_AFTER_MS) return null;
+      return 2;
     } catch {
-      return true;
+      return null;
     }
   }, [ownerToken, previewMode]);
 
@@ -98,19 +113,26 @@ export function ResultInviteCard({
         return;
       }
       // 待っている間に別タブで出した・友達診断ページを見た、の場合は出さない。
-      if (alreadyShown() || !notYetVisitedTako()) return;
+      const next = nextRound();
+      if (next === null || !notYetVisitedTako()) return;
       if (!previewMode) {
         try {
-          localStorage.setItem(resultInviteCardShownKey(ownerToken), "1");
+          if (next === 1) {
+            localStorage.setItem(resultInviteCardShownKey(ownerToken), "1");
+            localStorage.setItem(resultInviteCardShownAtKey(ownerToken), String(Date.now()));
+          } else {
+            localStorage.setItem(resultInviteCardAgainKey(ownerToken), "1");
+          }
         } catch {
-          /* alreadyShown() が読めているので通常は起きない */
+          /* nextRound() が読めているので通常は起きない */
         }
       }
+      setRound(next);
       setOpen(true);
     };
 
     const start = () => {
-      if (alreadyShown()) return;
+      if (nextRound() === null) return;
       observer = new IntersectionObserver(
         (entries) => {
           if (!entries.some((entry) => entry.isIntersecting)) return;
@@ -129,7 +151,7 @@ export function ResultInviteCard({
       observer?.disconnect();
       if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, [alreadyShown, anchorId, delayMs, notYetVisitedTako, ownerToken, previewMode]);
+  }, [anchorId, delayMs, nextRound, notYetVisitedTako, ownerToken, previewMode]);
 
   // 開いている間は背面をスクロールさせない。Esc で閉じる。
   useEffect(() => {
@@ -182,7 +204,13 @@ export function ResultInviteCard({
           <div className="mt-5">
             <LockedInviteShare
               inviteUrl={inviteUrl}
-              trackSource={previewMode ? undefined : RESULT_INVITE_CARD_SOURCE}
+              trackSource={
+                previewMode
+                  ? undefined
+                  : round === 2
+                    ? RESULT_INVITE_CARD_AGAIN_SOURCE
+                    : RESULT_INVITE_CARD_SOURCE
+              }
               ownerToken={ownerToken}
               inviteCode={inviteCode}
               compact

@@ -108,6 +108,10 @@ export function isPreviewMode(): boolean {
 // ----- 課金ファネル (2026-07-13 追加) -----
 //   paywall_viewed               課金カードの表示到達 (metadata.page/variant/paywall_version, ownerToken)
 //   paywall_plan_viewed          3コースのうち中央表示されたコース (metadata.product/placement)
+//                                placement: "treasure" は完全版の宝箱の中の進み具合 (2026-11-25)。
+//                                metadata.step = chest_opened / coupon_received / closed、
+//                                closed には stage (chest / coupon / offer) と offer_ms を付ける。
+//                                新しいイベント名にしないのは、受け口の許可リスト (DB) を変えずに済ませるため。
 //   paywall_scroll_clicked       課金カードへの誘導クリック (metadata.source/page)
 //   purchase_cta_clicked         購入CTAクリック信号 ※クライアント発行、欠損監視用
 //   checkout_requested           Checkout要求受付 ※サーバ発行 (metadata.checkout_attempt_id)

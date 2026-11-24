@@ -234,6 +234,8 @@ type Props = {
   priceJpy: number;
   /** 最後に出す購入ボタン（押すと決済画面へ進む）。 */
   purchaseCta: ReactNode;
+  /** 宝箱を押して開けたとき（進み具合の計測用）。 */
+  onChestOpened?: () => void;
   /** 「受け取る」を押してクーポンを受け取ったとき。 */
   onCouponReceived: () => void;
   /** 受け取ったあと「あとで決める」で閉じたとき。 */
@@ -266,6 +268,7 @@ export function ResultUpgradeTreasure({
   listPriceJpy,
   priceJpy,
   purchaseCta,
+  onChestOpened,
   onCouponReceived,
   onClose,
   onDismiss,
@@ -342,6 +345,7 @@ export function ResultUpgradeTreasure({
 
   function openChest() {
     if (phase !== "idle" && phase !== "intro") return;
+    onChestOpened?.();
     try { navigator.vibrate?.(18); } catch { /* optional */ }
     if (reducedMotion) {
       setPhase("open");
