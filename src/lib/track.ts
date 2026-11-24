@@ -85,8 +85,6 @@ export function isPreviewMode(): boolean {
 //   share_to_diagnosis_clicked   /share/[code] → 自己診断 CTA
 //   result_viewed                結果(/me)の初回表示 (metadata.friendCount/funnelVersion, ownerToken)
 //   result_revisited             結果(/me)の再訪 (ownerToken)
-//   tako_nav_badge_shown         診断完了後「友達診断」未確認バッジ表示 (ownerToken)
-//   tako_nav_badge_clicked       未確認バッジ付き「友達診断」タップ (ownerToken)
 //   tako_viewed                  本人の友達診断ページ (/tako/[token]) 到達 (ownerToken)
 //   tako_invite_ui_shown         招待送信UIの露出 (metadata.surface: locked_gate / sticky_modal / tako_unlocked / send_sheet)
 //   unmei_nav_badge_shown        課金後「運命」未確認バッジ表示 (ownerToken)
