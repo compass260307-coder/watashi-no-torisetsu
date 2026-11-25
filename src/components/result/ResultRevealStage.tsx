@@ -23,6 +23,8 @@ export type ResultRevealTarget = {
   imageFit: string;
   nameBox: Box;
   imageBox: Box;
+  /** 絵が地面に触れている場所 (絵の枠に対する割合)。測れなかったときは null。 */
+  foot: Foot | null;
   nameStyle: {
     fontSize: string;
     fontWeight: string;
@@ -34,6 +36,57 @@ export type ResultRevealTarget = {
 };
 
 const box = (r: DOMRect): Box => ({ left: r.left, top: r.top, width: r.width, height: r.height });
+
+type Foot = { cx: number; bottom: number; width: number };
+
+/**
+ * 絵の「足元」を測る: いちばん下の不透明な行と、そのすぐ上までの横の広がり。
+ * 絵によって、枠のどこまで描かれているか・どこで地面に触れているかが違う。足元の影を枠の決まった
+ * 位置に置くと、絵から離れて宙に浮いたり、絵の端からはみ出したりするので、実物を測って合わせる。
+ */
+function measureFoot(img: HTMLImageElement, fit: string, boxW: number, boxH: number): Foot | null {
+  if (fit !== "contain" || boxW < 1 || boxH < 1) return null;
+  try {
+    const cw = 96, ch = Math.max(8, Math.round((cw * boxH) / boxW));
+    const c = document.createElement("canvas");
+    c.width = cw;
+    c.height = ch;
+    const g = c.getContext("2d", { willReadFrequently: true });
+    if (!g) return null;
+    // 画面と同じ収め方 (枠の中央に、はみ出さない最大の大きさ) で小さく描く
+    const k = Math.min(cw / img.naturalWidth, ch / img.naturalHeight);
+    const w = img.naturalWidth * k, h = img.naturalHeight * k;
+    g.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
+    const alpha = g.getImageData(0, 0, cw, ch).data;
+    const solid = (x: number, y: number) => alpha[(y * cw + x) * 4 + 3] > 110;
+    // 絵のある行の範囲。きらめきなどの小さな粒だけの行は数えない。
+    const need = Math.max(2, Math.round(cw * 0.03));
+    let top = -1, bottom = -1;
+    for (let y = 0; y < ch; y++) {
+      let n = 0;
+      for (let x = 0; x < cw; x++) if (solid(x, y)) n++;
+      if (n >= need) {
+        if (top < 0) top = y;
+        bottom = y;
+      }
+    }
+    if (bottom < 0) return null;
+    // いちばん下から、絵の高さの1割ぶんを「地面に触れているあたり」とみなす
+    const band = Math.max(2, Math.round((bottom - top + 1) * 0.1));
+    let left = cw, right = -1;
+    for (let y = bottom - band + 1; y <= bottom; y++) {
+      for (let x = 0; x < cw; x++) {
+        if (!solid(x, y)) continue;
+        if (x < left) left = x;
+        if (x > right) right = x;
+      }
+    }
+    if (right < left) return null;
+    return { cx: (left + right + 1) / 2 / cw, bottom: (bottom + 1) / ch, width: (right - left + 1) / cw };
+  } catch {
+    return null; // 読めない画像 (別の配信元など)。影は枠の下寄りの中央に置く。
+  }
+}
 
 /** 結果ページの最初の画面から、発表に必要なものを読む。まだ描けていなければ null。 */
 export function readResultRevealTarget(): ResultRevealTarget | null {
@@ -48,13 +101,15 @@ export function readResultRevealTarget(): ResultRevealTarget | null {
   const imageBox = box(img.getBoundingClientRect());
   if (nameBox.width < 8 || imageBox.width < 40) return null;
   const cs = getComputedStyle(nameEl);
+  const imageFit = getComputedStyle(img).objectFit || "contain";
   return {
     name,
     heroColor: getComputedStyle(hero).backgroundColor,
     imageSrc: img.currentSrc || img.src,
-    imageFit: getComputedStyle(img).objectFit || "contain",
+    imageFit,
     nameBox,
     imageBox,
+    foot: measureFoot(img, imageFit, imageBox.width, imageBox.height),
     nameStyle: {
       fontSize: cs.fontSize,
       fontWeight: cs.fontWeight,
@@ -75,6 +130,11 @@ const DOT_AT = [1200, 1500, 1800]; // 「...」が1つずつ
 const REVEAL_AT = 2560; // 発表
 const HOLD_MS = 2500; // 発表してから着地を始めるまで
 const SETTLE_MS = 860; // 着地
+
+// 足元の影: 足元の幅に対する広がり、つぶれ具合 (高さ÷幅)、接地の線より上に隠す割合
+const GROUND_SPREAD = 1.35;
+const GROUND_FLAT = 0.15;
+const GROUND_LIFT = 0.56;
 
 function rgbOf(color: string): [number, number, number] {
   const m = color.match(/[\d.]+/g);
@@ -434,6 +494,7 @@ export function ResultRevealStage({
   const letters = Array.from(target.name);
   const hero = rgbOf(target.heroColor);
   const deep = css(toward(hero, [20, 16, 46], 0.8)); // 明かりを落とした舞台の色
+  const groundRgb = toward(hero, BLACK, 0.62); // 足元の影の色 (舞台の色をそのまま暗くした色)
 
   useEffect(() => {
     const root = rootRef.current, dark = darkRef.current, world = worldRef.current, bright = brightRef.current;
@@ -527,10 +588,19 @@ export function ResultRevealStage({
     const beamW = Math.max(charW * 1.5, beamH * 0.64); // 円すいの開き (±17度) が収まる幅
     Object.assign(beam.style, { left: `${charAt.x - beamW / 2}px`, top: `${-vh * 0.1}px`, width: `${beamW}px`, height: `${beamH}px` });
     Object.assign(pool.style, { left: `${charAt.x - charW * 0.62}px`, top: `${feet - charH * 0.13}px`, width: `${charW * 1.24}px`, height: `${charH * 0.26}px` });
-    Object.assign(ground.style, { left: `${charAt.x - charW * 0.36}px`, top: `${feet - charH * 0.045}px`, width: `${charW * 0.72}px`, height: `${charH * 0.1}px` });
+    // 足元の影は、絵が実際に地面に触れている場所へ。絵の後ろに敷き、下の縁からやわらかくのぞかせる。
+    const foot = target.foot ?? { cx: 0.5, bottom: 0.92, width: 0.6 };
+    const footX = charAt.x + (foot.cx - 0.5) * charW;
+    const footY = charAt.y + (foot.bottom - 0.5) * charH;
+    const groundW = Math.min(charW * 1.3, Math.max(charW * 0.4, foot.width * charW * GROUND_SPREAD));
+    const groundH = Math.min(charH * 0.16, groundW * GROUND_FLAT);
+    Object.assign(ground.style, { left: `${footX - groundW / 2}px`, top: `${footY - groundH * GROUND_LIFT}px`, width: `${groundW}px`, height: `${groundH}px` });
     flash.style.background = `radial-gradient(circle at ${charAt.x}px ${charAt.y}px, #fff 0%, rgba(255,255,255,0.95) 30%, rgba(255,255,255,0.82) 100%)`;
 
     const dotEls = Array.from(lead.querySelectorAll<HTMLElement>("[data-dot]"));
+    // 「...」の幅。発表で点が消えたあと、残る「あなたは」を名前の真上に置き直すのに使う。
+    const dotsEl = lead.querySelector<HTMLElement>("[data-dots]");
+    const dotsWidth = dotsEl?.offsetWidth ?? 0;
     const confetti = new Confetti(canvas, rgbOf(target.heroColor));
     const onResize = () => confetti.resize();
     window.addEventListener("resize", onResize);
@@ -651,7 +721,10 @@ export function ResultRevealStage({
       ], { duration: 820, easing: "ease-out" });
       play(rays, [{ opacity: 0, scale: "0.6" }, { opacity: 1, scale: "2" }], { duration: 760, easing: "cubic-bezier(0.2, 0.9, 0.3, 1)" });
       const spin = play(rays, [{ rotate: "0deg" }, { rotate: "360deg" }], { duration: 38000, iterations: Infinity, easing: "linear" });
-      play(lead.querySelector("[data-dots]") ?? lead, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
+      play(dotsEl ?? lead, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
+      // 点は消えても幅が残るので、そのままだと「あなたは」が点の半分だけ左に寄って見える。
+      // 光っているあいだに、そのぶん右へ送って名前の真上にそろえる。
+      play(lead, [{ translate: "0 0" }, { translate: `${dotsWidth / 2}px 0` }], { duration: 200, easing: "ease-out" });
       for (const [i, el] of letterEls.entries()) {
         play(el, [
           { opacity: 0, transform: "translateY(0.6em) scale(0.2) rotate(-14deg)" },
@@ -800,7 +873,11 @@ export function ResultRevealStage({
           ref={groundRef}
           aria-hidden="true"
           className="pointer-events-none absolute"
-          style={{ opacity: 0, backgroundImage: `radial-gradient(ellipse at center, ${css(toward(hero, BLACK, 0.62), 0.42)} 0%, ${css(toward(hero, BLACK, 0.62), 0)} 70%)` }}
+          style={{
+            opacity: 0,
+            // 芯は濃く、外へ向かってなだらかに消える (縁の見える楕円にしない)
+            backgroundImage: `radial-gradient(ellipse at center, ${css(groundRgb, 0.4)} 0%, ${css(groundRgb, 0.27)} 28%, ${css(groundRgb, 0.11)} 52%, ${css(groundRgb, 0.03)} 66%, ${css(groundRgb, 0)} 74%)`,
+          }}
         />
         {/* キャラクター。はじめは影、発表で本物になる。置き場所は結果ページの実物と同じ。 */}
         <div
