@@ -61,7 +61,7 @@ const jsonLd = {
       name: "Tim Alice Personalities",
       url: ID_URL,
       brand: { "@id": `${ID_URL}#brand` },
-      logo: { "@type": "ImageObject", url: `${SITE_URL}/icon.png` },
+      logo: { "@type": "ImageObject", url: `${SITE_URL}/icon-v2.png` },
     },
   ],
 };

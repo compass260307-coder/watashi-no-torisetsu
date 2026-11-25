@@ -71,7 +71,7 @@ const jsonLd = {
       name: "Alice Personalities Operations Team",
       url: SITE_URL,
       brand: { "@id": BRAND_ID },
-      logo: `${SITE_URL}/icon.png`,
+      logo: `${SITE_URL}/icon-v2.png`,
     },
   ],
 };

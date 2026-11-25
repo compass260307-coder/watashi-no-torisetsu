@@ -13,6 +13,7 @@ import { useNavigationCopy, useNavigationText } from "@/i18n/ui/use-navigation-c
 
 import { DeferredLoginModal as LoginModal, DeferredPaywallOverlay as PaywallOverlay } from "@/components/DeferredOverlays";
 import { AccessibilityStyleDialog, AccessibilityStyleIcon } from "@/components/AccessibilityStyleDialog";
+import { BrandMark } from "@/components/BrandMark";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { preloadPaywall } from "@/lib/paywall-loader";
 import { accessPaywallVersionForLocale } from "@/lib/access-products";
@@ -245,19 +246,21 @@ export default function TopHeader({
           56px は詰まりすぎたので、その間を取る)。
           PC 幅はメニューの文字が並ぶため従来の 72px のまま。 */}
       <div className="flex w-full items-center gap-4 px-4 py-3 sm:px-8 lg:py-4">
-        {/* ロゴ (左) */}
+        {/* ロゴ (左): マーク (点の輪) + サービス名。 */}
         <Link
           href={content.homeHref}
           prefetch={navigationPrefetch}
-          // 右のマークが3つ並ぶため、320px 幅の英語ロゴなど収まらないときは
-          // 横にはみ出させず末尾を省略する (日本語・韓国語は 320px でも収まる)。
-          // スマホ幅の pb-0.5: 文字の見えている部分 (字面) は行の箱の中で約1px 下に寄るため、
-          // 右のマークと縦の中心がそろうよう 1px 持ち上げる。PC 幅は隣のメニューの文字と
-          // 同じ寄り方でそろっているので動かさない。
-          className="min-w-0 truncate pb-0.5 text-[18px] font-bold tracking-[0.01em] lg:pb-0 xl:text-[21px]"
+          className="flex min-w-0 items-center gap-1 text-[18px] font-bold tracking-[0.01em] xl:gap-1.5 xl:text-[21px]"
           style={{ color: NAVY }}
         >
-          {content.siteName}
+          {/* 340px 未満の画面では、サービス名が欠けないようマークを出さない。 */}
+          <BrandMark className="shrink-0 max-[339px]:hidden xl:h-[30px] xl:w-[30px]" />
+          {/* 右のマークが並ぶため、320px 幅の英語ロゴなど収まらないときは
+              横にはみ出させず末尾を省略する。
+              スマホ幅の pb-0.5: 文字の見えている部分 (字面) は行の箱の中で約1px 下に寄るため、
+              左右のマークと縦の中心がそろうよう 1px 持ち上げる。PC 幅は隣のメニューの文字と
+              同じ寄り方でそろっているので動かさない。 */}
+          <span className="min-w-0 truncate pb-0.5 lg:pb-0">{content.siteName}</span>
         </Link>
 
         {/* PC: メニュー + ログイン + 言語切替 (右寄せ)。lg は gap 詰めめ、xl で広げる */}
