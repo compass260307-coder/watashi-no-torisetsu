@@ -553,9 +553,10 @@ export async function TakoResultPage({
       ? createMetaPurchaseClaimToken(paidCheckoutSession.id)
       : null;
 
-  // 未購入で「回答0人」または「2人目以降の結果あり」のときに使う共通課金カード。
-  // 回答1人の無料体験中は従来どおり表示しない。
-  const takoPromo = !takoLocked || data.friends.length === 1 ? null : (() => {
+  // 未購入で「2人目以降の結果あり」のときに使う課金カード。
+  // 回答1人の無料体験中は表示しない。回答0人でも表示しない
+  // (2026-11-25: 0人の画面のカードからの購入はごくわずかだったため外した)。
+  const takoPromo = !takoLocked || data.friends.length <= 1 ? null : (() => {
     const promoType = data.friendCharacter?.type32 ?? data.ownerType32;
     const promoGroup = promoType ? thirtyTwoGroup(promoType) : "unknown";
     const promoAlt =
@@ -1341,12 +1342,10 @@ export async function TakoResultPage({
         </div>
       </main>
       {/* 2人目以降の結果がある未購入ユーザー向けの最下部課金カード。 */}
-      {data.friends.length > 1 ? takoPromo : null}
+      {takoPromo}
       {/* 招待バンド (もっと友達に聞くと〜 + QR) は 2026-07-20 指示で一旦削除。 */}
       {/* FAQ は招待前の疑問解消用。1人でも回答が付いたら出さない (2026-08-26 指示)。 */}
       {data.friends.length === 0 && <TakoFaq locale={locale} />}
-      {/* 回答0人の未購入ユーザーには、FAQの直後・フッターの直前で課金カードを案内する。 */}
-      {data.friends.length === 0 ? takoPromo : null}
       {/* サイト共通フッター (トップ / /me / /types / /about と同じ) */}
       {isKo ? <KoTopFooter /> : <TopFooter locale={isId ? "id" : "ja"} />}
       {demoMode && <TakoDemoBar locale={isKo ? "ko" : "ja"} />}
