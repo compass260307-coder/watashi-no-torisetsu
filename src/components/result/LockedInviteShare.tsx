@@ -9,13 +9,14 @@
 // - QR: 友達評価への招待URL (inviteCode 付き) を対面スキャン用に表示。
 // - 見出し/長い注意書きは持たない (呼び出し側の文脈に委ねてシンプルに)。
 
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { track } from "@/lib/track";
 import { withRef } from "@/lib/acquisition-link";
 import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
 import { shareToKakaoTalk, kakaoShareFeedback, kakaoShareMetadata, KO_FRIEND_INVITE_TEXT } from "@/lib/kakao-share";
 import type { AppResultLocale } from "@/i18n/result";
+import { InviteTrackOverrideContext } from "@/components/result/tako-invite-card-open";
 
 interface LockedInviteShareProps {
   /** 友達評価の招待 URL (絶対 URL, /friend/[inviteCode])。 */
@@ -62,12 +63,17 @@ export function LockedInviteShare({
   compact = false,
   deferQr = false,
   hideQr = false,
-  trackSource,
+  trackSource: baseTrackSource,
   ownerToken,
   inviteCode,
   qrImageSrc,
   locale = "ja",
 }: LockedInviteShareProps) {
+  // 上部バーから開いた招待カードは、計測名を上書きする (tako-invite-card-open.ts)。
+  // trackSource が無い (計測しない) 置き場では、上書きがあっても計測しない。
+  const trackOverride = useContext(InviteTrackOverrideContext);
+  const trackSource = baseTrackSource ? (trackOverride?.source ?? baseTrackSource) : undefined;
+  const trackSurface = baseTrackSource ? (trackOverride?.surface ?? baseTrackSource) : undefined;
   const [copied, setCopied] = useState(false);
   const [kakaoBusy, setKakaoBusy] = useState(false);
   const [kakaoNote, setKakaoNote] = useState("");
@@ -99,7 +105,7 @@ export function LockedInviteShare({
         track("tako_invite_ui_shown", {
           ownerToken,
           inviteCode,
-          metadata: { surface: trackSource },
+          metadata: { surface: trackSurface },
         });
         observer.disconnect();
       },
@@ -107,7 +113,7 @@ export function LockedInviteShare({
     );
     observer.observe(element);
     return () => observer.disconnect();
-  }, [inviteCode, ownerToken, trackSource]);
+  }, [inviteCode, ownerToken, trackSource, trackSurface]);
 
   // チャネル別に ?ref を付けて、この招待から来た友達の流入元 (acquisition_source) を計測する。
   const lineUrl = isKorean || isEnglish
