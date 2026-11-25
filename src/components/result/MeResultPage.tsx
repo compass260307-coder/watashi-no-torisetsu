@@ -1109,7 +1109,17 @@ async function MeResultPageContent({
           status をポーリング → full 反映で自動的にロック解除表示へ (払ったのにロック→再購入 を防ぐ)。 */}
       {/* 完全版の準備画面の群は、反映待ちも準備画面の中で扱う (20秒後に反映前なら PaidUnlockWatcher へ)。 */}
       {showPurchaseLoading && (
-        <PurchaseLoadingScreen ownerToken={token} waitingForAccess={waitingForPaidAccess} />
+        <PurchaseLoadingScreen
+          ownerToken={token}
+          waitingForAccess={waitingForPaidAccess}
+          self={{
+            face: preferFaceImage(v3Image),
+            typeName: dispEssence,
+            heroColor: heroBg,
+            buttonColor: resultActionTone.accent,
+            buttonShadow: resultActionTone.shadow,
+          }}
+        />
       )}
       {isOwnedResult && sp.paid === "1" && waitingForPaidAccess && !showPurchaseLoading && (
         <PaidUnlockWatcher
