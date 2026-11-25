@@ -60,7 +60,10 @@ const FORTUNE_PAYWALL_IMAGE =
 const UNMEI_PAYWALL_HASH = "#unlock-unmei";
 const TAROT_PAYWALL_HASH = "#unlock-tarot";
 
-type CourseLockTarget = "hoshiyomi" | "unmei" | "tarot" | "aisho";
+type CourseLockTarget = "hoshiyomi" | "unmei" | "tarot" | "aisho" | "full";
+// 未課金の人の下部ナビ「完全版」タブから宝箱を開いた導線 (日本語のみ)。
+const NAV_FULL_ACCESS_SOURCE = "nav_full_access";
+const FULL_COURSE_PRODUCTS = ["full_access"] as const;
 
 // 通常タブの文字・アイコン色 (ブランドのディープネイビー)。
 const ACTIVE = "#2A3A5C";
@@ -127,6 +130,34 @@ function UsersIcon() {
 const AISHO_HEART_PATH =
   "M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z";
 
+// 性格タイプ (4マスのグリッド)。未課金の人の下部ナビ用 (日本語のみ)。
+function TypesIcon() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <rect x="4" y="4" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2" />
+      <rect x="13" y="4" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2" />
+      <rect x="4" y="13" width="7" height="7" rx="2" stroke="currentColor" strokeWidth="2" />
+      <circle cx="16.5" cy="16.5" r="3.6" stroke="currentColor" strokeWidth="2" />
+    </svg>
+  );
+}
+
+// 完全版 (宝箱)。押すと完全版の宝箱が開く。未課金の人の下部ナビ用 (日本語のみ)。
+function TreasureIcon() {
+  return (
+    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M4 11V9.5A4.5 4.5 0 0 1 8.5 5h7A4.5 4.5 0 0 1 20 9.5V11"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <rect x="4" y="11" width="16" height="8" rx="1.5" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M12 10v4.2" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function AishoIcon() {
   return (
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -138,12 +169,12 @@ function AishoIcon() {
 
 // 未診断時に「友達診断」アイコンの右上へ重ねるミニ南京錠バッジ。
 //   白フチ付きで下のアイコンと視覚的に分離する。
-function LockBadge() {
+function LockBadge({ color = "#9BA3B4" }: { color?: string }) {
   return (
     <span
       aria-hidden="true"
       className="absolute -top-1.5 -right-2 flex h-[15px] w-[15px] items-center justify-center rounded-full"
-      style={{ background: "#9BA3B4", boxShadow: "0 0 0 2px #fff" }}
+      style={{ background: color, boxShadow: "0 0 0 2px #fff" }}
     >
       <svg width="9" height="9" viewBox="0 0 24 24" fill="none">
         <rect x="5" y="10.5" width="14" height="9.5" rx="2.5" fill="#fff" />
@@ -714,7 +745,6 @@ export function BottomNav() {
                 },
               ]
             : [
-            // タロットは未購入時も鍵付きで表示する。
             { key: "me", label: navCopy.me, href: torisetsuUrl, active: pathname.startsWith("/me"), Icon: ClipboardIcon },
             // 未診断時はロック表示: 遷移せずポップアップ (TakoLockModal) で解放条件を伝える。
             {
@@ -732,7 +762,8 @@ export function BottomNav() {
             },
             // Alice。占星術は Alice ページ上部の切り替え (FortuneSwitcher) から選ぶので、
             // 占星術を見ている間も Alice を選択中にする (2026-11-19 指示)。
-            // タロットは専用タブに戻したため、ここでは選択中にしない (2026-11-20 指示)。
+            // タロットも専用タブをやめて Alice にまとめ、タロットを見ている間も Alice を選択中にする
+            // (2026-11-25 指示。課金後は 自己診断・友達診断・Alice・相性診断 の4タブ)。
             // 未課金は従来どおり鍵を出し、タップで課金カードを開く。
             {
               key: "astrologer",
@@ -743,23 +774,12 @@ export function BottomNav() {
               active:
                 pathname.startsWith("/hoshiyomi") ||
                 pathname.startsWith("/unmei") ||
+                pathname.startsWith("/tarot") ||
                 pathname === "/dev/hoshiyomi-preview",
               Icon: AstrologerIcon,
               locked:
                 (!hasToken && !isPaidNavigationPreview) ||
                 !hasAliceNavigationAccess,
-            },
-            // タロット。性格タイプの枠をタロットに戻す (2026-11-20 指示)。
-            // 未購入は鍵を出し、タップで診断案内 / 課金カードを開く。
-            {
-              key: "tarot",
-              label: navCopy.tarot,
-              href: isPaidNavigationPreview ? "/tarot/dev-preview" : "/tarot",
-              active: pathname.startsWith("/tarot"),
-              Icon: TarotCardsIcon,
-              locked:
-                (!hasToken && !isPaidNavigationPreview) ||
-                !hasTarotNavigationAccess,
             },
             // 相性。未課金 (完全版未購入) は鍵を出し、タップで課金カードを開く
             // (2026-11-19 指示)。権限の確認中は安全側の鍵表示。
@@ -795,6 +815,57 @@ export function BottomNav() {
     ],
   );
 
+  // 未課金の人 (日本語) には、鍵付きの Alice・タロット・相性診断の代わりに
+  // 性格タイプ・完全版を出す (4タブ。2026-11-25 指示)。課金後は 自己診断・友達診断・Alice・相性診断。
+  // 権限の確認中は、大多数を占める未課金の並びにしておく (鍵を一瞬見せない)。
+  // 開発時だけ: 課金済みの確認用アカウントでも未課金の並びを見られるようにする。
+  // どのページでも ?nav=unpaid を付けると、タブを閉じるまで未課金の並びになる (?nav=paid で戻す)。
+  const [devForceUnpaid, setDevForceUnpaid] = useState(false);
+  const devNavParam = searchParams.get("nav");
+  useEffect(() => {
+    if (process.env.NODE_ENV !== "development") return;
+    const sync = () => {
+      try {
+        if (devNavParam === "unpaid") sessionStorage.setItem("dev_nav_unpaid", "1");
+        if (devNavParam === "paid") sessionStorage.removeItem("dev_nav_unpaid");
+        setDevForceUnpaid(sessionStorage.getItem("dev_nav_unpaid") === "1");
+      } catch {
+        // noop
+      }
+    };
+    sync();
+  }, [devNavParam]);
+  const showUnpaidTabs =
+    locale === "ja" &&
+    (!hasPaidAccess || devForceUnpaid) &&
+    !isPaidNavigationPreview &&
+    !isCoursePaywallPreview;
+  const navItems: typeof items = useMemo(
+    () =>
+      showUnpaidTabs
+        ? [
+            ...items.slice(0, 2),
+            {
+              key: "types",
+              label: navCopy.types ?? "性格タイプ",
+              href: "/types",
+              active:
+                pathname.startsWith("/types") ||
+                pathname.startsWith("/preview/"),
+              Icon: TypesIcon,
+            },
+            {
+              key: "full",
+              label: navCopy.full ?? "完全版",
+              href: torisetsuUrl,
+              active: false,
+              Icon: TreasureIcon,
+            },
+          ]
+        : items,
+    [items, navCopy, pathname, showUnpaidTabs, torisetsuUrl],
+  );
+
   // フロー系ページに加え、自己診断が完了していない間はナビを描画しない。
   // 診断案内 / 課金カード。ナビを描画しない状態 (未診断など) でも、
   // Alice ページの切り替え (FortuneSwitcher) から開けるよう常にマウントする。
@@ -813,13 +884,19 @@ export function BottomNav() {
           // PCでも max-w-[460px] のモバイル向け単一カラムになる。スマホでは画像が
           // hidden のまま、md 以上だけ既存の横長2カラム表示へ切り替える。
           imageSrc={
-            courseLockTarget === "hoshiyomi" || courseLockTarget === "aisho"
+            courseLockTarget === "hoshiyomi" ||
+            courseLockTarget === "aisho" ||
+            courseLockTarget === "full"
               ? FULL_ACCESS_PAYWALL_IMAGE
               : FORTUNE_PAYWALL_IMAGE
           }
           imageAlt=""
           locale={isKorean ? "ko" : isEnglish ? "en" : isIndonesian ? "id" : "ja"}
-          returnTo={courseLockTarget === "tarot" ? "me" : courseLockTarget}
+          returnTo={
+            courseLockTarget === "tarot" || courseLockTarget === "full"
+              ? "me"
+              : courseLockTarget
+          }
           ctaSource={
             coursePaywallSource ?? `nav_locked_${courseLockTarget}`
           }
@@ -832,6 +909,8 @@ export function BottomNav() {
                 ? AISHO_COURSE_PRODUCTS
               : courseLockTarget === "tarot"
                 ? TAROT_COURSE_PRODUCTS
+              : courseLockTarget === "full"
+                ? FULL_COURSE_PRODUCTS
                 : UNMEI_COURSE_PRODUCTS
           }
           defaultProduct={
@@ -849,11 +928,14 @@ export function BottomNav() {
           previewMode={isCoursePaywallPreview}
           // 未課金の人が鍵付きの Alice・相性・タロットを押したときは宝箱にする (2026-11-20 指示)。
           // 友達診断ページ上で押したときも同じく宝箱にする (2026-11-25 指示)。
+          // 未課金の人の「完全版」タブも宝箱にする (2026-11-25 指示)。
           treasureEntry={
-            (courseLockTarget === "hoshiyomi" ||
+            (((courseLockTarget === "hoshiyomi" ||
               courseLockTarget === "aisho" ||
               courseLockTarget === "tarot") &&
-            (coursePaywallSource ?? "").startsWith("nav_locked_") &&
+              (coursePaywallSource ?? "").startsWith("nav_locked_")) ||
+              (courseLockTarget === "full" &&
+                coursePaywallSource === NAV_FULL_ACCESS_SOURCE)) &&
             resolvedCourseAccess?.paid === false
           }
           onClose={closeCoursePaywall}
@@ -886,14 +968,14 @@ export function BottomNav() {
           PC はアプリ風に max-w-[480px] で中央寄せ。 */}
       <div
         className={`mx-auto grid max-w-[480px] ${
-          items.length === 4
+          navItems.length === 4
             ? "grid-cols-4"
-            : items.length === 5
+            : navItems.length === 5
               ? "grid-cols-5"
               : "grid-cols-6"
         }`}
       >
-        {items.map((it) => {
+        {navItems.map((it) => {
           const { Icon } = it;
           // 友達診断のバッジ・吹き出しは課金後は出さない (2026-11-19 指示)。
           const hasAttention =
@@ -916,6 +998,32 @@ export function BottomNav() {
                 <span className="relative">
                   <Icon />
                   <LockBadge />
+                </span>
+                <span className="text-[11px] font-bold leading-none">
+                  {it.label}
+                </span>
+              </button>
+            );
+          }
+          // 完全版タブ: ページ移動はせず、その場で完全版の宝箱を開く。
+          // 課金の入口なので薄くせず、紺色のまま鍵の印 (これも紺色) を付ける (2026-11-25 指示)。
+          if (it.key === "full") {
+            const preload = () => void preloadPaywall(locale).catch(() => {});
+            return (
+              <button
+                key={it.key}
+                type="button"
+                aria-label={`${it.label}${uiText("（ロック中）")}`}
+                onPointerEnter={preload}
+                onFocus={preload}
+                onTouchStart={preload}
+                onClick={() => openCoursePaywall("full", NAV_FULL_ACCESS_SOURCE)}
+                className="relative flex flex-col items-center justify-center gap-1 py-2 select-none touch-manipulation transition-transform duration-100 active:scale-90 active:opacity-70"
+                style={{ color: ACTIVE }}
+              >
+                <span className="relative">
+                  <Icon />
+                  <LockBadge color={ACTIVE} />
                 </span>
                 <span className="text-[11px] font-bold leading-none">
                   {it.label}

@@ -174,7 +174,7 @@ const footer: FooterContent = {
 };
 const copy: NavigationCopy = { header, footer,
 nav: {
-    "me": "自己診断", "friend": "友達診断", "astrologer": "Alice", "unmei": "占星術", "tarot": "タロット", "aisho": "相性診断", "types": "性格タイプ"
+    "me": "自己診断", "friend": "友達診断", "astrologer": "Alice", "unmei": "占星術", "tarot": "タロット", "aisho": "相性診断", "types": "性格タイプ", "full": "完全版"
   },
 loading: ["読み込み中...", "閉じる", "読み込みに失敗しました。ページを更新すると、入力中の内容が失われる場合があります。", "ページを更新"],
 lock: {
