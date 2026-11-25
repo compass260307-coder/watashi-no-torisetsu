@@ -37,10 +37,11 @@ const NAVY = "#2E2E5C";
 // ヘッダー右のマーク (アクセシビリティスタイル / 言語) のボタン。
 // 主役はロゴとメニューなので、マークは小さめ・淡いグレーで控えめに置く
 // (2026-11-25 指示: 主張を弱く、マークどうしの余白を詰める)。
-// 押せる範囲は縦 40px を保ち、横だけ詰める。
+// 押せる範囲は縦 40px を保ち、横だけ詰める。340px 未満の画面では、
+// 英語のサービス名が欠けないよう横をさらに 2px ずつ詰める。
 // 「コントラストを高める」では globals.css 側で濃くなる。
 const HEADER_MARK_BUTTON_CLASS =
-  "flex h-10 w-8 shrink-0 items-center justify-center rounded-full text-[#9AA1B4] transition-colors hover:bg-[#F1F2F6] hover:text-[#5A6072]";
+  "flex h-10 w-[34px] max-[339px]:w-8 shrink-0 items-center justify-center rounded-full text-[#9AA1B4] transition-colors hover:bg-[#F1F2F6] hover:text-[#5A6072]";
 
 
 
@@ -342,7 +343,7 @@ export default function TopHeader({
               onClick={() => setA11yOpen(true)}
               className={HEADER_MARK_BUTTON_CLASS}
             >
-              <AccessibilityStyleIcon size={22} />
+              <AccessibilityStyleIcon size={24} />
             </button>
             <button
               type="button"
@@ -353,7 +354,7 @@ export default function TopHeader({
               onClick={() => setLangOpen(true)}
               className={HEADER_MARK_BUTTON_CLASS}
             >
-              <GlobeIcon size={22} />
+              <GlobeIcon size={24} />
             </button>
           </div>
         </div>
@@ -368,7 +369,7 @@ export default function TopHeader({
             onClick={() => setA11yOpen(true)}
             className={HEADER_MARK_BUTTON_CLASS}
           >
-            <AccessibilityStyleIcon size={20} />
+            <AccessibilityStyleIcon size={23} />
           </button>
           <button
             type="button"
@@ -378,7 +379,7 @@ export default function TopHeader({
             onClick={() => setLangOpen(true)}
             className={HEADER_MARK_BUTTON_CLASS}
           >
-            <GlobeIcon size={20} />
+            <GlobeIcon size={23} />
           </button>
           <button
             type="button"
@@ -738,9 +739,10 @@ function ResetIcon() {
   );
 }
 
+// ロゴのマーク (26px) と釣り合うよう、右上のマークは一回り大きくしている (2026-11-25 指示)。
 function MenuIcon() {
   return (
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="29" height="29" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <g stroke={NAVY} strokeWidth="2" strokeLinecap="round">
         <line x1="4" y1="7" x2="20" y2="7" />
         <line x1="4" y1="12" x2="20" y2="12" />
