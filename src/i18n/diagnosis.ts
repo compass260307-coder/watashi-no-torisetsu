@@ -190,28 +190,41 @@ export interface AnalyzingSlide {
         rowLabels?: [string, string, string];
       }
     | {
-        // 完全版の購入後の準備画面用 (結果アップグレードの手順)。できあがる専用キャラと鑑定書が並ぶ図。
+        // 完全版の購入後の準備画面用 (結果アップグレードの手順)。星空の書斎で、Alice ができあがった
+        // 専用キャラと鑑定書を見せている1枚絵 (札の文字は絵の中の刺しゅう)。帯いっぱいに出す。
         kind: "upgradeResult";
-        characterArt: string;
-        characterLabel: string;
-        bookArt: string;
-        bookLabel: string;
+        // 帯と同じ比率 (316:164) の絵。
+        art: string;
       }
     | {
-        // 完全版の購入後の準備画面用 (結果アップグレードの手順)。結果ページの一番下の金色のボタンを指す図。
+        // 完全版の購入後の準備画面用 (結果アップグレードの手順)。本人の結果ページの上の端を模した図。
+        // 右上にいつも出ている「結果をアップグレード」のボタンを指す。色・名前・顔は本人のものを渡す。
         kind: "upgradeButton";
+        // ヒーローに出す本人のキャラの顔。
         selfFace: string;
-        pageLabel: string;
+        // ヒーローの小さい見出し (例: "あなたの性格タイプ:") と、その下の大きい名前。
+        heroLabel: string;
+        typeName: string;
+        // ヒーローの帯の色 (タイプのグループの色)。
+        heroColor: string;
         buttonLabel: string;
+        // ボタンの色と、下の縁の色 (結果ページの実物と同じ)。
+        buttonColor: string;
+        buttonShadow: string;
         // ボタンを指す吹き出し。
         bubble: string;
       }
     | {
-        // 完全版の購入後の準備画面用 (結果アップグレードの手順)。Aliceの質問に答えるトークの図。
+        // 完全版の購入後の準備画面用 (結果アップグレードの手順)。Aliceとの会話画面を模した図。
+        // 質問に1つ答えると、上の目盛りと「n / total」が最後まで進む。
         kind: "aliceQa";
-        aliceArt: string;
-        // 質問の番号の札 (例: "質問 1 / 7")。
-        counter: string;
+        // 会話画面の上と、吹き出しの横に出す Alice の顔。
+        aliceAvatar: string;
+        aliceName: string;
+        // 質問の数 (目盛りの数)。
+        total: number;
+        // 吹き出しの中の札 (例: "質問 1/7")。
+        questionLabel: string;
         question: string;
         answer: string;
       }

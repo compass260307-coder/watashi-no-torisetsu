@@ -1401,59 +1401,168 @@ function Sparkle({ size, color = "#F2C14E" }: { size: number; color?: string }) 
   );
 }
 
-// 結果アップグレードの手順1: 結果ページの一番下の金色のボタンを指す。
+// 結果アップグレードの手順1: 本人の結果ページの上の端を模した図で、右上のボタンを指す。
+//   実物の画面 (上の固定バー: 丸いボタン2つ + 「結果をアップグレード」/ その下にタイプの色のヒーロー) と
+//   同じ並び・同じ色にして、準備画面が終わった直後に見える画面とつながるようにする。
+// 配置は帯 316×164 の中の座標。ページの見立ては左右 14px を空けて置く。
+const UPGRADE_PAGE_LEFT = 14;
+const UPGRADE_PAGE_TOP = 14;
+const UPGRADE_PAGE_W = 288;
+const UPGRADE_BAR_H = 46;
+// 「結果をアップグレード」のボタンの幅と、右の端・左の丸とのすき間。
+const UPGRADE_BUTTON_W = 144;
+const UPGRADE_BUTTON_RIGHT = 10;
+const UPGRADE_BAR_GAP = 6;
+
 function UpgradeButtonVisual({
   visual,
 }: {
   visual: Extract<AnalyzingSlide["visual"], { kind: "upgradeButton" }>;
 }) {
+  // 名前が長いタイプは、吹き出しに重ならないよう文字を小さくする。
+  const nameSize = visual.typeName.length > 7 ? 15 : visual.typeName.length > 5 ? 18 : 21;
+  const circle = (children: React.ReactNode) => (
+    <span
+      className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-full bg-white"
+      style={{ boxShadow: `0 0 0 1.5px ${visual.buttonColor}40` }}
+    >
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke={visual.buttonColor}
+        strokeWidth="2.4"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        aria-hidden
+      >
+        {children}
+      </svg>
+    </span>
+  );
   return (
     <div className="relative h-[164px] w-[316px] shrink-0">
-      {/* 結果ページの見立て。読み終えた本文の下に、ボタンがある。 */}
+      {/* 結果ページの見立て (上の端)。下は帯の外へ続く。 */}
       <div
-        className="animate-fade-in absolute left-[30px] top-[12px] h-[152px] w-[256px] rounded-t-2xl bg-white/85 px-4 pt-3"
-        style={{ animationDelay: "100ms" }}
+        className="animate-fade-in-up absolute overflow-hidden rounded-t-[18px] bg-white shadow-[0_6px_20px_rgba(46,46,92,0.12)]"
+        style={{
+          left: UPGRADE_PAGE_LEFT,
+          top: UPGRADE_PAGE_TOP,
+          width: UPGRADE_PAGE_W,
+          height: 164 - UPGRADE_PAGE_TOP,
+          animationDelay: "100ms",
+        }}
       >
-        <div className="flex items-center gap-2.5">
-          <Face src={visual.selfFace} size={30} ring={GOLD} />
-          <div className="min-w-0 flex-1">
-            <p className="text-left text-[12px] font-black leading-none" style={{ color: NAVY }}>
-              {visual.pageLabel}
-            </p>
-            <span className="mt-2 block h-1.5 w-28 rounded-full" style={{ backgroundColor: GOLD_TRACK }} />
+        {/* 上の固定バー: 丸いボタン2つ。「結果をアップグレード」は光の輪が切れないよう、この枠の外に重ねる。 */}
+        <div
+          className="flex items-center justify-end"
+          style={{
+            height: UPGRADE_BAR_H,
+            gap: UPGRADE_BAR_GAP,
+            paddingRight: UPGRADE_BUTTON_RIGHT + UPGRADE_BUTTON_W + UPGRADE_BAR_GAP,
+            borderBottom: `1px solid ${NAVY}14`,
+          }}
+        >
+          {circle(
+            <>
+              <path d="M12 15V4" />
+              <path d="m7 8 5-5 5 5" />
+              <path d="M5 13v6h14v-6" />
+            </>,
+          )}
+          {circle(
+            <>
+              <circle cx="9" cy="8" r="3.5" />
+              <path d="M2.5 20c.6-3.4 3.2-5.2 6.5-5.2s5.9 1.8 6.5 5.2" />
+              <path d="M16 4.8a3.5 3.5 0 0 1 0 6.4M18.5 15.2c1.7.8 2.7 2.4 3 4.8" />
+            </>,
+          )}
+        </div>
+        {/* ヒーロー: タイプの色の帯に、見出し・名前・本人のキャラ。 */}
+        <div
+          className="relative overflow-hidden"
+          style={{
+            height: 164 - UPGRADE_PAGE_TOP - UPGRADE_BAR_H,
+            background: `radial-gradient(circle at 50% 8%, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0) 62%), ${visual.heroColor}`,
+          }}
+        >
+          <p className="pt-[12px] text-center text-[9px] font-black leading-none text-white/90">
+            {visual.heroLabel}
+          </p>
+          <p
+            className="mt-[7px] whitespace-nowrap text-center font-black leading-none text-white"
+            style={{ fontSize: nameSize }}
+          >
+            {visual.typeName}
+          </p>
+          <div className="absolute left-1/2 top-[54px] h-[78px] w-[78px] -translate-x-1/2">
+            <SmoothImage
+              src={visual.selfFace}
+              alt=""
+              width={156}
+              height={156}
+              unoptimized
+              fadeIn={false}
+              className="h-full w-full object-contain"
+            />
           </div>
         </div>
-        <span className="mt-3 block h-1.5 w-full rounded-full" style={{ backgroundColor: TRACK }} />
-        <span className="mt-2 block h-1.5 w-[85%] rounded-full" style={{ backgroundColor: TRACK }} />
       </div>
-      <At x={158} top={98}>
-        <Pop delay={450}>
-          <span className="relative block">
-            <span
-              className="slide-tap-ring absolute inset-0 rounded-full"
-              style={{ backgroundColor: "rgba(232,184,74,0.55)", animationDelay: "1500ms" }}
-            />
-            <span
-              className="relative flex items-center gap-1.5 whitespace-nowrap rounded-full px-5 py-2.5 text-[13px] font-black leading-none text-white shadow-[0_4px_12px_rgba(201,143,42,0.4)]"
-              style={{ background: "linear-gradient(135deg, #E8B84A, #C98F2A)" }}
+      {/* 「結果をアップグレード」。実物と同じ色・同じ縁で、まわりに光の輪が広がり続ける。 */}
+      <div
+        className="absolute"
+        style={{
+          right: 316 - (UPGRADE_PAGE_LEFT + UPGRADE_PAGE_W) + UPGRADE_BUTTON_RIGHT,
+          top: UPGRADE_PAGE_TOP + (UPGRADE_BAR_H - 30) / 2 - 1,
+        }}
+      >
+        <Pop delay={500}>
+          <span
+            className="slide-upgrade-halo flex h-[30px] items-center justify-center gap-[5px] whitespace-nowrap rounded-full text-[10.5px] font-black leading-none text-white"
+            style={
+              {
+                width: UPGRADE_BUTTON_W,
+                backgroundColor: visual.buttonColor,
+                "--edge": `0 3px 0 ${visual.buttonShadow}`,
+                boxShadow: `0 3px 0 ${visual.buttonShadow}`,
+                animationDelay: "1400ms",
+              } as React.CSSProperties
+            }
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
             >
-              <Sparkle size={11} color="#FFFFFF" />
-              {visual.buttonLabel}
-            </span>
+              <path d="M12 20V6" />
+              <path d="m7 11 5-5 5 5" />
+              <path d="M19 2v4M17 4h4" />
+              <path d="M5 16v4M3 18h4" />
+            </svg>
+            {visual.buttonLabel}
           </span>
         </Pop>
-      </At>
-      <At x={262} top={64}>
-        <Pop delay={1100} className="origin-bottom-left">
+      </div>
+      {/* ボタンを下から指す吹き出し。 */}
+      {/* ヒーローの見出しと名前 (中央) に重ならないよう、ボタンの右寄りの下に置く。 */}
+      <At x={262} top={UPGRADE_PAGE_TOP + UPGRADE_BAR_H + 4}>
+        <Pop delay={1000} className="origin-top">
           <div
-            className="animate-slide-bob relative whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-black leading-none text-white shadow-[0_3px_10px_rgba(201,143,42,0.35)]"
-            style={{ backgroundColor: GOLD, animationDelay: "1800ms" }}
+            className="animate-slide-bob relative whitespace-nowrap rounded-full px-3 py-[7px] text-[12px] font-black leading-none text-white shadow-[0_3px_10px_rgba(154,106,36,0.4)]"
+            style={{ background: "linear-gradient(135deg, #E8B84A, #C98F2A)", animationDelay: "1800ms" }}
           >
-            {visual.bubble}
             <span
-              className="absolute left-[18%] top-full -ml-[4px] -mt-[5px] h-2 w-2 rotate-45"
-              style={{ backgroundColor: GOLD }}
+              className="absolute bottom-full left-1/2 -mb-[5px] -ml-[4px] h-2 w-2 rotate-45"
+              style={{ backgroundColor: "#DDA83E" }}
             />
+            <span className="relative">{visual.bubble}</span>
           </div>
         </Pop>
       </At>
@@ -1461,182 +1570,464 @@ function UpgradeButtonVisual({
   );
 }
 
-// 結果アップグレードの手順2: Aliceの質問に答えるトーク。
+// 結果アップグレードの手順2: Aliceとの会話画面を模した図 (実物は ResultUpgradeChat)。
+//   1. Alice が質問する → 2. 答えの吹き出しが出る → 3. 上の目盛りと「n / 7」が最後まで進み、札が金色になる
+// 動きはすべて CSS。奥のカード (slide-still) と reduced-motion では、進みきった完成形で止まる。
+const QA_ANSWER_AT_MS = 1400;
+const QA_RUN_AT_MS = 2000;
+const QA_RUN_MS = 1300;
+const QA_DONE_AT_MS = QA_RUN_AT_MS + QA_RUN_MS + 120;
+// 「n / 7」の数字1つ分の高さ (px)。数字を縦に並べ、1つずつ上へ送る。
+const QA_DIGIT_H = 14;
+const QA_INDIGO = "#5B5BEF";
+
 function AliceQaVisual({
   visual,
 }: {
   visual: Extract<AnalyzingSlide["visual"], { kind: "aliceQa" }>;
 }) {
+  const total = visual.total;
+  const stepMs = QA_RUN_MS / Math.max(total - 1, 1);
+  const avatar = (size: number) => (
+    <span
+      className="block shrink-0 overflow-hidden rounded-full bg-[#F3EEFF]"
+      style={{ width: size, height: size, boxShadow: "0 0 0 1.5px #FFFFFF, 0 1px 4px rgba(46,46,92,0.14)" }}
+      aria-hidden
+    >
+      <SmoothImage
+        src={visual.aliceAvatar}
+        alt=""
+        width={size * 2}
+        height={size * 2}
+        unoptimized
+        fadeIn={false}
+        className="h-full w-full object-cover"
+      />
+    </span>
+  );
   return (
     <div className="relative h-[164px] w-[316px] shrink-0">
-      <div className="absolute left-[4px] top-[20px] h-[128px] w-[92px]">
-        <Pop delay={100} className="h-full w-full">
-          <SmoothImage
-            src={visual.aliceArt}
-            alt=""
-            width={184}
-            height={256}
-            fadeIn={false}
-            className="h-full w-full object-contain"
-          />
-        </Pop>
-      </div>
-      <div className="absolute left-[100px] top-[14px]">
-        <Pop delay={250} className="origin-left">
-          <span
-            className="block whitespace-nowrap rounded-full bg-white/90 px-2.5 py-1 text-[10px] font-black leading-none"
-            style={{ color: "#9A6A24" }}
-          >
-            {visual.counter}
-          </span>
-        </Pop>
-      </div>
-      <div className="absolute left-[100px] top-[38px]">
-        <Pop delay={450} className="origin-top-left">
-          <p
-            className="whitespace-nowrap rounded-2xl rounded-tl-sm bg-white px-3 py-2.5 text-left text-[12px] font-black leading-none shadow-[0_3px_10px_rgba(46,46,92,0.10)]"
-            style={{ color: NAVY }}
-          >
-            {visual.question}
-          </p>
-        </Pop>
-      </div>
-      <div className="absolute right-[14px] top-[96px]">
-        <Pop delay={1500} className="origin-top-right">
-          <p
-            className="whitespace-nowrap rounded-2xl rounded-tr-sm px-3 py-2.5 text-left text-[12px] font-black leading-none text-white shadow-[0_3px_10px_rgba(201,143,42,0.3)]"
-            style={{ background: "linear-gradient(135deg, #E8B84A, #C98F2A)" }}
-          >
-            {visual.answer}
-          </p>
-        </Pop>
+      {/* 会話画面の見立て。2枚目のページの見立てと同じ位置・同じ大きさで置く。 */}
+      <div
+        className="animate-fade-in-up absolute overflow-hidden rounded-t-[18px] shadow-[0_6px_20px_rgba(46,46,92,0.12)]"
+        style={{
+          left: UPGRADE_PAGE_LEFT,
+          top: UPGRADE_PAGE_TOP,
+          width: UPGRADE_PAGE_W,
+          height: 164 - UPGRADE_PAGE_TOP,
+          backgroundColor: "#FAF8F3",
+          animationDelay: "100ms",
+        }}
+      >
+        {/* 上の帯: Alice と「n / 7」、その下に7つの目盛り。 */}
+        <div className="bg-white px-[10px] pb-[6px] pt-[7px]" style={{ borderBottom: `1px solid ${NAVY}12` }}>
+          <div className="flex items-center gap-[7px]">
+            {avatar(22)}
+            <span className="text-[12px] font-black leading-none" style={{ color: NAVY }}>
+              {visual.aliceName}
+            </span>
+            <span
+              className="slide-qa-done ml-auto flex items-center gap-[3px] rounded-full px-[9px] text-[11px] font-black tabular-nums text-white"
+              style={{
+                height: 20,
+                lineHeight: `${QA_DIGIT_H}px`,
+                background: "linear-gradient(135deg, #E8B84A, #C98F2A)",
+                animationDelay: `${QA_DONE_AT_MS}ms`,
+              }}
+            >
+              <span className="block overflow-hidden" style={{ height: QA_DIGIT_H }}>
+                <span
+                  className="slide-qa-count flex flex-col"
+                  style={
+                    {
+                      "--to": `${-(total - 1) * QA_DIGIT_H}px`,
+                      transform: `translateY(${-(total - 1) * QA_DIGIT_H}px)`,
+                      animationDelay: `${QA_RUN_AT_MS}ms`,
+                      animationDuration: `${QA_RUN_MS}ms`,
+                      animationTimingFunction: `steps(${Math.max(total - 1, 1)}, end)`,
+                    } as React.CSSProperties
+                  }
+                >
+                  {Array.from({ length: total }, (_, i) => (
+                    <span key={i} className="block text-center" style={{ height: QA_DIGIT_H }}>
+                      {i + 1}
+                    </span>
+                  ))}
+                </span>
+              </span>
+              <span className="opacity-70">/ {total}</span>
+            </span>
+          </div>
+          <div className="mt-[6px] flex gap-[3px]">
+            {Array.from({ length: total }, (_, i) => (
+              <span key={i} className="block h-[4px] flex-1 overflow-hidden rounded-full" style={{ backgroundColor: "#ECE9E1" }}>
+                <span
+                  className="slide-qa-fill block h-full w-full rounded-full"
+                  style={{
+                    backgroundColor: QA_INDIGO,
+                    // 1つ目は答えた瞬間、残りは数字と一緒に進み、最後の1つは数え終わりで埋まる。
+                    animationDelay: `${
+                      i === 0 ? QA_ANSWER_AT_MS + 150 : i === total - 1 ? QA_DONE_AT_MS - 80 : QA_RUN_AT_MS + i * stepMs
+                    }ms`,
+                  }}
+                />
+              </span>
+            ))}
+          </div>
+        </div>
+        {/* Alice の質問。 */}
+        <div className="absolute left-[10px] top-[53px] flex items-start gap-[7px]">
+          <Pop delay={400}>{avatar(28)}</Pop>
+          <Pop delay={500} className="origin-top-left">
+            <div
+              className="rounded-[14px] rounded-tl-[4px] bg-white px-[11px] pb-[9px] pt-[7px] text-left"
+              style={{ boxShadow: `0 0 0 1.5px ${QA_INDIGO}40, 0 2px 6px rgba(46,46,92,0.08)` }}
+            >
+              <span
+                className="block w-fit rounded-full px-[7px] py-[3px] text-[9px] font-black leading-none text-white"
+                style={{ backgroundColor: QA_INDIGO }}
+              >
+                {visual.questionLabel}
+              </span>
+              <p className="mt-[5px] whitespace-nowrap text-[12.5px] font-black leading-none" style={{ color: NAVY }}>
+                {visual.question}
+              </p>
+            </div>
+          </Pop>
+        </div>
+        {/* 自分の答え。 */}
+        <div className="absolute bottom-[9px] right-[10px]">
+          <Pop delay={QA_ANSWER_AT_MS} className="origin-bottom-right">
+            <p
+              className="whitespace-nowrap rounded-[14px] rounded-tr-[4px] px-[12px] py-[9px] text-left text-[12.5px] font-black leading-none text-white shadow-[0_2px_6px_rgba(67,67,214,0.22)]"
+              style={{ background: `linear-gradient(180deg, ${QA_INDIGO} 0%, #4343D6 100%)` }}
+            >
+              {visual.answer}
+            </p>
+          </Pop>
+        </div>
       </div>
     </div>
   );
 }
 
-// 結果アップグレードの手順3: できあがるもの (専用キャラと鑑定書) が並ぶ。
+// 結果アップグレードの手順3: できあがるもの (専用キャラと鑑定書)。
+//   星空の書斎で Alice が2つを見せている1枚絵を、帯いっぱいに出す (札の文字は絵の中の刺しゅう)。
+//   1. 暗い書斎に明かりが灯り、絵が少し寄った所からゆっくり引いていく
+//   2. 専用キャラ → 鑑定書の順に、光ときらめきがはじける
+//   3. そのあとは、2つのまわりできらめきがまたたき続ける
+// 動きはすべて CSS。奥のカード (slide-still) と reduced-motion では、明かりが灯った絵のまま止まる。
+// 座標は帯 316×164 の中 (絵の中のうさぎと本の位置)。
+const FINALE_SPOTS = [
+  { x: 70, y: 78, at: 1000 },
+  { x: 255, y: 82, at: 1600 },
+];
+const FINALE_BURST = [
+  { dx: -44, dy: -34, size: 12 },
+  { dx: -50, dy: 12, size: 8 },
+  { dx: 0, dy: -50, size: 10 },
+  { dx: 44, dy: -34, size: 12 },
+  { dx: 50, dy: 12, size: 8 },
+];
+const FINALE_TWINKLES = [
+  { left: 22, top: 26, size: 11, delay: 0 },
+  { left: 104, top: 44, size: 9, delay: 600 },
+  { left: 196, top: 30, size: 9, delay: 300 },
+  { left: 286, top: 40, size: 11, delay: 900 },
+  { left: 150, top: 8, size: 8, delay: 1200 },
+];
+
 function UpgradeResultVisual({
   visual,
 }: {
   visual: Extract<AnalyzingSlide["visual"], { kind: "upgradeResult" }>;
 }) {
-  const label = (text: string) => (
-    <span
-      className="block whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-black leading-none text-white shadow-[0_3px_10px_rgba(154,106,36,0.3)]"
-      style={{ background: "linear-gradient(135deg, #E8B84A, #C98F2A)" }}
-    >
-      {text}
-    </span>
-  );
   return (
-    <div className="relative h-[164px] w-[316px] shrink-0">
-      <div
-        className="animate-fade-in absolute inset-0"
-        style={{ background: "radial-gradient(60% 80% at 50% 45%, rgba(255,214,110,0.55) 0%, rgba(255,214,110,0) 70%)" }}
-        aria-hidden
-      />
-      <div className="absolute left-[30px] top-[6px] h-[118px] w-[106px]">
-        <Pop delay={150} className="h-full w-full">
-          <SmoothImage
-            src={visual.characterArt}
-            alt=""
-            width={212}
-            height={236}
-            fadeIn={false}
-            className="h-full w-full object-contain"
+    <div className="relative h-[164px] w-[316px] shrink-0 overflow-hidden">
+      <div className="slide-finale-zoom absolute inset-0">
+        <SmoothImage
+          src={visual.art}
+          alt=""
+          width={948}
+          height={492}
+          unoptimized
+          fadeIn={false}
+          className="h-full w-full object-cover"
+        />
+      </div>
+      {/* はじめは暗く、すぐに明かりが灯る。 */}
+      <div className="slide-finale-veil absolute inset-0" style={{ backgroundColor: "#0B0E2C" }} aria-hidden />
+      {FINALE_SPOTS.map((spot) => (
+        <div key={spot.x} aria-hidden>
+          {/* 光。 */}
+          <div
+            className="slide-upgrade-flash absolute h-[120px] w-[120px] rounded-full"
+            style={{
+              left: spot.x - 60,
+              top: spot.y - 60,
+              background:
+                "radial-gradient(circle, rgba(255,246,214,0.95) 0%, rgba(255,222,140,0.6) 38%, rgba(255,214,110,0) 70%)",
+              mixBlendMode: "screen",
+              animationDelay: `${spot.at}ms`,
+            }}
           />
-        </Pop>
-      </div>
-      <div className="absolute left-[160px] top-[22px] h-[96px] w-[128px]">
-        <Pop delay={700} className="h-full w-full">
-          <SmoothImage
-            src={visual.bookArt}
-            alt=""
-            width={256}
-            height={192}
-            fadeIn={false}
-            className="h-full w-full object-contain"
-          />
-        </Pop>
-      </div>
-      <At x={83} top={130}>
-        <Pop delay={450}>{label(visual.characterLabel)}</Pop>
-      </At>
-      <At x={224} top={130}>
-        <Pop delay={1000}>{label(visual.bookLabel)}</Pop>
-      </At>
-      <div className="absolute left-[148px] top-[62px]">
-        <Pop delay={1300}>
-          <Sparkle size={14} />
-        </Pop>
-      </div>
+          {/* はじけるきらめき。 */}
+          {FINALE_BURST.map((spark, i) => (
+            <span
+              key={i}
+              className="slide-sparkle absolute"
+              style={
+                {
+                  left: spot.x,
+                  top: spot.y,
+                  "--dx": `${spark.dx}px`,
+                  "--dy": `${spark.dy}px`,
+                  animationDelay: `${spot.at + 40}ms`,
+                  animationDuration: "900ms",
+                  filter: "drop-shadow(0 0 4px rgba(255,205,90,0.9))",
+                } as React.CSSProperties
+              }
+            >
+              <Sparkle size={spark.size} color="#FFD76A" />
+            </span>
+          ))}
+        </div>
+      ))}
+      {/* またたき続けるきらめき。 */}
+      {FINALE_TWINKLES.map((spark, i) => (
+        <div key={i} className="absolute" style={{ left: spark.left, top: spark.top }} aria-hidden>
+          <Pop delay={1900 + i * 120}>
+            <span
+              className="slide-upgrade-twinkle block"
+              style={{ animationDelay: `${spark.delay}ms`, filter: "drop-shadow(0 0 4px rgba(255,205,90,0.9))" }}
+            >
+              <Sparkle size={spark.size} color="#FFD76A" />
+            </span>
+          </Pop>
+        </div>
+      ))}
     </div>
   );
 }
 
-// 完全版の購入後の準備画面: いつものキャラの顔が、矢印のあとで「あなた専用」のキャラに変わる。
+// 完全版の購入後の準備画面: いつものキャラが「あなた専用」のキャラに変身する。
+//   1. 左にいつものキャラ、右には変身後のキャラが影のまま待っている
+//   2. 金色のきらめきが、左から右へ弧を描いて飛ぶ
+//   3. 届いた瞬間に光がはじけ、影が本物のキャラになって、うしろで光の筋が回り始める
+// 奥のカード (slide-still) と reduced-motion では動きが止まるので、止まった姿 = 変身後の完成形にしてある。
+const UPGRADE_FLY_AT_MS = 900;
+const UPGRADE_ARRIVE_AT_MS = 1750;
+// 配置 (帯 316×164 の中の座標)。左右の2つを帯の中心 (158) から同じ距離に置く。
+// 2つは同じ地面に立たせる (下端をそろえる) 。札はそれぞれの絵のすぐ下に付け、左右で同じ高さ・大きさにする。
+const UPGRADE_BEFORE_X = 78;
+const UPGRADE_AFTER_X = 238;
+const UPGRADE_CENTER_Y = 68;
+// 左は「いつもの」姿なので、右の専用キャラより小さくする (主役は右)。
+const UPGRADE_FACE_SIZE = 72;
+// 丸と札のすき間。
+const UPGRADE_FACE_GAP = 8;
+const UPGRADE_ART_W = 111;
+const UPGRADE_ART_H = 126;
+const UPGRADE_LABEL_TOP = 131;
+const UPGRADE_LABEL_CLASS =
+  "block whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-black leading-none";
+// 届いた瞬間に周りへはじけるきらめき (飛ぶ向きと大きさ)。
+const UPGRADE_BURST = [
+  { dx: -62, dy: -44, size: 13 },
+  { dx: -74, dy: 6, size: 9 },
+  { dx: -54, dy: 50, size: 11 },
+  { dx: 0, dy: -64, size: 10 },
+  { dx: 58, dy: -46, size: 13 },
+  { dx: 72, dy: 4, size: 9 },
+  { dx: 56, dy: 48, size: 11 },
+  { dx: 4, dy: 62, size: 8 },
+];
+// 変身のあと、キャラのまわりでまたたき続けるきらめき。
+const UPGRADE_TWINKLES = [
+  { left: 174, top: 14, size: 14, delay: 0 },
+  { left: 292, top: 56, size: 11, delay: 500 },
+  { left: 178, top: 98, size: 9, delay: 950 },
+];
+
 function UpgradeVisual({
   visual,
 }: {
   visual: Extract<AnalyzingSlide["visual"], { kind: "upgrade" }>;
 }) {
+  const art = (
+    <SmoothImage
+      src={visual.afterArt}
+      alt=""
+      width={240}
+      height={272}
+      fadeIn={false}
+      className="h-full w-full object-contain"
+    />
+  );
   return (
     <div className="relative h-[164px] w-[316px] shrink-0">
-      <At x={66} top={34}>
-        <Pop delay={100} className="flex flex-col items-center">
-          <Face src={visual.beforeFace} size={64} ring="#FFFFFF" />
-          <span
-            className="mt-3 whitespace-nowrap rounded-full bg-white/90 px-2.5 py-1.5 text-[11px] font-black leading-none"
-            style={{ color: `${NAVY}99` }}
-          >
+      {/* 変身したあと、右側が金色の光に染まる。 */}
+      <div
+        className="animate-fade-in absolute inset-0"
+        style={{
+          background:
+            "radial-gradient(circle at 75% 41%, rgba(255,224,140,0.95) 0%, rgba(255,233,178,0.6) 30%, rgba(255,240,205,0) 60%)",
+          animationDelay: `${UPGRADE_ARRIVE_AT_MS}ms`,
+          animationDuration: "700ms",
+        }}
+        aria-hidden
+      />
+      {/* うしろでゆっくり回る光の筋。 */}
+      <div
+        className="animate-fade-in absolute h-[230px] w-[230px]"
+        style={{
+          left: UPGRADE_AFTER_X - 115,
+          top: UPGRADE_CENTER_Y - 115,
+          animationDelay: `${UPGRADE_ARRIVE_AT_MS + 100}ms`,
+          animationDuration: "700ms",
+        }}
+        aria-hidden
+      >
+        <div
+          className="slide-upgrade-rays h-full w-full rounded-full"
+          style={{
+            background:
+              "repeating-conic-gradient(from 0deg, rgba(255,255,255,0.78) 0deg 8deg, rgba(255,255,255,0) 8deg 30deg)",
+            WebkitMaskImage: "radial-gradient(circle, #000 18%, rgba(0,0,0,0) 66%)",
+            maskImage: "radial-gradient(circle, #000 18%, rgba(0,0,0,0) 66%)",
+          }}
+        />
+      </div>
+      {/* きらめきが飛んだ道すじ。 */}
+      <svg
+        className="animate-fade-in absolute inset-0"
+        width="316"
+        height="164"
+        viewBox="0 0 316 164"
+        fill="none"
+        aria-hidden
+        style={{ animationDelay: `${UPGRADE_FLY_AT_MS + 350}ms` }}
+      >
+        <path d="M106 53 Q 140 0 187 44" stroke={GOLD} strokeWidth="2.6" strokeDasharray="1 7" strokeLinecap="round" />
+      </svg>
+      {/* いつものキャラ。 */}
+      <At x={UPGRADE_BEFORE_X} top={UPGRADE_LABEL_TOP - UPGRADE_FACE_GAP - UPGRADE_FACE_SIZE}>
+        <Pop delay={100}>
+          <Face src={visual.beforeFace} size={UPGRADE_FACE_SIZE} ring="#FFFFFF" />
+        </Pop>
+      </At>
+      <At x={UPGRADE_BEFORE_X} top={UPGRADE_LABEL_TOP}>
+        <Pop delay={250}>
+          <span className={`${UPGRADE_LABEL_CLASS} bg-white`} style={{ color: `${NAVY}99` }}>
             {visual.beforeLabel}
           </span>
         </Pop>
       </At>
-      <At x={140} top={56}>
-        <Pop delay={650}>
-          <svg width="34" height="24" viewBox="0 0 34 24" fill="none" aria-hidden>
-            <path d="M3 12h24M20 4l8 8-8 8" stroke={GOLD} strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Pop>
-      </At>
-      {/* 専用キャラのうしろの光 */}
+      {/* 変身前は、影のまま待っている。届いた瞬間に消える。 */}
       <div
-        className="animate-fade-in absolute left-[166px] top-[0px] h-[150px] w-[150px] rounded-full"
+        className="slide-upgrade-shadow absolute"
         style={{
-          background: "radial-gradient(circle, rgba(255,214,110,0.8) 0%, rgba(255,214,110,0) 68%)",
-          animationDelay: "900ms",
-          animationFillMode: "both",
+          width: UPGRADE_ART_W,
+          height: UPGRADE_ART_H,
+          left: UPGRADE_AFTER_X - UPGRADE_ART_W / 2,
+          top: UPGRADE_CENTER_Y - UPGRADE_ART_H / 2,
+          animationDuration: `${UPGRADE_ARRIVE_AT_MS + 200}ms`,
+        }}
+        aria-hidden
+      >
+        <div className="h-full w-full" style={{ filter: "brightness(0)", opacity: 0.2 }}>
+          {art}
+        </div>
+      </div>
+      {/* 届いた瞬間の光。 */}
+      <div
+        className="slide-upgrade-flash absolute h-[150px] w-[150px] rounded-full"
+        style={{
+          left: UPGRADE_AFTER_X - 75,
+          top: UPGRADE_CENTER_Y - 75,
+          background:
+            "radial-gradient(circle, rgba(255,255,255,1) 0%, rgba(255,236,170,0.9) 36%, rgba(255,214,110,0) 70%)",
+          animationDelay: `${UPGRADE_ARRIVE_AT_MS}ms`,
         }}
         aria-hidden
       />
-      <div className="absolute left-[184px] top-[6px] h-[120px] w-[110px]">
-        <Pop delay={1000} className="h-full w-full">
-          <SmoothImage
-            src={visual.afterArt}
-            alt=""
-            width={220}
-            height={240}
-            fadeIn={false}
-            className="h-full w-full object-contain"
-          />
-        </Pop>
+      {/* あなた専用のキャラ。弾んで出たあと、ゆっくり浮かぶ。 */}
+      <div
+        className="slide-upgrade-float absolute"
+        style={{
+          width: UPGRADE_ART_W,
+          height: UPGRADE_ART_H,
+          left: UPGRADE_AFTER_X - UPGRADE_ART_W / 2,
+          top: UPGRADE_CENTER_Y - UPGRADE_ART_H / 2,
+          animationDelay: `${UPGRADE_ARRIVE_AT_MS + 700}ms`,
+        }}
+      >
+        <div
+          className="slide-upgrade-reveal h-full w-full"
+          style={{
+            animationDelay: `${UPGRADE_ARRIVE_AT_MS}ms`,
+            filter: "drop-shadow(0 6px 10px rgba(154,106,36,0.22))",
+          }}
+        >
+          {art}
+        </div>
       </div>
-      <div className="absolute left-[176px] top-[18px]">
-        <Pop delay={1350}>
-          <Sparkle size={15} />
-        </Pop>
-      </div>
-      <div className="absolute left-[290px] top-[62px]">
-        <Pop delay={1550}>
-          <Sparkle size={11} />
-        </Pop>
-      </div>
-      <At x={239} top={130}>
-        <Pop delay={1700}>
+      {/* 届いた瞬間に、きらめきが周りへはじける。 */}
+      {UPGRADE_BURST.map((spark, i) => (
+        <span
+          key={i}
+          className="slide-sparkle absolute"
+          style={
+            {
+              left: UPGRADE_AFTER_X,
+              top: UPGRADE_CENTER_Y,
+              "--dx": `${spark.dx}px`,
+              "--dy": `${spark.dy}px`,
+              animationDelay: `${UPGRADE_ARRIVE_AT_MS + 40}ms`,
+              animationDuration: "900ms",
+            } as React.CSSProperties
+          }
+          aria-hidden
+        >
+          <Sparkle size={spark.size} />
+        </span>
+      ))}
+      {/* まわりでまたたき続けるきらめき。 */}
+      {UPGRADE_TWINKLES.map((spark, i) => (
+        <div key={i} className="absolute" style={{ left: spark.left, top: spark.top }} aria-hidden>
+          <Pop delay={UPGRADE_ARRIVE_AT_MS + 350 + i * 140}>
+            <span className="slide-upgrade-twinkle block" style={{ animationDelay: `${spark.delay}ms` }}>
+              <Sparkle size={spark.size} />
+            </span>
+          </Pop>
+        </div>
+      ))}
+      {/* 左から右へ飛ぶきらめき。うしろに小さいのが2つ続いて、尾に見える。 */}
+      {[
+        { size: 22, lag: 0, opacity: 1 },
+        { size: 13, lag: 90, opacity: 0.85 },
+        { size: 8, lag: 170, opacity: 0.7 },
+      ].map((comet, i) => (
+        <span
+          key={i}
+          className="slide-upgrade-comet absolute"
+          style={{
+            left: 187 - comet.size / 2,
+            top: 44 - comet.size / 2,
+            animationDelay: `${UPGRADE_FLY_AT_MS + comet.lag}ms`,
+            filter: "drop-shadow(0 0 5px rgba(255,205,90,0.95))",
+          }}
+          aria-hidden
+        >
+          <span className="block" style={{ opacity: comet.opacity }}>
+            <Sparkle size={comet.size} color="#F6C445" />
+          </span>
+        </span>
+      ))}
+      <At x={UPGRADE_AFTER_X} top={UPGRADE_LABEL_TOP}>
+        <Pop delay={UPGRADE_ARRIVE_AT_MS + 500}>
           <span
-            className="block whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-black leading-none text-white shadow-[0_3px_10px_rgba(154,106,36,0.3)]"
+            className={`${UPGRADE_LABEL_CLASS} text-white shadow-[0_3px_10px_rgba(154,106,36,0.35)]`}
             style={{ background: "linear-gradient(135deg, #E8B84A, #C98F2A)" }}
           >
             {visual.afterLabel}
@@ -1673,6 +2064,7 @@ function slideFaces(slide: AnalyzingSlide): string[] {
   if (v.kind === "deliver") return [v.recipientFace];
   if (v.kind === "upgrade") return [v.beforeFace];
   if (v.kind === "upgradeButton") return [v.selfFace];
+  if (v.kind === "upgradeResult") return [v.art];
   return [];
 }
 
