@@ -1006,7 +1006,7 @@ export function BottomNav() {
             );
           }
           // 完全版タブ: ページ移動はせず、その場で完全版の宝箱を開く。
-          // 課金の入口なので薄くせず、紺色のまま鍵の印 (これも紺色) を付ける (2026-11-25 指示)。
+          // ほかの鍵付きタブと同じ薄いグレーにし、鍵の印もグレーにする (2026-11-25 指示。紺色から戻した)。
           if (it.key === "full") {
             const preload = () => void preloadPaywall(locale).catch(() => {});
             return (
@@ -1019,11 +1019,11 @@ export function BottomNav() {
                 onTouchStart={preload}
                 onClick={() => openCoursePaywall("full", NAV_FULL_ACCESS_SOURCE)}
                 className="relative flex flex-col items-center justify-center gap-1 py-2 select-none touch-manipulation transition-transform duration-100 active:scale-90 active:opacity-70"
-                style={{ color: ACTIVE }}
+                style={{ color: LOCKED }}
               >
                 <span className="relative">
                   <Icon />
-                  <LockBadge color={ACTIVE} />
+                  <LockBadge />
                 </span>
                 <span className="text-[11px] font-bold leading-none">
                   {it.label}
