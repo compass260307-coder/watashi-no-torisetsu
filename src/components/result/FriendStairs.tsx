@@ -91,7 +91,7 @@ export function FriendStairs({
           <p className="mt-2 text-[12px] font-bold text-[#2E2E5C]/60">
             {isKorean
               ? `친구 ${stairs.partTwo - friendCount}명만 더 답변하면, 친구가 보는 나의 예측이 모두 열려요.`
-              : `あと${stairs.partTwo - friendCount}人で、見られ方の予測がぜんぶ開く。`}
+              : `あと${stairs.partTwo - friendCount}人で、見られ方の予測がぜんぶ開きます。`}
           </p>
         </div>
       )}

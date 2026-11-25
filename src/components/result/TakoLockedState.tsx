@@ -303,10 +303,10 @@ export function TakoLockedState({
             ? aishoUnlocked
               ? isKo
                 ? `${sendMode.friendName}님이 자기 진단을 하면 두 사람의 궁합도 볼 수 있어요`
-                : `${sendMode.friendName}さんが診断すると、2人の相性が見られるようになるよ`
+                : `${sendMode.friendName}さんが診断すると、2人の相性が見られるようになります`
               : isKo
                 ? `${sendMode.friendName}님의 사용설명서도 만들 수 있어요`
-                : `${sendMode.friendName}さん自身のトリセツも作れるようになるよ`
+                : `${sendMode.friendName}さん自身のトリセツも作れるようになります`
             : undefined
         }
         shareText={

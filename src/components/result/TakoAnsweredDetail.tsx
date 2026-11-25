@@ -203,10 +203,10 @@ export function TakoAnsweredDetail({
                   {aishoUnlocked
                     ? isKo
                       ? `${friend.name}님이 자기 진단을 하면 두 사람의 궁합도 볼 수 있어요`
-                      : `${friend.name}さんが診断すると、2人の相性も見られるようになるよ`
+                      : `${friend.name}さんが診断すると、2人の相性も見られるようになります`
                     : isKo
                       ? `${friend.name}님의 사용설명서도 만들 수 있어요`
-                      : `${friend.name}さん自身のトリセツも作れるようになるよ`}
+                      : `${friend.name}さん自身のトリセツも作れるようになります`}
                 </p>
               </div>
               <button

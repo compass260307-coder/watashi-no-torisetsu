@@ -501,7 +501,7 @@ export function LockedInviteShare({
                   ? "친구의 스마트폰으로 QR 코드를 스캔해 주세요"
                   : isIndonesian
                     ? "Minta teman di dekat Anda memindai kode ini"
-                    : "近くにいる友達に読み取ってもらおう"}
+                    : "近くにいる友達に読み取ってもらってください"}
               </p>
             </div>
           ) : null}
