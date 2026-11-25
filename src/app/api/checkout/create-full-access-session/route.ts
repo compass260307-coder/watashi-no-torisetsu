@@ -53,7 +53,6 @@ import {
   FULL_ACCESS_LIST_PRICE_KRW,
   FULL_ACCESS_PRICE_KRW,
   FULL_ACCESS_PRICE_JPY,
-  FULL_ACCESS_PRICE_TEST_VERSION,
   isAccessProduct,
   isCurrentJapaneseAccessProduct,
   isCurrentKoreanAccessProduct,
@@ -202,6 +201,9 @@ const JA_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION =
 // ¥699だけを直接表示・課金する。
 const JA_FULL_ACCESS_TEST_CHECKOUT_DISPLAY_VERSION =
   "ja_full_access_checkout_plain_699_v2_20261124";
+// 次の価格テスト（FULL_ACCESS_PRICE_TEST_899_VERSION）で¥899の群に入った人の決済画面。作りは同じで、¥899だけを直接表示・課金する。
+const JA_FULL_ACCESS_TEST_899_CHECKOUT_DISPLAY_VERSION =
+  "ja_full_access_checkout_plain_899_v1_20261126";
 // 韓国版完全版も、2026-11-17の明示判断により日本版と同じ表示にする。通常価格₩12,900と
 // 「출시 기념」クーポンを出さず、実売価格₩4,900だけを表示・課金する。請求額は変えない。
 const KO_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION =
@@ -960,8 +962,8 @@ export async function POST(request: NextRequest) {
         price_market: priceMarket,
         regional_offer_version: FULL_ACCESS_REGION_OFFER_VERSION,
         // 価格テストの対象者だけ、どちらの群かを残す（対象外の人は従来どおり何も付けない）。
-        ...(jaPriceAssignment.enrolled
-          ? { price_test_version: FULL_ACCESS_PRICE_TEST_VERSION, price_test_arm: jaPriceAssignment.arm }
+        ...(jaPriceAssignment.test
+          ? { price_test_version: jaPriceAssignment.test.version, price_test_arm: jaPriceAssignment.test.arm }
           : {}),
       }
     : {};
@@ -1161,7 +1163,9 @@ export async function POST(request: NextRequest) {
   const checkoutDisplayMetadata: Record<string, string> =
     usesPlainJapaneseFullAccessCheckout
       ? {
-          checkout_display_version: jaPriceAssignment.arm === "test"
+          checkout_display_version: jaPriceAssignment.arm === "test899"
+            ? JA_FULL_ACCESS_TEST_899_CHECKOUT_DISPLAY_VERSION
+            : jaPriceAssignment.arm === "test"
             ? JA_FULL_ACCESS_TEST_CHECKOUT_DISPLAY_VERSION
             : JA_FULL_ACCESS_CHECKOUT_DISPLAY_VERSION,
         }

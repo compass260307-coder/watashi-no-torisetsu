@@ -96,13 +96,41 @@ const contractChecks = [
     label: "Japanese full access price test shares one assignment between the quote and Checkout, and can be switched off",
     valid:
       read("src/lib/full-access-checkout-server.ts").includes('process.env.FULL_ACCESS_PRICE_TEST !== "off" && Date.now() < PRICE_TEST_END_MS') &&
-      accessProducts.includes('export const FULL_ACCESS_PRICE_TEST_END_AT =\n  "2026-11-26T00:00:00+09:00" as const;') &&
+      accessProducts.includes('export const FULL_ACCESS_PRICE_TEST_END_AT =\n  "2026-11-25T20:00:00+09:00" as const;') &&
       catalogIncludes("2026-11-26 0:00 JST") &&
       read("src/app/api/checkout/full-access-price/route.ts").includes("resolveJaFullAccessPriceAssignmentForRequest(request, ownerToken)") &&
       checkoutRoute.includes("resolveJaFullAccessPriceAssignment(buyer)") &&
       checkoutRoute.includes('"ja_full_access_checkout_plain_699_v2_20261124"') &&
       catalogIncludes("`ja_full_access_checkout_plain_699_v2_20261124`") &&
       commercePage.includes("FULL_ACCESS_TEST_PRICE_JPY.toLocaleString"),
+  },
+  {
+    label: "Japanese full access bills JPY 699 for everyone once the first price test is closed (2026-11-25 decision), and can be put back to JPY 499",
+    valid:
+      read("src/lib/full-access-checkout-server.ts").includes('const STANDARD_699: JaFullAccessPriceAssignment = { arm: "test", enrolled: false };') &&
+      read("src/lib/full-access-checkout-server.ts").includes('Date.now() >= PRICE_TEST_END_MS && process.env.FULL_ACCESS_JA_PRICE !== "499" ? STANDARD_699 : NOT_ENROLLED') &&
+      catalogIncludes("#### 2026-11-25 日本語版完全版を全員 ¥699 にする") &&
+      catalogIncludes("`FULL_ACCESS_JA_PRICE=499`"),
+  },
+  {
+    label: "Japanese full access price test (2026-11-26) bills JPY 899 from JPY 1,699 with the same JPY 800 coupon for three days, and can be switched off",
+    valid:
+      accessProducts.includes('"ja_full_access_price_test_899_v1_20261126" as const') &&
+      accessProducts.includes('export const FULL_ACCESS_PRICE_TEST_899_START_AT =\n  "2026-11-26T00:00:00+09:00" as const;') &&
+      accessProducts.includes('export const FULL_ACCESS_PRICE_TEST_899_END_AT =\n  "2026-11-29T00:00:00+09:00" as const;') &&
+      accessProducts.includes("export const FULL_ACCESS_TEST_899_LIST_PRICE_JPY = 1699;") &&
+      accessProducts.includes("export const FULL_ACCESS_TEST_899_PRICE_JPY = 899;") &&
+      regionalPricing.includes("saleAmount: FULL_ACCESS_TEST_899_PRICE_JPY,") &&
+      regionalPricing.includes("listAmount: FULL_ACCESS_TEST_899_LIST_PRICE_JPY,") &&
+      read("src/lib/full-access-checkout-server.ts").includes('process.env.FULL_ACCESS_PRICE_TEST_899 !== "off" && process.env.FULL_ACCESS_JA_PRICE !== "499" &&') &&
+      read("src/lib/full-access-checkout-server.ts").includes("now >= PRICE_TEST_899_START_MS && now < PRICE_TEST_899_END_MS") &&
+      checkoutRoute.includes('"ja_full_access_checkout_plain_899_v1_20261126"') &&
+      checkoutRoute.includes("price_test_version: jaPriceAssignment.test.version, price_test_arm: jaPriceAssignment.test.arm") &&
+      catalogIncludes("`ja_full_access_price_test_899_v1_20261126`") &&
+      catalogIncludes("`ja_full_access_checkout_plain_899_v1_20261126`") &&
+      catalogIncludes("2026-11-29 0:00 JST") &&
+      catalogIncludes("`FULL_ACCESS_PRICE_TEST_899=off`") &&
+      commercePage.includes("FULL_ACCESS_TEST_899_PRICE_JPY.toLocaleString"),
   },
   {
     label: "Japanese full access price change records its effective time",

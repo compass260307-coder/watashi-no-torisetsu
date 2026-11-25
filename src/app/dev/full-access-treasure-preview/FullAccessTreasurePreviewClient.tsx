@@ -21,7 +21,7 @@ export function FullAccessTreasurePreviewClient() {
   const [run, setRun] = useState(0);
   const [open, setOpen] = useState(false);
   // 価格テスト（2026-11-22〜）のどちらの群の値札を見るか。
-  const [arm, setArm] = useState<"control" | "test">("control");
+  const [arm, setArm] = useState<"control" | "test" | "test899">("control");
   const [entry, setEntry] = useState<string>(ENTRIES[0][0]);
   function openOverlay(resetCoupon: boolean) {
     if (resetCoupon) {
@@ -41,7 +41,7 @@ export function FullAccessTreasurePreviewClient() {
         <h1 className="text-[22px] font-black text-[#2E2E5C]">完全版の宝箱クーポン演出</h1>
         <p className="text-[13px] text-[#66657B]">計測と決済は行いません。</p>
         <div className="flex gap-2" role="group" aria-label="値札の額">
-          {([["control", "¥1,299 − ¥800 = ¥499"], ["test", "¥1,499 − ¥800 = ¥699"]] as const).map(([value, label]) => (
+          {([["control", "¥1,299 − ¥800 = ¥499"], ["test", "¥1,499 − ¥800 = ¥699"], ["test899", "¥1,699 − ¥800 = ¥899"]] as const).map(([value, label]) => (
             <button
               key={value}
               type="button"
