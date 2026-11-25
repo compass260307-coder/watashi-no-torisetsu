@@ -2064,7 +2064,9 @@ async function MeResultPageContent({
               inviteCode={inviteCode || "preview"}
               inviteUrl={`${SITE_URL}/friend/${encodeURIComponent(inviteCode || "preview")}`}
               // 友達診断ページの招待カードと同じ見本 (本人のタイプで作る・友達1人分)。
-              demoHref={`/tako/preview?previewType=${encodeURIComponent(t32)}&friends=1&fromPreview=1&demo=1`}
+              demoHref={`/tako/preview?previewType=${encodeURIComponent(t32)}&friends=1&fromPreview=1&demo=1${
+                inviteCode ? `&invite=${encodeURIComponent(inviteCode)}` : ""
+              }`}
               previewMode={!isOwnedResult}
               previewDelayMs={
                 !isOwnedResult && typeof sp.inviteCardDelay === "string"

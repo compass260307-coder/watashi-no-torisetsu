@@ -2,6 +2,11 @@
 
 import friendsWaiting from "../../../public/empty-states/tako-friends-waiting-felt.png";
 import { TakoEmptyInviteHeader } from "@/components/result/TakoEmptyInviteHeader";
+import {
+  InviteTrackOverrideContext,
+  STICKY_BAR_INVITE_TRACK,
+  TAKO_INVITE_CARD_OPEN_EVENT,
+} from "@/components/result/tako-invite-card-open";
 // /tako 友達タブ (2026-07-18 1人完結モデル):
 //   友達1人ごとに独立した結果シートができ、名前タブで切り替える。
 //   平均 (みんなの目) は廃止。パネル本体はサーバで全員ぶん描画済みを props で受け取り、
@@ -93,6 +98,8 @@ export function TakoFriendTabs({
   const [inviteOpen, setInviteOpen] = useState(
     () => tabs.length === 0 && Boolean(invitePanel),
   );
+  // 招待カードを上部バー (MeStickyHeader) から開いたか。計測名を上部バーの分として送るために持つ。
+  const [inviteFromStickyBar, setInviteFromStickyBar] = useState(false);
   // メッセージ吹き出し: 開いているタブ index (null = 閉)。
   const [msgOpenIdx, setMsgOpenIdx] = useState<number | null>(null);
   // 吹き出しの矢印位置 (対象ボタン中央) とバー幅。タブ行ラッパー基準の px。
@@ -247,9 +254,28 @@ export function TakoFriendTabs({
     stopAutoRotate();
     if (!inviteOpen) {
       setMsgOpenIdx(null);
+      setInviteFromStickyBar(false);
     }
     setInviteOpen((v) => !v);
   };
+
+  // 上部バーのボタン (丸いシェア・「友達を招待」) から、この招待カードを開く。
+  // 2026-11-25: 上部バーが開いていた別の招待モーダルをやめ、このカードに一本化した。
+  const hasInvitePanel = Boolean(invitePanel);
+  useEffect(() => {
+    if (!hasInvitePanel) return;
+    const openFromStickyBar = (event: Event) => {
+      // 受け取ったことを送り手に伝える (受け手がいないページでは送り手が従来のモーダルを開く)。
+      event.preventDefault();
+      autoRotateRef.current = false;
+      setAutoRotate(false);
+      setMsgOpenIdx(null);
+      setInviteFromStickyBar(true);
+      setInviteOpen(true);
+    };
+    window.addEventListener(TAKO_INVITE_CARD_OPEN_EVENT, openFromStickyBar);
+    return () => window.removeEventListener(TAKO_INVITE_CARD_OPEN_EVENT, openFromStickyBar);
+  }, [hasInvitePanel]);
 
   const anyBubbleOpen = inviteOpen || msgOpenIdx !== null;
 
@@ -728,7 +754,11 @@ export function TakoFriendTabs({
                       }`
                 }
               >
-                {invitePanel}
+                <InviteTrackOverrideContext.Provider
+                  value={inviteFromStickyBar ? STICKY_BAR_INVITE_TRACK : null}
+                >
+                  {invitePanel}
+                </InviteTrackOverrideContext.Provider>
               </div>
             </div>
           </div>
