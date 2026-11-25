@@ -767,17 +767,36 @@ export function ResultRevealStage({
       const lift = getComputedStyle(char).translate;
       float.cancel();
       const ease = "cubic-bezier(0.6, 0, 0.2, 1)";
-      play(nameEl, [{ transform: nameStage }, { transform: "none" }], { duration: SETTLE_MS, easing: ease });
-      play(char, [
+      // 着地先は、いまの結果ページの実物を測り直して決める。はじめに測った位置のままだと、演出のあいだに
+      // 結果ページが動いたとき (書体があとから届く、上に何かが足される、端末が画面の基準をずらす) に、
+      // 着地した絵と本体の絵が重ならず、入れ替わりでカクッと動いて見える。
+      // 演出側の枠も同じ測り方で読むので、どちらがずれていても差だけを埋められる。
+      const stageBox = root.getBoundingClientRect();
+      const landOn = (selector: string, from: Box, resize: boolean) => {
+        const real = document.querySelector<HTMLElement>(`[data-result-hero] ${selector}`)?.getBoundingClientRect();
+        if (!real || real.width < 1 || from.width < 1) return "none";
+        const dx = real.left + real.width / 2 - (stageBox.left + from.left + from.width / 2);
+        const dy = real.top + real.height / 2 - (stageBox.top + from.top + from.height / 2);
+        const k = resize ? real.width / from.width : 1;
+        if (Math.abs(dx) < 0.05 && Math.abs(dy) < 0.05 && Math.abs(k - 1) < 0.0005) return "none";
+        return `translate(${dx}px, ${dy}px) scale(${k})`;
+      };
+      play(nameEl, [{ transform: nameStage }, { transform: landOn("[data-result-hero-name]", n, false) }], { duration: SETTLE_MS, easing: ease });
+      const landing = play(char, [
         { transform: charStage, translate: lift && lift !== "none" ? lift : "0 0" },
-        { transform: "none", translate: "0 0" },
+        { transform: landOn("[data-result-hero-image] img", im, true), translate: "0 0" },
       ], { duration: SETTLE_MS, easing: ease });
       play(lead, [{ opacity: 1 }, { opacity: 0 }], { duration: 240 });
       play(ground, [{ opacity: 1 }, { opacity: 0 }], { duration: 300 });
       play(rays, [{ opacity: 1 }, { opacity: 0 }], { duration: 520 });
       play(bright, [{ opacity: 1 }, { opacity: 0 }], { duration: 580, delay: 230, easing: "ease-out" });
 
-      await new Promise<void>((resolve) => later(SETTLE_MS + 30, resolve));
+      // 着地の動きが終わりきってから入れ替える。時間だけで待つと、動き出しが遅れた端末では、絵がまだ
+      // 動いている途中で本体が出て二重に見える。(終わりの知らせが来ない場合に備えて、時間の上限も置く)
+      await Promise.race([
+        landing.finished.then(() => undefined, () => undefined),
+        new Promise<void>((resolve) => later(SETTLE_MS + 400, resolve)),
+      ]);
       if (cancelled) return;
       // 着地した。結果ページ本体の名前と絵を出し、上に重なっている演出側を消す。
       spin.cancel();
