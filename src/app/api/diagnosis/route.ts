@@ -23,6 +23,11 @@ import { supabaseAdmin } from "@/lib/supabase-server";
 import { checkOrigin } from "@/lib/origin-check";
 import { createSession, getSession } from "@/lib/session";
 import { isMissingCoreKpiColumn } from "@/lib/core-kpis";
+import {
+  normalizeProfileAgeGroup,
+  normalizeProfileGender,
+} from "@/lib/diagnosis-profile";
+import { saveUserDemographics } from "@/lib/diagnosis-profile-store";
 import { sendDetailedReportEmail } from "@/lib/email";
 import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
 import { ensureHoshiyomiCreditsFromPurchase } from "@/lib/hoshiyomi/store";
@@ -184,6 +189,11 @@ export async function POST(request: NextRequest) {
   // クライアント側で trim 済の想定だが、念のため API でも空白除去 + 20 文字制限。
   // 空文字 / 未指定は null (UI 上「あなた」フォールバック)。
   const normalizedDisplayName = normalizeOptionalText(body.displayName, 20);
+  // 任意の性別・年代。決めた選択肢だけを通し、診断の保存が済んでから別の表に残す。
+  const demographics = {
+    gender: normalizeProfileGender(body.gender),
+    ageGroup: normalizeProfileAgeGroup(body.ageGroup),
+  };
 
   // Phase 2F: scores jsonb に v2 拡張フィールドをマージ
   const persistedScores = {
@@ -380,6 +390,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    await saveUserDemographics(savedUser.id, demographics);
+
     // Every supported locale follows the same post-diagnosis delivery path.
     if (postDiagnosisReportEmail) {
       try {
@@ -449,6 +461,8 @@ export async function POST(request: NextRequest) {
       preferred_locale: locale,
       diagnosis_completed_at: diagnosisCompletedAt,
     });
+
+    await saveUserDemographics(user.id, demographics);
 
     return NextResponse.json({
       userId: user.id,
