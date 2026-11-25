@@ -754,18 +754,24 @@ export function ResultRevealStage({
       if (cancelled) return;
       // 少し浮いて、息をしているように
       const float = play(char, [{ translate: "0 0" }, { translate: "0 -7px" }, { translate: "0 0" }], { duration: 2100, iterations: Infinity, easing: "ease-in-out" });
-      const breathe = play(ground, [{ scale: "1" }, { scale: "0.93" }, { scale: "1" }], { duration: 2100, iterations: Infinity, easing: "ease-in-out" });
+      // 影の伸び縮みは止めない (着地で影ごと消える。途中で止めると大きさが一瞬で変わる)。
+      play(ground, [{ scale: "1" }, { scale: "0.93" }, { scale: "1" }], { duration: 2100, iterations: Infinity, easing: "ease-in-out" });
 
       // ===== 3. 見せる → 着地 =====
       phase = "hold";
       await sleep(HOLD_MS - 860);
       if (cancelled) return;
       phase = "settle";
+      // 浮いている途中で止めると、その高さ (最大7px) から一瞬で元の高さへ落ち、動き出しがカクッと見える。
+      // いま浮いている高さを読み、そこから着地の動きへつなぐ。
+      const lift = getComputedStyle(char).translate;
       float.cancel();
-      breathe.cancel();
       const ease = "cubic-bezier(0.6, 0, 0.2, 1)";
       play(nameEl, [{ transform: nameStage }, { transform: "none" }], { duration: SETTLE_MS, easing: ease });
-      play(char, [{ transform: charStage }, { transform: "none" }], { duration: SETTLE_MS, easing: ease });
+      play(char, [
+        { transform: charStage, translate: lift && lift !== "none" ? lift : "0 0" },
+        { transform: "none", translate: "0 0" },
+      ], { duration: SETTLE_MS, easing: ease });
       play(lead, [{ opacity: 1 }, { opacity: 0 }], { duration: 240 });
       play(ground, [{ opacity: 1 }, { opacity: 0 }], { duration: 300 });
       play(rays, [{ opacity: 1 }, { opacity: 0 }], { duration: 520 });
