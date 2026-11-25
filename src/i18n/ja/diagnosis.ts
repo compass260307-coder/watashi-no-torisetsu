@@ -29,8 +29,8 @@ const JA_COPY: DiagnosisCopy = {
     },
   ],
   nicknameLabel: "ニックネーム",
-  nicknameHelper: "結果ページに表示される名前です。",
-  genderLabel: "あなたのジェンダー（任意）",
+  nicknameRequiredBadge: "必須",
+  genderLabel: "性別（任意）",
   genderOptions: [
     {
       value: "male", label: "男性"
@@ -41,6 +41,15 @@ const JA_COPY: DiagnosisCopy = {
     {
       value: "other", label: "その他"
     },
+  ],
+  ageLabel: "年代（任意）",
+  ageOptions: [
+    { value: "10s", label: "10代" },
+    { value: "20s_early", label: "20代前半" },
+    { value: "20s_late", label: "20代後半" },
+    { value: "30s", label: "30代" },
+    { value: "40s", label: "40代" },
+    { value: "50s_plus", label: "50代以上" },
   ],
   nicknameEmptyError: "ニックネームを入力してね",
   nicknameTooLongError: (max) => `${max} 文字以内で入力してね`,
