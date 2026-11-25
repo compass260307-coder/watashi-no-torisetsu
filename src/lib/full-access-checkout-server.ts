@@ -54,6 +54,9 @@ export type JaFullAccessPriceAssignment = {
 };
 
 const NOT_ENROLLED: JaFullAccessPriceAssignment = { arm: "control", enrolled: false };
+// 2026-11-25の本人判断: 価格テストの終了時刻（2026-11-26 0:00 JST）からは、日本円の完全版を全員 ¥699
+// （通常価格¥1,499 − ¥800。テストの¥699の群と同じ見せ方）にする。テストの対象者ではないので enrolled は false。
+const STANDARD_699: JaFullAccessPriceAssignment = { arm: "test", enrolled: false };
 // ローカル開発だけ、DEV_FULL_ACCESS_PRICE_TEST_START_AT で開始時刻を前倒しして両方の群を試せる。本番ビルドでは無視する。
 const devPriceTestStartAt =
   process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1"
@@ -64,16 +67,22 @@ const PRICE_TEST_END_MS = Date.parse(FULL_ACCESS_PRICE_TEST_END_AT);
 const PRICE_TEST_PAUSE_START_MS = Date.parse(FULL_ACCESS_PRICE_TEST_PAUSE_START_AT);
 const PRICE_TEST_PAUSE_END_MS = Date.parse(FULL_ACCESS_PRICE_TEST_PAUSE_END_AT);
 
-// 終了時刻を過ぎたら、テストは自動で止まる（全員 ¥499）。環境変数でも止められる。
+// 終了時刻を過ぎたら、テストは自動で止まる。終了前に環境変数で止めたときは全員 ¥499。
 function priceTestEnabled() {
   return process.env.FULL_ACCESS_PRICE_TEST !== "off" && Date.now() < PRICE_TEST_END_MS;
+}
+
+// テストの対象外の人・テストが止まっているときの額。終了時刻までは従来の¥499、終了時刻からは全員¥699。
+// ¥499に戻すときは、環境変数 FULL_ACCESS_JA_PRICE=499 を設定して再デプロイする。
+function standardAssignment(): JaFullAccessPriceAssignment {
+  return Date.now() >= PRICE_TEST_END_MS && process.env.FULL_ACCESS_JA_PRICE !== "499" ? STANDARD_699 : NOT_ENROLLED;
 }
 
 export function jaFullAccessPriceAssignmentForUser(
   userId: string,
   diagnosisCompletedAt: string | null | undefined,
 ): JaFullAccessPriceAssignment {
-  if (!priceTestEnabled() || !diagnosisCompletedAt) return NOT_ENROLLED;
+  if (!priceTestEnabled() || !diagnosisCompletedAt) return standardAssignment();
   const completedMs = Date.parse(diagnosisCompletedAt);
   if (!Number.isFinite(completedMs) || completedMs < PRICE_TEST_START_MS) return NOT_ENROLLED;
   // 延長の反映をまたいだ1時間に診断した人は対象外（その間は全員 ¥499 を見ている）。
@@ -86,7 +95,7 @@ export function jaFullAccessPriceAssignmentForUser(
 export async function resolveJaFullAccessPriceAssignment(
   buyer: Pick<FullAccessBuyer, "id"> | null,
 ): Promise<JaFullAccessPriceAssignment> {
-  if (!priceTestEnabled() || !buyer) return NOT_ENROLLED;
+  if (!priceTestEnabled() || !buyer) return standardAssignment();
   const { data, error } = await supabaseAdmin
     .from("users")
     .select("id, diagnosis_completed_at")
@@ -95,7 +104,7 @@ export async function resolveJaFullAccessPriceAssignment(
   if (error) throw new Error("price test assignment lookup failed");
   return data
     ? jaFullAccessPriceAssignmentForUser(data.id as string, data.diagnosis_completed_at as string | null)
-    : NOT_ENROLLED;
+    : standardAssignment();
 }
 
 /**
@@ -106,7 +115,7 @@ export async function resolveJaFullAccessPriceAssignmentForRequest(
   request: NextRequest,
   ownerToken: string,
 ): Promise<JaFullAccessPriceAssignment> {
-  if (!priceTestEnabled()) return NOT_ENROLLED;
+  if (!priceTestEnabled()) return standardAssignment();
   if (ownerToken) {
     const { data, error } = await supabaseAdmin
       .from("users")

@@ -105,6 +105,14 @@ const contractChecks = [
       commercePage.includes("FULL_ACCESS_TEST_PRICE_JPY.toLocaleString"),
   },
   {
+    label: "Japanese full access bills JPY 699 for everyone after the price test ends (2026-11-25 decision), and can be put back to JPY 499",
+    valid:
+      read("src/lib/full-access-checkout-server.ts").includes('const STANDARD_699: JaFullAccessPriceAssignment = { arm: "test", enrolled: false };') &&
+      read("src/lib/full-access-checkout-server.ts").includes('Date.now() >= PRICE_TEST_END_MS && process.env.FULL_ACCESS_JA_PRICE !== "499" ? STANDARD_699 : NOT_ENROLLED') &&
+      catalogIncludes("#### 2026-11-25 日本語版完全版を全員 ¥699 にする") &&
+      catalogIncludes("`FULL_ACCESS_JA_PRICE=499`"),
+  },
+  {
     label: "Japanese full access price change records its effective time",
     valid: accessProducts.includes(
       '"2026-09-21T10:02:00+09:00" as const',
