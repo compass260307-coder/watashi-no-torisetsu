@@ -22,7 +22,7 @@ const STEPS = {
     tint: "#EAF6F9",
     img: "/tako/steps/step1.webp",
     title: "友達にシェア",
-    desc: "リンクやQRコードを友達に送るだけ。あなたのことを聞いてみよう。",
+    desc: "リンクやQRコードを友達に送るだけ。あなたのことを聞いてみてください。",
   },
   {
     n: 2,
@@ -30,7 +30,7 @@ const STEPS = {
     tint: "#EEF7E9",
     img: "/tako/steps/step2.webp",
     title: "友達が答える",
-    desc: "友達は30問の診断に回答。あなたの印象をじっくり教えてくれる。",
+    desc: "友達は30問の診断に回答。あなたの印象をじっくり教えてくれます。",
   },
   {
     n: 3,
@@ -38,7 +38,7 @@ const STEPS = {
     tint: "#F1ECFA",
     img: "/tako/steps/step3.webp",
     title: "あなたが解ける",
-    desc: "友達1人が答えると「友達から見たあなた」が完成する。",
+    desc: "友達1人が答えると「友達から見たあなた」が完成します。",
   },
   ],
   ko: [

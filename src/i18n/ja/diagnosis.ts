@@ -12,22 +12,25 @@ const JA_COPY: DiagnosisCopy = {
     {
       label: "ステップ1",
       title: "テストに答える",
+      titleSp: "50問に答える",
       body: "質問は50問、約5分で終わります。ありのままの自分で答えてください。",
     },
     {
       label: "ステップ2",
       title: "性格タイプを知る",
+      titleSp: "32タイプから性格を診断",
       body: "32タイプの中から診断し、あなたの性格をくわしく解説します。",
     },
     {
       label: "ステップ3",
       title: "新しい自分に出会おう",
+      titleSp: "友達診断で新しい自分を発見",
       body: "友達にも答えてもらえば、自分では気づけない一面が見つかります。",
     },
   ],
   nicknameLabel: "ニックネーム",
-  nicknameHelper: "結果ページに表示される名前です。",
-  genderLabel: "あなたのジェンダー（任意）",
+  nicknameRequiredBadge: "必須",
+  genderLabel: "性別（任意）",
   genderOptions: [
     {
       value: "male", label: "男性"
@@ -38,6 +41,15 @@ const JA_COPY: DiagnosisCopy = {
     {
       value: "other", label: "その他"
     },
+  ],
+  ageLabel: "年代（任意）",
+  ageOptions: [
+    { value: "10s", label: "10代" },
+    { value: "20s_early", label: "20代前半" },
+    { value: "20s_late", label: "20代後半" },
+    { value: "30s", label: "30代" },
+    { value: "40s", label: "40代" },
+    { value: "50s_plus", label: "50代以上" },
   ],
   nicknameEmptyError: "ニックネームを入力してね",
   nicknameTooLongError: (max) => `${max} 文字以内で入力してね`,

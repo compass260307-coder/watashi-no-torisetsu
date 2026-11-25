@@ -17,12 +17,17 @@ export interface DiagnosisCopy {
   heroSubtitle: string;
   heroImageAlt: string;
   // 冒頭に出す「3つの手順」。省略した言語は、これまでどおりイラストを出す。
-  heroSteps?: { label: string; title: string; body: string }[];
+  heroSteps?: { label: string; title: string; titleSp?: string; body: string }[];
   nicknameLabel: string;
-  // 最終カード (16P 風): ニックネーム説明 + 任意のジェンダー設問
-  nicknameHelper: string;
+  // ニックネームの見出しの横に出す「必須」の印。省略した言語では出さない。
+  nicknameRequiredBadge?: string;
+  // 最終カード (16P 風): ニックネーム説明 + 任意のジェンダー設問。省略した言語では説明を出さない。
+  nicknameHelper?: string;
   genderLabel: string;
   genderOptions: { value: "male" | "female" | "other"; label: string }[];
+  // 年代 (任意)。省略した言語では年代の設問を出さない。
+  ageLabel?: string;
+  ageOptions?: { value: string; label: string }[];
   nicknameEmptyError: string;
   nicknameTooLongError: (max: number) => string;
   nicknameRequired: string;
