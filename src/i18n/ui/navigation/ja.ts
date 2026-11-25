@@ -74,7 +74,7 @@ const footer: FooterContent = {
   // 3 カラム (診断 / サービス / サポート)。規約系は最下段 (コピーライト横) に移動。
   columns: [
     {
-      title: "診断",
+      title: "サービス",
       links: [
         {
           label: "性格診断テスト", href: "/diagnosis"
@@ -94,7 +94,7 @@ const footer: FooterContent = {
           course: "astrologer",
         },
         {
-          label: "運命の設計図",
+          label: "西洋占星術",
           href: "/unmei",
           course: "unmei",
         },
@@ -104,7 +104,7 @@ const footer: FooterContent = {
       ],
     },
     {
-      title: "サービス",
+      title: "サイト情報",
       links: [
         {
           label: "サービスについて", href: "/about"
@@ -168,7 +168,7 @@ const footer: FooterContent = {
   ],
   legalAriaLabel: "規約",
   copyright: "ワタシのトリセツ",
-  disclaimer: "ワタシのトリセツ（私の取説）は、自己診断と友達の回答で「自分の取扱説明書」を作る無料の性格診断サービスです。診断結果は Big Five（ビッグファイブ）理論をベースにした、自分を知るための参考情報です。医学的・心理学的な診断を行うものではありません。",
+  disclaimer: "ワタシのトリセツは、Big Five 理論にもとづく性格診断サービスです。自己診断の結果と友達の回答を比較することで、自分から見た性格と友達から見た性格の違いが分かります。診断は無料で受けられます。",
   preparing: "（準備中）",
   takoBaseHref: "/tako",
 };
