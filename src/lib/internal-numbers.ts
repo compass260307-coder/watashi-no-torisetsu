@@ -583,11 +583,24 @@ export interface NumbersDailyDay {
   };
 }
 
+/**
+ * X の広告費の実績を、アカウント × 日で足したもの (月の推移の「アカウント別」の表)。
+ * 配信計画からの推定は入らない。
+ */
+export interface NumbersAdAccountsDaily {
+  /** その月に実績があるアカウント。月の合計が大きい順。 */
+  accounts: { code: string; name: string; total: number }[];
+  /** 実績がある日だけ。spend は「アカウント記号 → その日の金額」(実績が無いアカウントは入らない)。 */
+  days: { day: string; total: number; spend: Record<string, number> }[];
+}
+
 export interface NumbersDailyPayload {
   days: NumbersDailyDay[];
   settings: NumbersSettings | null;
   /** サーバーが見た今日 (JST)。 */
   today: string;
+  /** アカウント別の X の広告費。null・無しなら、読めなかった。 */
+  ad_accounts?: NumbersAdAccountsDaily | null;
   /**
    * その月に使ったクーポンの額 (手入力)。amount が null なら未入力。
    * coupon 自体が null・無しなら、保存先がまだ無い (入力欄を出さない)。
