@@ -297,15 +297,18 @@ export const FULL_ACCESS_COUPON_JPY =
 // 2026-11-22の明示判断による価格テスト（日本円の完全版だけ）。開始時刻から終了時刻までに初めて診断した人を
 // 人ごとに半々へ固定で分け、片方は通常価格 ¥1,499 − 同じ ¥800 クーポン = 請求額 ¥699 にする。
 // もう片方と、開始前に診断した人・本人を特定できない人は従来の ¥1,299 − ¥800 = ¥499 のまま。
-// 止めるときは環境変数 FULL_ACCESS_PRICE_TEST=off（全員 ¥499 に戻る）。
+// 終了前に止めるときは環境変数 FULL_ACCESS_PRICE_TEST=off（全員 ¥499 に戻る）。
+// 2026-11-25の本人判断で、テストを打ち切った時点からは全員を ¥699（通常価格 ¥1,499 − ¥800）にする。
+// ¥499 に戻すときは環境変数 FULL_ACCESS_JA_PRICE=499。
 export const FULL_ACCESS_PRICE_TEST_VERSION =
   "ja_full_access_price_test_699_v1_20261122" as const;
 export const FULL_ACCESS_PRICE_TEST_START_AT =
   "2026-11-22T14:30:00+09:00" as const;
-// テストは 2026-11-25 まで（当日だけの予定を、2026-11-22 夜の本人指示で3日延長）。
-// この時刻を過ぎたら、¥699の群だった人も含めて全員 ¥499 に戻る。
+// テストは 2026-11-26 0:00 JST まで（当日だけの予定を、2026-11-22 夜の本人指示で3日延長）の予定だったが、
+// 2026-11-25 夜の本人判断で早めに打ち切り、全員 ¥699 にした。下の時刻は判断した時刻で、すでに過ぎているため、
+// 実際に切り替わったのはこの変更の本番反映の時点（¥499の群だった人・開始前に診断した人も含めて全員 ¥699）。
 export const FULL_ACCESS_PRICE_TEST_END_AT =
-  "2026-11-26T00:00:00+09:00" as const;
+  "2026-11-25T20:00:00+09:00" as const;
 // 延長の反映が元の終了時刻（2026-11-23 0:00 JST）をまたぐため、この1時間に初めて診断した人は対象外（¥499のまま）。
 // 反映までのあいだに ¥499 を見た人の額が、あとから変わらないようにする。
 export const FULL_ACCESS_PRICE_TEST_PAUSE_START_AT =
@@ -314,6 +317,19 @@ export const FULL_ACCESS_PRICE_TEST_PAUSE_END_AT =
   "2026-11-23T01:00:00+09:00" as const;
 export const FULL_ACCESS_TEST_LIST_PRICE_JPY = 1499;
 export const FULL_ACCESS_TEST_PRICE_JPY = 699;
+// 2026-11-25の明示判断による次の価格テスト（日本円の完全版だけ。¥699 と ¥899）。開始時刻から終了時刻までに
+// 初めて診断した人を人ごとに半々へ固定で分け、片方は通常価格 ¥1,699 − 同じ ¥800 クーポン = 請求額 ¥899 にする。
+// もう片方と、開始前に診断した人・本人を特定できない人は ¥1,499 − ¥800 = ¥699 のまま。
+// 期間は3日間。終了時刻を過ぎたら、¥899の群だった人も含めて全員 ¥699 に戻る。
+// 途中で止めるときは環境変数 FULL_ACCESS_PRICE_TEST_899=off（全員 ¥699 に戻る）。
+export const FULL_ACCESS_PRICE_TEST_899_VERSION =
+  "ja_full_access_price_test_899_v1_20261126" as const;
+export const FULL_ACCESS_PRICE_TEST_899_START_AT =
+  "2026-11-26T00:00:00+09:00" as const;
+export const FULL_ACCESS_PRICE_TEST_899_END_AT =
+  "2026-11-29T00:00:00+09:00" as const;
+export const FULL_ACCESS_TEST_899_LIST_PRICE_JPY = 1699;
+export const FULL_ACCESS_TEST_899_PRICE_JPY = 899;
 export const PREMIUM_BUNDLE_LIST_PRICE_JPY = 1980;
 export const PREMIUM_BUNDLE_PRICE_JPY = 1299;
 // 旧完全版からのアップグレード価格。新規完全版の価格テストとは独立させる。
