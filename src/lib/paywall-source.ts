@@ -61,6 +61,8 @@ const PAYWALL_SOURCES = new Set([
   "nav_locked_unmei",
   // 下部ナビのロック中「タロット」から課金カードを開いた導線。
   "nav_locked_tarot",
+  // 未課金の人の下部ナビ「完全版」タブから宝箱を開いた導線 (日本語のみ)。
+  "nav_full_access",
   ...TAKO_PAYWALL_SOURCES,
 ]);
 

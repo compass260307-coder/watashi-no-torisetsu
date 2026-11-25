@@ -114,7 +114,7 @@ export interface UiCopy {
   }>;
   nav: Record<"me" | "friend" | "astrologer" | "unmei" | "tarot", string> &
     // 日本語の下部ナビ (2026-11-19〜) だけで使うタブ名。
-    Partial<Record<"aisho" | "types", string>>;
+    Partial<Record<"aisho" | "types" | "full", string>>;
   labels: Record<string, Record<string, string>>;
   header: HeaderContent;
   footer: FooterContent;
