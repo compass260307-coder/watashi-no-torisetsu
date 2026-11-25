@@ -16,6 +16,7 @@
 | 広告費の保存 | `src/app/api/internal/numbers/costs/route.ts`、`src/lib/x-ads-export.ts` |
 | 月の推移 | `src/app/internal/numbers/daily/page.tsx`、`src/components/internal/NumbersDaily.tsx`、`src/app/api/internal/numbers/daily/route.ts`、`supabase/migrations/20261122230000_internal_numbers_daily.sql` |
 | データの入口 | `src/app/api/internal/numbers/route.ts` |
+| サーバー費の実額の取り込み | `src/lib/server-costs.ts`、`src/lib/vercel-billing.ts`、`src/app/api/cron/server-costs/route.ts`、`src/app/api/internal/numbers/server-costs/route.ts`、`supabase/migrations/20261126010000_internal_numbers_server_costs.sql` |
 | 画面 | `src/app/internal/numbers/page.tsx`、`src/components/internal/` |
 | 型と表示用の計算 | `src/lib/internal-numbers.ts` |
 | 閲覧の可否 | `src/lib/internal-numbers-access.ts` |
@@ -173,9 +174,35 @@ Vercel Cron (`/api/cron/x-ads-spend`、毎時 20 分) が X Ads API から、直
   (X の統計の 1 回の上限) 取り直す。GET は試し、POST で保存。長い期間は 7 日ずつ分けて呼ぶ。
   その期間の `ad_spend_hourly` (そのアカウントの分) は X の値で上書きされる
 
+## サーバー費の実額の取り込み (Vercel)
+
+利益の「サーバー費」は、診断 1 件あたりの単価 × 診断数の概算で出している。実額と見比べて
+単価を決め直せるよう、ホスティング (Vercel) の料金を取り込んで保存する (2026-11-26)。
+**いまは保存するだけで、利益の計算にはまだ使っていない。**
+
+Vercel Cron (`/api/cron/server-costs`、1 日 1 回、UTC 19:50 = 日本時間 4:50) が、Vercel の料金の
+入口 (`GET /v1/billing/charges`) から直近 10 日分を取り直し、日 × プロジェクトで足して
+`server_cost_replace` で `server_cost_daily` を上書きする (SQL: `20261126010000_internal_numbers_server_costs.sql`、
+取り込み: `src/lib/server-costs.ts`、入口の読み取り: `src/lib/vercel-billing.ts`)。
+
+- 鍵: Vercel の環境変数 `VERCEL_BILLING_TOKEN` (Vercel のアクセストークン) と
+  `VERCEL_BILLING_TEAM_ID` (チームの ID か slug)。どちらかが無ければ取り込まない
+- 金額は米ドル。`effective_usd` (割引後・クレジット適用前) と `billed_usd` (請求額) の両方を持つ。
+  円への換算はしていない
+- `day` は、料金の入口が返す課金期間の開始日 (UTC、1 日単位)。日本時間の 1 日とは区切りがずれる
+- `project` は料金に付いているプロジェクト名。プロジェクトに割り振られない分 (プランの定額など) は
+  `(unattributed)`。同じチームのほかのサイトの分も、プロジェクト別に入る
+- 保存しない場合: 料金が 1 件も返らない、米ドル以外が混ざる、読めない行がある (応答が途中で
+  切れた)。読み取りの不具合で、入っている実額を消したり少なく上書きしたりしないため
+- 確かめ方: 許可リストの人がログインして `GET /api/internal/numbers/server-costs` (保存しない試し。
+  日ごと・プロジェクトごとの合計と、応答の形を返す)、`POST` で 1 回保存
+- さかのぼって入れる: `?from=YYYY-MM-DD&to=YYYY-MM-DD` (UTC の日、31 日まで)。GET は試し、POST で保存
+- Supabase には請求額を取る入口が見当たらない (2026-11-26 確認)。入れるなら手入力になる
+
 ## まだ入っていないもの
 
 - 週ごとの合計、月どうしの比較
+- サーバー費の実額を、利益の計算や画面に出すこと (いまは保存だけ)
 - 広告費・CPA をグラフや比べる相手に出すこと (今は「採算」の欄で前日と比べるだけ)
 - TikTok など X 以外の媒体の時間別の実績
 - スプレッドシートや `show me` の読み先の切り替え
