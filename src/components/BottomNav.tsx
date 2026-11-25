@@ -848,14 +848,13 @@ export function BottomNav() {
           }
           previewMode={isCoursePaywallPreview}
           // 未課金の人が鍵付きの Alice・相性・タロットを押したときは宝箱にする (2026-11-20 指示)。
-          // 友達診断ページ上では従来の課金カードのまま。
+          // 友達診断ページ上で押したときも同じく宝箱にする (2026-11-25 指示)。
           treasureEntry={
             (courseLockTarget === "hoshiyomi" ||
               courseLockTarget === "aisho" ||
               courseLockTarget === "tarot") &&
             (coursePaywallSource ?? "").startsWith("nav_locked_") &&
-            resolvedCourseAccess?.paid === false &&
-            !/^\/(ko\/|en\/|id\/)?tako(\/|$)/.test(pathname)
+            resolvedCourseAccess?.paid === false
           }
           onClose={closeCoursePaywall}
         />

@@ -664,11 +664,8 @@ export default function TopHeader({
           returnTo={coursePaywall === "tarot" ? "me" : "hoshiyomi"}
           ctaSource={`nav_locked_${coursePaywall}`}
           // 未課金の人が鍵付きの Alice・タロットを押したときは宝箱にする (2026-11-20 指示)。
-          // 友達診断ページ上では従来の課金カードのまま。
-          treasureEntry={
-            resolvedCourseAccess?.paid === false &&
-            !/^\/(ko\/|en\/|id\/)?tako(\/|$)/.test(pathname)
-          }
+          // 友達診断ページ上で押したときも同じく宝箱にする (2026-11-25 指示)。
+          treasureEntry={resolvedCourseAccess?.paid === false}
           products={coursePaywall === "tarot" ? ["full_access"] : ["full_access", "premium_bundle"]}
           defaultProduct="full_access"
           heading={
