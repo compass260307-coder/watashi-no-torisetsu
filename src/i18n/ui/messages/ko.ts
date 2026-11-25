@@ -50,6 +50,23 @@ const header: HeaderContent = {
   languageModalTitle: "언어",
   ariaLangSwitch: "언어 변경",
   ariaLangMenuClose: "언어 메뉴 닫기",
+  accessibility: {
+    title: "접근성 스타일",
+    lead: "글자의 진하기와 화면의 움직임을 보기 편하게 바꿀 수 있어요. 선택한 내용은 이 기기에 저장돼요.",
+    ariaOpen: "접근성 스타일 열기",
+    ariaClose: "접근성 스타일 닫기",
+    options: {
+      contrast: {
+        title: "대비 높이기", desc: "옅은 글자를 진하게 해서 읽기 쉽게 해요"
+      },
+      motion: {
+        title: "움직임 줄이기", desc: "애니메이션과 화면의 움직임을 줄여요"
+      },
+      focus: {
+        title: "포커스 표시", desc: "키보드로 조작할 때 선택된 위치를 테두리로 표시해요"
+      },
+    },
+  },
   menuTitle: KO_TOP_CONTENT.navigation.menu,
   ariaMenuOpen: KO_TOP_CONTENT.navigation.menuOpen,
   ariaMenuClose: KO_TOP_CONTENT.navigation.menuClose,

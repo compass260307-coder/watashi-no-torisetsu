@@ -21,6 +21,7 @@
 //   - 保存後は親 (UnmeiClient) が waiting=true を渡してくる間、「星を読んでいます」
 //     バブルを出し続ける (画面遷移なしで生成待ちへつなぐ)。
 
+import { isMotionReduced } from "@/lib/a11y-style";
 import React, {
   useCallback,
   useEffect,
@@ -293,7 +294,7 @@ export default function UnmeiBirthChat({
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduce = isMotionReduced();
     if (step === "payment" && paymentRef.current) {
       const paymentTop =
         paymentRef.current.getBoundingClientRect().top -

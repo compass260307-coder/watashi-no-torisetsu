@@ -28,6 +28,20 @@ export type HeaderContent = {
   languageModalTitle: string;
   ariaLangSwitch: string;
   ariaLangMenuClose: string;
+  // アクセシビリティスタイル (見え方の追加設定)。項目のキーは lib/a11y-style.ts と対。
+  accessibility: {
+    title: string;
+    lead: string;
+    ariaOpen: string;
+    ariaClose: string;
+    options: Record<
+      "contrast" | "motion" | "focus",
+      {
+        title: string;
+        desc: string;
+      }
+    >;
+  };
   menuTitle: string;
   ariaMenuOpen: string;
   ariaMenuClose: string;

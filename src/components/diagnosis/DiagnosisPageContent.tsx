@@ -1,5 +1,6 @@
 "use client";
 
+import { isMotionReduced } from "@/lib/a11y-style";
 import { DiagnosisHero } from "@/components/diagnosis/DiagnosisHero";
 import { DiagnosisProgressBar } from "@/components/diagnosis/DiagnosisProgressBar";
 import { DiagnosisShareBand } from "@/components/diagnosis/DiagnosisShareBand";
@@ -158,12 +159,9 @@ async function pushDiagnosisCompleteDataLayer({
 }
 
 // prefers-reduced-motion 尊重: 有効時はスムーズスクロールを無効化 (auto = 瞬間)。
+// サイト内の「動きを抑える」(アクセシビリティスタイル) も同じ扱いにする。
 function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
+  return isMotionReduced();
 }
 
 // 確認用の質問セット上書き (?qset=v1 / ?qset=v2)。

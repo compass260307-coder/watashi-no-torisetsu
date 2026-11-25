@@ -46,6 +46,23 @@ const header: HeaderContent = {
   languageModalTitle: "Language",
   ariaLangSwitch: "Change language",
   ariaLangMenuClose: "Close language menu",
+  accessibility: {
+    title: "Accessibility styles",
+    lead: "Adjust text contrast and motion to suit you. Your choices are saved on this device.",
+    ariaOpen: "Open accessibility styles",
+    ariaClose: "Close accessibility styles",
+    options: {
+      contrast: {
+        title: "Increase contrast", desc: "Darkens light text so it is easier to read"
+      },
+      motion: {
+        title: "Reduce motion", desc: "Cuts back animations and screen movement"
+      },
+      focus: {
+        title: "Show focus", desc: "Outlines the item you are on when you use a keyboard"
+      },
+    },
+  },
   menuTitle: "Menu",
   ariaMenuOpen: "Open menu",
   ariaMenuClose: "Close menu",

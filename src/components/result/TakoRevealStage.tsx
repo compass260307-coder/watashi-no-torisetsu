@@ -27,6 +27,7 @@
 //   - prefers-reduced-motion: 退避無効(ピルも出さない)。sticky はレイアウトなので維持。
 //   - ?peek=1 (dev限定): 退避状態を静的描画するスクショ確認用。
 
+import { isMotionReduced } from "@/lib/a11y-style";
 import {
   createContext,
   useCallback,
@@ -121,9 +122,7 @@ export function TakoRevealStage({
       );
     };
 
-    const reduced = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const reduced = isMotionReduced();
     setPeekHidden(reduced);
     if (reduced) {
       applyFront(previewPeek ? 1 : 0);
