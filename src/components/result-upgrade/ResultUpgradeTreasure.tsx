@@ -1,5 +1,6 @@
 "use client";
 
+import { isMotionReduced } from "@/lib/a11y-style";
 import Image, { getImageProps } from "next/image";
 import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -220,11 +221,7 @@ function useIsClient(): boolean {
 }
 
 function prefersReducedMotion(): boolean {
-  try {
-    return typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  } catch {
-    return false;
-  }
+  return isMotionReduced();
 }
 
 type Props = {

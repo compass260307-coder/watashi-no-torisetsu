@@ -43,6 +43,23 @@ const header: HeaderContent = {
   languageModalTitle: "言語",
   ariaLangSwitch: "言語を切り替え",
   ariaLangMenuClose: "言語メニューを閉じる",
+  accessibility: {
+    title: "アクセシビリティスタイル",
+    lead: "文字の濃さや画面の動きを、見やすく変えられます。設定はこの端末に保存されます。",
+    ariaOpen: "アクセシビリティスタイルを開く",
+    ariaClose: "アクセシビリティスタイルを閉じる",
+    options: {
+      contrast: {
+        title: "コントラストを高める", desc: "薄い文字を濃くして、読みやすくします"
+      },
+      motion: {
+        title: "動きを抑える", desc: "アニメーションなどの動きを減らします"
+      },
+      focus: {
+        title: "フォーカスを表示する", desc: "キーボードで操作しているとき、選択中の場所を枠で示します"
+      },
+    },
+  },
   menuTitle: "メニュー",
   ariaMenuOpen: "メニューを開く",
   ariaMenuClose: "メニューを閉じる",

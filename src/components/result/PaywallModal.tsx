@@ -1,5 +1,6 @@
 "use client";
 
+import { isMotionReduced } from "@/lib/a11y-style";
 import { useUiText } from "@/i18n/ui/use-ui-copy";
 
 // ロック要素の「今すぐアクセス」等を押したとき、その場でポップアップ表示する課金モーダル。
@@ -269,9 +270,7 @@ function PaywallCardOverlay({
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    const reduceMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const reduceMotion = isMotionReduced();
     container.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
   };
 

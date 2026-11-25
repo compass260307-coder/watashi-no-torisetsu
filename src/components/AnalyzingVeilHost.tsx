@@ -3,6 +3,7 @@
 // 自己診断の解析待ち画面を載せる層 (src/lib/analyzing-veil.ts)。ルートレイアウトに1つだけ置く。
 // ページ移動をまたいで残り、移動先 (結果ページ) が出てから、結果発表の演出 (ResultRevealStage) へつなぐ。
 // 演出を出せないとき (結果ページの絵が間に合わない、動きを減らす設定など) は、ふわっと消える。
+import { isMotionReduced } from "@/lib/a11y-style";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { ResultRevealTarget } from "@/components/result/ResultRevealStage";
@@ -42,7 +43,7 @@ function loadReveal() {
 function canReveal(pathname: string) {
   if (!/^\/me\//.test(pathname)) return false;
   if (typeof Element === "undefined" || !("animate" in Element.prototype)) return false;
-  return !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return !isMotionReduced();
 }
 
 export function AnalyzingVeilHost() {
