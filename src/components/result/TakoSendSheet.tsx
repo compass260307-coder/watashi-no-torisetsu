@@ -211,7 +211,7 @@ export function TakoSendSheet({
       setNote(
         isKo
           ? "링크를 복사했어요. 보내고 싶은 친구에게 붙여 넣어 주세요."
-          : "リンクをコピーしました。送りたい相手に貼り付けてね",
+          : "リンクをコピーしました。送りたい相手に貼り付けてください",
       );
       window.setTimeout(() => setCopied(false), 2000);
       return true;
@@ -219,7 +219,7 @@ export function TakoSendSheet({
       setNote(
         isKo
           ? "복사하지 못했어요. 아래 QR 코드나 다른 방법을 이용해 주세요."
-          : "コピーできませんでした。下のQRか他の方法を使ってね",
+          : "コピーできませんでした。下のQRか他の方法を使ってください",
       );
       return false;
     }
@@ -294,7 +294,7 @@ export function TakoSendSheet({
           {subtitle ??
             (isKo
               ? "받은 친구가 답하면 나만의 사용설명서가 한 칸 채워져요"
-              : "送った相手が答えると、あなたのトリセツが1つ埋まる")}
+              : "送った相手が答えると、あなたのトリセツが1つ埋まります")}
         </p>
 
         {/* プレビュー: 疑似 shareTargetPicker 面 (Phase2 のイメージ)。実送信はしない。 */}
@@ -415,7 +415,7 @@ export function TakoSendSheet({
           <p className="mt-2 text-[12px] font-bold" style={{ color: "#9BA3B4" }}>
             {isKo
               ? "옆에 있는 친구에게는 QR 코드를 보여 주세요"
-              : "目の前の友達には QR を読み取ってもらおう"}
+              : "目の前の友達には QR を読み取ってもらってください"}
           </p>
         </div>
       </div>

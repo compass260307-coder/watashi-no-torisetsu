@@ -17,7 +17,7 @@ const COPY = {
     gapLead: "一番のギャップは",
     selfLead: "自身は",
     answerLead: "あなたは",
-    answerTail: "に感じてる。",
+    answerTail: "に感じています。",
     primaryLabel: "あなたの目",
     selfLabelTail: "の自己診断",
   },

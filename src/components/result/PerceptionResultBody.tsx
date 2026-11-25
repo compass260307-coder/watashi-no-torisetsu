@@ -46,10 +46,10 @@ function mutualLabel(pct: number, locale: AppResultLocale): string {
     if (pct >= 40) return "아직 서로 새롭게 알아 갈 모습이 남아 있어요.";
     return "차이가 큰 만큼 예상 밖의 모습을 많이 발견할 수 있어요.";
   }
-  if (pct >= 80) return "かなり息ぴったり。お互いをよく分かり合えてる。";
-  if (pct >= 60) return "いい線いってる。だいたい伝わってる相手。";
-  if (pct >= 40) return "半分くらい。まだ知らない一面もありそう。";
-  return "ギャップ大きめ。意外な発見がたくさんあるかも。";
+  if (pct >= 80) return "かなり息ぴったり。お互いをよく分かり合えています。";
+  if (pct >= 60) return "いい線いっています。だいたい伝わっている相手です。";
+  if (pct >= 40) return "半分くらい。まだ知らない一面もあるようです。";
+  return "ギャップ大きめ。意外な発見がたくさんあるかもしれません。";
 }
 
 function SectionHead({

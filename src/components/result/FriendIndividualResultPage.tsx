@@ -62,12 +62,12 @@ function rankNote(
     }
     return `${total}명 중 관점 일치도가 ${rank}번째로 높은 친구예요.`;
   }
-  if (total <= 1) return "いまのところ、たった一人の大事な視点。";
-  if (rank === 1) return `${total}人の中で、いちばん分かり合えている相手。`;
+  if (total <= 1) return "いまのところ、たった一人の大事な視点です。";
+  if (rank === 1) return `${total}人の中で、いちばん分かり合えている相手です。`;
   if (rank === total && mutual < 60) {
-    return `${total}人の中では意外な一面を見てくれている相手。`;
+    return `${total}人の中では意外な一面を見てくれている相手です。`;
   }
-  return `${total}人中 ${rank}番目に分かり合えている相手。`;
+  return `${total}人中 ${rank}番目に分かり合えている相手です。`;
 }
 
 export async function FriendIndividualResultPage({

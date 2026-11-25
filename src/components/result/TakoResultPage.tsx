@@ -196,12 +196,12 @@ const MOCK_ANSWERED: {
 // 「欠点の断罪」ではなく「仲がいいからこそ見えているクセ」(ネガは愛されるクセに変換)。
 // /me の DISLIKE_TAIL と同発想。インデックス別に付け替えてテンプレ感を避ける。
 const CONCERN_TAIL = [
-  "悪気がないのは伝わってる。ただ、先にひと言あるだけで印象はまるで違う。",
-  "嫌われるほどじゃない。むしろ長所が出すぎた瞬間で、気づくだけで武器に変わる。",
-  "面と向かっては言わないけど、仲がいいからこそ気にしてる部分かも。",
-  "隠しているつもりでも、近くにいる人にはちゃんと伝わってる。",
-  "一つひとつは小さいけど、積み重なると静かな距離になっていく類のもの。",
-  "気づいた日から変えられるクセ。むしろ伸びしろだと思われてる。",
+  "悪気がないのは伝わっています。ただ、先にひと言あるだけで印象はまるで違います。",
+  "嫌われるほどのことではありません。むしろ長所が出すぎた瞬間で、気づくだけで武器に変わります。",
+  "面と向かっては言いませんが、仲がいいからこそ気にしている部分かもしれません。",
+  "隠しているつもりでも、近くにいる人にはちゃんと伝わっています。",
+  "一つひとつは小さくても、積み重なると静かな距離になっていきます。",
+  "気づいた日から変えられるクセです。むしろ伸びしろだと思われています。",
 ];
 const ID_CONCERN_TAIL = [
   "Niat Anda tidak buruk. Namun, satu kalimat lebih dahulu dapat mengubah kesan sepenuhnya.",
@@ -802,7 +802,7 @@ export async function TakoResultPage({
                               ? `${sh.viewer}의 답변은 이미 도착했어요. 두 번째 친구부터의 분석 결과는 완전판에서 모두 열려요.`
                               : isId
                                 ? `Jawaban ${sh.viewer} sudah tiba. Hasil dari teman kedua dan seterusnya terbuka dalam Edisi Lengkap.`
-                              : `${sh.viewer}の回答はもう届いてるよ。2人目からの結果シートは、完全版でぜんぶ開くよ。`}
+                              : `${sh.viewer}の回答はもう届いています。2人目からの結果シートは、完全版でぜんぶ開きます。`}
                           </p>
                           <TakoLockedBlock
                             source="tako_sheet_lock"
@@ -902,7 +902,7 @@ export async function TakoResultPage({
                                     ? `이해도는 ${result.score}%. ${sh.viewer}의 답변과 자기 진단의 차이로 계산했어요`
                                     : isId
                                       ? `Tingkat pemahaman ${result.score}%, dihitung dari perbedaan antara jawaban ${sh.viewer} dan penilaian diri Anda.`
-                                    : `理解度は${result.score}%。${sh.viewer}の回答と自己診断のギャップから算出したよ`}
+                                    : `理解度は${result.score}%。${sh.viewer}の回答と自己診断のギャップから算出しました`}
                                 </p>
                               </>
                             );
@@ -967,7 +967,7 @@ export async function TakoResultPage({
                                   <span className="text-[#5B5BEF]">
                                     {sh.deep.gap.otherPercent}%
                                   </span>
-                                  {isKo ? "로 느끼고 있어요." : isId ? "." : "感じてる。"}
+                                  {isKo ? "로 느끼고 있어요." : isId ? "." : "感じています。"}
                                 </p>
                               </div>
                             )}
@@ -1071,7 +1071,7 @@ export async function TakoResultPage({
                                 ? `${koWith(sh.viewer)}의 궁합을 지금은 계산할 수 없어요.`
                                 : isId
                                   ? `Kecocokan dengan ${sh.viewer} belum dapat dihitung saat ini.`
-                                : `${sh.viewer}との相性は、いま計算できなかったよ。`}
+                                : `${sh.viewer}との相性は、いま計算できませんでした。`}
                             </p>
                           );
                         }
@@ -1130,7 +1130,7 @@ export async function TakoResultPage({
                                     ? `궁합은 ${c.percent}%. ${sh.viewer}의 답변과 자기 진단의 차이로 추정했어요`
                                     : isId
                                       ? `Kecocokan ${c.percent}%, diperkirakan dari perbedaan antara jawaban ${sh.viewer} dan penilaian diri Anda.`
-                                    : `相性度は${c.percent}%。${sh.viewer}の回答と自己診断のギャップから推定したよ`}
+                                    : `相性度は${c.percent}%。${sh.viewer}の回答と自己診断のギャップから推定しました`}
                                 </p>
                               </div>
                             </div>
@@ -1169,7 +1169,7 @@ export async function TakoResultPage({
                                         ? `완전판에서 ${koSubject(sh.viewer)} 느끼는 신호와 관계가 꼬이기 전에 주의할 점을 읽을 수 있어요.`
                                         : isId
                                           ? `Dalam Edisi Lengkap, lihat sinyal yang dirasakan ${sh.viewer} dan hal yang perlu diperhatikan sebelum muncul salah paham.`
-                                        : `完全版で、${sh.viewer}が感じてる“危険信号”と、こじれる前に気をつけたいポイントが読めます。`
+                                        : `完全版で、${sh.viewer}が感じている“危険信号”と、こじれる前に気をつけたいポイントが読めます。`
                                     }
                                     locale={locale}
                                   />
@@ -1182,14 +1182,14 @@ export async function TakoResultPage({
                                           ? "답: 아마 괜찮아요."
                                           : isId
                                             ? "Jawabannya: kemungkinan besar tidak apa-apa."
-                                          : "答え：たぶん、大丈夫。"}
+                                          : "答え：たぶん、大丈夫です。"}
                                       </p>
                                       <p className="body-gothic text-[15px] leading-[1.7] text-[#1A1A1A]">
                                         {isKo
                                           ? `${koTopic(sh.viewer)} 모든 질문에 시간을 내어 답해 줬어요. 아무 관심 없는 사람에게는 그렇게까지 하지 않으니까요.`
                                           : isId
                                             ? `${sh.viewer} meluangkan waktu untuk menjawab semua pertanyaan. Orang biasanya tidak melakukan itu untuk seseorang yang sama sekali tidak mereka pedulikan.`
-                                          : `だって${sh.viewer}、わざわざ全部の質問に答えてくれた。どうでもいい相手には、そんな時間かけないから。`}
+                                          : `${sh.viewer}は、わざわざ全部の質問に答えてくれました。どうでもいい相手に、そこまでの時間はかけません。`}
                                       </p>
                                     </div>
 
@@ -1198,7 +1198,7 @@ export async function TakoResultPage({
                                         ? `다만 이런 순간에는 ${koSubject(sh.viewer)} 조용히 거리감을 느낄 수도 있어요.`
                                         : isId
                                           ? `Namun, pada momen seperti ini, ${sh.viewer} mungkin diam-diam merasakan sedikit jarak.`
-                                        : `ただ——こういう瞬間だけ、${sh.viewer}は静かに「あれ?」と距離を感じてるかも。`}
+                                        : `ただ、こんな瞬間だけ、${sh.viewer}は静かに「あれ?」と距離を感じているかもしれません。`}
                                     </p>
 
                                     {/* 危険信号 (解放時のみ・全部見せる) */}
@@ -1341,7 +1341,7 @@ export async function TakoResultPage({
                           ? `내 진단 결과와 ${sh.viewer}의 답변을 겹쳐 네 개의 창으로 나눴어요.`
                           : isId
                             ? `Kami menggabungkan penilaian diri Anda dan jawaban ${sh.viewer}, lalu membaginya menjadi empat area.`
-                          : `あなたの自己診断と${sh.viewer}の回答を重ねて、4つの窓に仕分けたよ。`}
+                          : `あなたの自己診断と${sh.viewer}の回答を重ねて、4つの窓に仕分けました。`}
                       </p>
                       <JohariWindow
                         selfScores={data.selfScores}
