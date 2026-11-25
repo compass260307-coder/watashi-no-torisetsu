@@ -8,7 +8,7 @@ import TopFooter from "@/components/top/TopFooter";
 import TopHeader from "@/components/top/TopHeader";
 import { KO_ABOUT_FAQ } from "@/i18n/ko/about";
 import type { AppResultLocale } from "@/i18n/result";
-import { faqItems } from "@/lib/faq-data";
+import { friendGuideFaqItems } from "@/lib/faq-data";
 import { EN_HOME_FAQS } from "@/lib/locale-seo";
 import { versionCharacterAssetPath } from "@/lib/character-image";
 import type { BigFiveScores } from "@/lib/perception-analysis";
@@ -195,10 +195,13 @@ export function FriendIndividualGuide({
     ? ID_GUIDE_FAQS
     : isEnglish
       ? EN_HOME_FAQS.filter((_, index) => index !== 2).slice(0, 5)
-    : (isKorean ? KO_ABOUT_FAQ : faqItems).filter(
-        (_, index) =>
-          index === 0 || index === 3 || index === 4 || index === 5 || index === 6,
-      );
+    : isKorean
+      ? KO_ABOUT_FAQ.filter(
+          (_, index) =>
+            index === 0 || index === 3 || index === 4 || index === 5 || index === 6,
+        )
+      : // 日本語は、回答し終えた友達向けの専用の質問を出す (/about の質問とは別)。
+        friendGuideFaqItems;
   return (
     <>
       <MeAttentionOnGuide inviteCode={inviteCode} />
