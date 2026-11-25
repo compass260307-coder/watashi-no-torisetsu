@@ -1,6 +1,7 @@
 import type { DiagnosisCopy, DiagnosisLocaleSettings } from "@/i18n/diagnosis";
 import {
   JA_DEFAULT_QUESTION_SET_ID,
+  JA_QUESTION_SET_REVISION,
   JA_QUESTION_SETS,
 } from "@/lib/question-sets";
 const JA_COPY: DiagnosisCopy = {
@@ -179,7 +180,11 @@ export const JA_DIAGNOSIS_SETTINGS: DiagnosisLocaleSettings = {
   locale: "ja",
   // 出す質問は src/lib/question-sets.ts の JA_DEFAULT_QUESTION_SET_ID で決まる。
   questions: JA_QUESTION_SETS[JA_DEFAULT_QUESTION_SET_ID],
-  questionSet: { id: JA_DEFAULT_QUESTION_SET_ID, sets: JA_QUESTION_SETS },
+  questionSet: {
+    id: JA_DEFAULT_QUESTION_SET_ID,
+    sets: JA_QUESTION_SETS,
+    revision: JA_QUESTION_SET_REVISION,
+  },
   persistProgress: false,
   progressStorageKey: "torisetsu_answers_v2",
   nicknameStorageKey: "torisetsu_nickname_v2",

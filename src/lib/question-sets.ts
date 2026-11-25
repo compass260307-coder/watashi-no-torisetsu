@@ -1,5 +1,9 @@
 import { questions } from "./questions";
-import { questionsV2 } from "./questions-v2";
+import {
+  QUESTIONS_V2_REVISION,
+  questionsV2,
+  questionsV2Original,
+} from "./questions-v2";
 import type { Question } from "./types";
 
 // 自己診断の質問セット。
@@ -38,25 +42,44 @@ export const LEGACY_QUESTION_SET_ID: QuestionSetId = "v1";
 /** URL クエリのキー (例: /diagnosis?qset=v1)。 */
 export const QUESTION_SET_QUERY_KEY = "qset";
 
-/** 日本語版で選べるセット。採点用の定義 (id → ファセット / 逆転) は韓国語版も同じものを使う。 */
+/** 日本語版で選べるセット (画面に出す文と、今の向き)。サーバーの採点は resolveQuestionSet を通す。 */
 export const JA_QUESTION_SETS: Record<QuestionSetId, Question[]> = {
   v1: questions,
   v2: questionsV2,
 };
 
 /**
+ * 日本語版の画面が回答と一緒に送る「v2 の版」。韓国語版は送らない (undefined)。
+ * 向きを変えた質問を、答えた人が見た文に合った向きで採点するために使う
+ * (src/lib/questions-v2.ts の「向きを変えた質問の扱い」)。
+ */
+export const JA_QUESTION_SET_REVISION = QUESTIONS_V2_REVISION;
+
+/**
  * サーバー側の採点用。信頼できない入力 (リクエスト body) からセットを解決する。
  * 日本語版・韓国語版で既知の id が指定されたときだけそのセット、それ以外は従来の v1。
- * 採点は文を見ないので、韓国語の回答も日本語版と同じ定義で計算できる。
+ *
+ * v2 は、日本語版の今の版 (revision が QUESTIONS_V2_REVISION と一致) のときだけ今の向きで
+ * 採点する。版を送らない回答 (反映の時点で開いていた日本語版の画面・韓国語版) は、
+ * 答えた人が見た文に合わせて最初の向きで採点する。
  */
 export function resolveQuestionSet(
   value: unknown,
   locale: string,
+  revision?: unknown,
 ): { id: QuestionSetId; questions: Question[] } {
   if (
     (locale === "ja" || locale === "ko") &&
     (value === "v1" || value === "v2")
   ) {
+    if (value === "v2") {
+      const isCurrentJapanese =
+        locale === "ja" && revision === QUESTIONS_V2_REVISION;
+      return {
+        id: value,
+        questions: isCurrentJapanese ? questionsV2 : questionsV2Original,
+      };
+    }
     return { id: value, questions: JA_QUESTION_SETS[value] };
   }
   return { id: LEGACY_QUESTION_SET_ID, questions };

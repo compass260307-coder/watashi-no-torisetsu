@@ -23,12 +23,12 @@ const ITEMS_BY_FACET: ReadonlyArray<readonly [FacetId, readonly Item[]]> = [
     ["相手が年上や立場が上の人でも、違うと思ったことはその場で伝える。", false],
     ["自己紹介の順番が回ってくるのは、できれば最後のほうがいい。", true],
   ]],
-  // 定義番号 6-10
+  // 定義番号 6-10 (定義番号 9 は 2026-11-25 に書き換えて順方向 → 逆転に変えた。順 2 / 逆転 3)
   ["E_warmth", [
     ["人から相談や打ち明け話をされることが多い。", false],
     ["誘われるのを待つより、自分から誘うことのほうが多い。", false],
     ["道で知り合いを見かけても、気づかれなければそのまま通り過ぎる。", true],
-    ["うれしいことがあると、まず誰かに話したくなる。", false],
+    ["おいしい店を見つけたら、人に教えるより秘密にしたい。", true],
     ["仲のいい相手でも、休日に何をしているかはあまり知らない。", true],
   ]],
   // 定義番号 11-15
@@ -125,22 +125,62 @@ export const questionsV2: Question[] = DISPLAY_ORDER.map(
   }),
 );
 
+// ── 向き (逆転) を変えた質問の扱い ──
+//
+// 文だけの書き換えは採点に影響しないが、向きを変えると同じ回答でも点が逆になる。
+// そのため「書き換える前の文を見て答えた回答」は、書き換える前の向きで採点する必要がある:
+//   - 反映の時点で開いていた日本語版の画面 (古い文のまま、あとから回答が届く)
+//   - 韓国語版 (文をまだ書き換えていない)
+//
+// 日本語版の画面は回答と一緒に QUESTIONS_V2_REVISION を送る。サーバーはその値が今の版と
+// 一致するときだけ今の向き (questionsV2) で採点し、それ以外は最初の向き
+// (questionsV2Original) で採点する (src/lib/question-sets.ts)。
+//
+// 向きを変える質問を増やすとき:
+//   1. ITEMS_BY_FACET の文と向きを変える
+//   2. ORIGINAL_REVERSED に「定義番号: 最初の向き」を足す
+//   3. QUESTIONS_V2_REVISION を 1 つ上げる
+//      (上げ忘れると、反映の時点で開いていた画面の回答が逆向きに採点される)
+// 3 回目以降は「1 つ前の版」の向きも要るので、そのときは版ごとの定義を持つ形に直すこと。
+
+/** 日本語版 v2 の版。向きを変えるたびに上げる。 */
+export const QUESTIONS_V2_REVISION = 2;
+
+/** 向きを変えた質問の、最初 (版 1) の向き。キーは定義番号。 */
+const ORIGINAL_REVERSED: Readonly<Record<number, boolean>> = {
+  9: false, // 「うれしいことがあると、まず誰かに話したくなる。」(順方向) だった
+};
+
+/**
+ * 最初 (版 1) の向きでの定義。採点専用で、文は今の日本語版のまま (採点は文を見ない)。
+ * 古い画面からの回答と、韓国語版の回答の採点に使う。
+ */
+export const questionsV2Original: Question[] = DISPLAY_ORDER.map(
+  (definitionNumber, index) => ({
+    id: index + 1,
+    ...DEFINED[definitionNumber - 1],
+    reversed:
+      ORIGINAL_REVERSED[definitionNumber] ??
+      DEFINED[definitionNumber - 1].reversed,
+  }),
+);
+
 /** 1 ファセット分の翻訳文 (上の ITEMS_BY_FACET と同じ並びの 5 問)。 */
 export type QuestionV2FacetTexts = readonly [string, string, string, string, string];
 
 /**
- * v2 の他言語版を作る。文だけを差し替え、id・出題順・ファセット・逆転は日本語版と同一にする。
- * サーバーの採点は「id → ファセット / 逆転」しか見ないので、どの言語の回答も
- * 日本語版と同じ v2 の定義で採点できる (src/lib/question-sets.ts)。
+ * v2 の他言語版を作る。文だけを差し替え、id・出題順・ファセットは日本語版と同一にする。
+ * 向き (逆転) は最初 (版 1) のものを使う。他言語の文は、日本語版で向きを変えた質問
+ * (ORIGINAL_REVERSED) をまだ書き換えていないため。訳文も書き換えるときは、
+ * その言語の採点も今の向きに切り替えること (src/lib/question-sets.ts)。
  */
 export function localizeQuestionsV2(
   textsByFacet: Readonly<Record<FacetId, QuestionV2FacetTexts>>,
 ): Question[] {
-  return DISPLAY_ORDER.map((definitionNumber, index) => {
-    const base = DEFINED[definitionNumber - 1];
+  return questionsV2Original.map((base, index) => {
+    const definitionNumber = DISPLAY_ORDER[index];
     return {
       ...base,
-      id: index + 1,
       text: textsByFacet[base.facetId][(definitionNumber - 1) % 5],
     };
   });
