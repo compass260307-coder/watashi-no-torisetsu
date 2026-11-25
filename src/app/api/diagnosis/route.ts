@@ -142,7 +142,12 @@ export async function POST(request: NextRequest) {
   }
   // 質問セットごとに「id → ファセット」の対応が違うため、回答と同じセットで採点する。
   // 未指定 (旧クライアント)・未知の値・日本語以外は従来の v1。
-  const questionSet = resolveQuestionSet(body.questionSet, locale);
+  // 向きを変えた質問があるため、v2 は画面が送る版 (questionSetRevision) も見て向きを決める。
+  const questionSet = resolveQuestionSet(
+    body.questionSet,
+    locale,
+    body.questionSetRevision,
+  );
   const result = diagnose(answers, questionSet.questions);
   const {
     typeId,

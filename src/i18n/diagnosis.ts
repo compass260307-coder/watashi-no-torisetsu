@@ -265,9 +265,11 @@ export interface DiagnosisLocaleSettings {
   //   id:   questions がどのセットか。回答と一緒に API と計測へ送る。
   //   sets: URL の ?qset=<id> で上書きできるセット。
   // 省略した言語では ?qset は無視され、セット id も送らない (API は従来セットで採点)。
+  //   revision: v2 の版。向きを変えた質問がある言語 (日本語) だけが持ち、回答と一緒に API へ送る。
   questionSet?: {
     id: QuestionSetId;
     sets: Record<QuestionSetId, Question[]>;
+    revision?: number;
   };
   persistProgress: boolean;
   progressStorageKey: string;

@@ -646,6 +646,8 @@ export default function DiagnosisPageContent({
           answers,
           // 回答がどの質問セットのものか。API はこの id のセットで採点する。
           questionSet: trackedQuestionSet,
+          // v2 の版 (日本語版だけ)。向きを変えた質問を、いま出している文の向きで採点してもらう。
+          questionSetRevision: settings.questionSet?.revision,
           typeId: result.typeId,
           scores: result.scores,
           facetScores: result.facetScores,
