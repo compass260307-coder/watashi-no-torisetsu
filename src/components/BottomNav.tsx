@@ -8,8 +8,8 @@ import { useNavigationCopy, useNavigationText } from "@/i18n/ui/use-navigation-c
 //   - 中身は max-w-[480px] 中央寄せ (スマホは全幅を均等分割・PCはアプリ風に中央)。
 //   - 5列均等 grid。各列アイコン(インラインSVG 32px)+ラベル(11px)縦積み。
 //   - 配色: 通常タブは濃いネイビー #2A3A5C、鍵付きタブだけ薄いグレー #9BA3B4 (2026-11-19 指示)。
-//     現在地はインジケーターバーで示す。
-//   - アクティブ項目の上端に短いインジケーターバー (幅34px・高さ3px・角丸)。
+//   - 現在地のタブは、列いっぱいの淡い地色で示す (2026-11-26 指示。上端の短いバーから変更)。
+//     地色は iOS セーフエリアの余白まで伸ばし、バーの下端まで塗る。
 //   - iOS セーフエリア: paddingBottom: env(safe-area-inset-bottom)。
 //   - アクティブ判定は usePathname()。トリセツ(2) の URL は既存 HamburgerMenu と同じく
 //     localStorage torisetsu_owner_token から /me/[token] を解決 (無ければ /diagnosis)。
@@ -69,6 +69,10 @@ const FULL_COURSE_PRODUCTS = ["full_access"] as const;
 const ACTIVE = "#2A3A5C";
 // 鍵付き・準備中のタブだけ薄く表示する (2026-11-19 指示)。
 const LOCKED = "#9BA3B4";
+// 現在地のタブに敷く淡い地色 (ネイビーを白地に薄く重ねた色)。
+const ACTIVE_BG = "rgba(42,58,92,0.08)";
+// nav 自体の下余白 (iOS ホームインジケーター用) と同じ量。現在地の地色をここまで伸ばす。
+const NAV_SAFE_AREA_PADDING = "max(env(safe-area-inset-bottom) - 14px, 0px)";
 
 // 下部固定CTA (StickyCtaFooter / Floating* CTA) を持つフロー系ページでは、
 // ナビと衝突する / フローに集中させたいため表示しない。前方一致で判定。
@@ -966,7 +970,7 @@ export function BottomNav() {
         // iOS ホームインジケーター用の余白。ただし内蔵ブラウザ (Google アプリ等) では
         // safe-area がそのまま白い帯=スキマに見えるため、一定量詰める (最低クリアランスは確保)。
         // env=0 の環境 (Android 等) は影響なし。
-        paddingBottom: "max(env(safe-area-inset-bottom) - 14px, 0px)",
+        paddingBottom: NAV_SAFE_AREA_PADDING,
       }}
     >
       {/* スマホでは全幅を均等5分割 (左右の死に余白を作らない 2026-07-26 指示)。
@@ -1137,8 +1141,11 @@ export function BottomNav() {
               {it.active && (
                 <span
                   aria-hidden="true"
-                  className="absolute top-0 h-[3px] w-[34px] rounded-full"
-                  style={{ background: ACTIVE }}
+                  className="absolute inset-x-0 top-0"
+                  style={{
+                    background: ACTIVE_BG,
+                    bottom: `calc(-1 * ${NAV_SAFE_AREA_PADDING})`,
+                  }}
                 />
               )}
               <span className="relative">
@@ -1157,7 +1164,7 @@ export function BottomNav() {
                   onAbsorbed={markTakoBubbleAbsorbed}
                 />
               ) : null}
-              <span className="text-[11px] font-bold leading-none">
+              <span className="relative text-[11px] font-bold leading-none">
                 {it.label}
               </span>
             </Link>
