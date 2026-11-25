@@ -59,7 +59,7 @@ export type JaFullAccessPriceAssignment = {
 };
 
 const NOT_ENROLLED: JaFullAccessPriceAssignment = { arm: "control", enrolled: false };
-// 2026-11-25の本人判断: 価格テストの終了時刻（2026-11-26 0:00 JST）からは、日本円の完全版を全員 ¥699
+// 2026-11-25の本人判断: 価格テストを打ち切った時点（終了時刻。本番反映の時点）からは、日本円の完全版を全員 ¥699
 // （通常価格¥1,499 − ¥800。テストの¥699の群と同じ見せ方）にする。テストの対象者ではないので enrolled は false。
 const STANDARD_699: JaFullAccessPriceAssignment = { arm: "test", enrolled: false };
 // ローカル開発だけ、DEV_FULL_ACCESS_PRICE_TEST_START_AT で開始時刻を前倒しして両方の群を試せる。本番ビルドでは無視する。

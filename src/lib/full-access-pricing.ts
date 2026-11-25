@@ -58,7 +58,7 @@ export function fullAccessMarketForCountry(country: string | null): FullAccessMa
 }
 
 // 日本円の完全版の価格テスト（FULL_ACCESS_PRICE_TEST_VERSION）。control は従来の¥499、test は¥699。
-// テスト終了（2026-11-26 0:00 JST）からは、全員に test と同じ¥699を出す。
+// テストの打ち切り（2026-11-25夜）からは、全員に test と同じ¥699を出す。
 // test899 は次の価格テスト（FULL_ACCESS_PRICE_TEST_899_VERSION）で¥899を見る群。
 export type JaFullAccessPriceArm = "control" | "test" | "test899";
 
