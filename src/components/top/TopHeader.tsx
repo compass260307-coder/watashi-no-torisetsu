@@ -241,16 +241,20 @@ export default function TopHeader({
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white" style={fontStyle}>
-      {/* スマホ幅はバーの高さを 56px に抑える (2026-11-25 指示: 72px は縦に間延びして見える)。
+      {/* スマホ幅はバーの高さを 64px にする (2026-11-25 指示: 72px は縦に間延びして見え、
+          56px は詰まりすぎたので、その間を取る)。
           PC 幅はメニューの文字が並ぶため従来の 72px のまま。 */}
-      <div className="flex w-full items-center gap-4 px-4 py-2 sm:px-8 lg:py-4">
+      <div className="flex w-full items-center gap-4 px-4 py-3 sm:px-8 lg:py-4">
         {/* ロゴ (左) */}
         <Link
           href={content.homeHref}
           prefetch={navigationPrefetch}
           // 右のマークが3つ並ぶため、320px 幅の英語ロゴなど収まらないときは
           // 横にはみ出させず末尾を省略する (日本語・韓国語は 320px でも収まる)。
-          className="min-w-0 truncate text-[18px] xl:text-[21px] font-bold tracking-[0.01em]"
+          // スマホ幅の pb-0.5: 文字の見えている部分 (字面) は行の箱の中で約1px 下に寄るため、
+          // 右のマークと縦の中心がそろうよう 1px 持ち上げる。PC 幅は隣のメニューの文字と
+          // 同じ寄り方でそろっているので動かさない。
+          className="min-w-0 truncate pb-0.5 text-[18px] font-bold tracking-[0.01em] lg:pb-0 xl:text-[21px]"
           style={{ color: NAVY }}
         >
           {content.siteName}
