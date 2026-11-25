@@ -1,5 +1,6 @@
 import { AnalyzingVeilHost } from "@/components/AnalyzingVeilHost";
 import { BottomNav } from "@/components/BottomNav";
+import { A11Y_STYLE_INIT_SCRIPT } from "@/lib/a11y-style";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import GoogleAnalyticsTracker from "@/components/GoogleAnalyticsTracker";
 import { LocaleUiBoundary } from "@/components/LocaleUiBoundary";
@@ -226,6 +227,8 @@ export default function RootLayout({
         <script id="measurement-init" dangerouslySetInnerHTML={{ __html: MEASUREMENT_INIT_SCRIPT }} />
         <meta name="naver-site-verification" content={NAVER_SITE_VERIFICATION} />
         <script dangerouslySetInnerHTML={{ __html: DOCUMENT_LANGUAGE_SCRIPT }} />
+        {/* アクセシビリティスタイル: 保存済みの選択を初回描画の前に <html> へ反映する。 */}
+        <script id="a11y-style-init" dangerouslySetInnerHTML={{ __html: A11Y_STYLE_INIT_SCRIPT }} />
         {/* Noto Sans JP: Google Fonts 直接配信 (@import ではなく link / preconnect 必須)。
             DOCUMENT_LANGUAGE_SCRIPT が html[lang] を先に確定させるので、/ko では
             globals.css の変数上書きにより JP woff2 は要求されない。 */}

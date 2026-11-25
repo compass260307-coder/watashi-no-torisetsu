@@ -12,6 +12,7 @@ import { useNavigationCopy, useNavigationText } from "@/i18n/ui/use-navigation-c
 // pointer-events ラッパー) を両ロケールに採用。
 
 import { DeferredLoginModal as LoginModal, DeferredPaywallOverlay as PaywallOverlay } from "@/components/DeferredOverlays";
+import { AccessibilityStyleDialog, AccessibilityStyleIcon } from "@/components/AccessibilityStyleDialog";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { preloadPaywall } from "@/lib/paywall-loader";
 import { accessPaywallVersionForLocale } from "@/lib/access-products";
@@ -31,6 +32,14 @@ const FONT_STACK =
   "var(--font-noto-sans), 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', Meiryo, sans-serif";
 
 const NAVY = "#2E2E5C";
+
+// ヘッダー右のマーク (アクセシビリティスタイル / 言語) のボタン。
+// 主役はロゴとメニューなので、マークは小さめ・淡いグレーで控えめに置く
+// (2026-11-25 指示: 主張を弱く、マークどうしの余白を詰める)。
+// 押せる範囲は縦 40px を保ち、横だけ詰める。
+// 「コントラストを高める」では globals.css 側で濃くなる。
+const HEADER_MARK_BUTTON_CLASS =
+  "flex h-10 w-8 shrink-0 items-center justify-center rounded-full text-[#9AA1B4] transition-colors hover:bg-[#F1F2F6] hover:text-[#5A6072]";
 
 
 
@@ -56,6 +65,9 @@ export default function TopHeader({
   const content = useNavigationCopy(locale).header;
   const [open, setOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
+  // アクセシビリティスタイル (見え方の追加設定) のモーダル。
+  const [a11yOpen, setA11yOpen] = useState(false);
+  const closeA11y = useCallback(() => setA11yOpen(false), []);
   const languageDialogRef = useRef<HTMLDialogElement>(null);
   const languageTitleId = useId();
   const [loginOpen, setLoginOpen] = useState(false);
@@ -219,10 +231,6 @@ export default function TopHeader({
   // 韓国語は ko レイアウトのフォント設定をそのまま継承する。
   const fontStyle = isKo ? undefined : { fontFamily: FONT_STACK };
 
-  const flagIcon = (flag: TopLocale) =>
-    flag === "ja" ? <JapanFlagIcon /> : flag === "ko" ? <KoreaFlagIcon /> : <span aria-hidden="true">🌐</span>;
-  const currentFlag = flagIcon(locale);
-
   // lg (1024px) では項目 7 つ + 言語切替が収まるよう小さめ・詰めめ、xl で従来サイズに。
   // whitespace-nowrap でラベルの途中折返しを禁止 (幅不足時は wrap せず溢れが分かるように)。
   const navLinkClass =
@@ -233,12 +241,16 @@ export default function TopHeader({
 
   return (
     <header className="sticky top-0 z-50 w-full bg-white" style={fontStyle}>
-      <div className="flex w-full items-center gap-4 px-4 py-4 sm:px-8">
+      {/* スマホ幅はバーの高さを 56px に抑える (2026-11-25 指示: 72px は縦に間延びして見える)。
+          PC 幅はメニューの文字が並ぶため従来の 72px のまま。 */}
+      <div className="flex w-full items-center gap-4 px-4 py-2 sm:px-8 lg:py-4">
         {/* ロゴ (左) */}
         <Link
           href={content.homeHref}
           prefetch={navigationPrefetch}
-          className="whitespace-nowrap text-[18px] xl:text-[21px] font-bold tracking-[0.01em]"
+          // 右のマークが3つ並ぶため、320px 幅の英語ロゴなど収まらないときは
+          // 横にはみ出させず末尾を省略する (日本語・韓国語は 320px でも収まる)。
+          className="min-w-0 truncate text-[18px] xl:text-[21px] font-bold tracking-[0.01em]"
           style={{ color: NAVY }}
         >
           {content.siteName}
@@ -310,32 +322,56 @@ export default function TopHeader({
             ),
           )}
 
-          {/* 言語切替。クリックすると中央の言語モーダルを開く。 */}
-          <button
-            type="button"
-            aria-label={content.ariaLangSwitch}
-            aria-haspopup="dialog"
-            aria-expanded={langOpen}
-            onClick={() => setLangOpen(true)}
-            className="flex items-center gap-1.5 whitespace-nowrap text-[16px] xl:text-[19px] font-bold transition-colors hover:text-[#5B5BEF]"
-            style={{ color: NAVY }}
-          >
-            {currentFlag}
-            {content.currentLangLabel}
-          </button>
+          {/* アクセシビリティスタイルと言語切替。16Personalities と同じく、
+              控えめなグレーの丸いマーク2つを並べる (国旗・言語名は出さない)。
+              どちらも押すと中央のモーダルを開く。 */}
+          <div className="-mx-1 flex items-center">
+            <button
+              type="button"
+              aria-label={content.accessibility.ariaOpen}
+              title={content.accessibility.title}
+              aria-haspopup="dialog"
+              aria-expanded={a11yOpen}
+              onClick={() => setA11yOpen(true)}
+              className={HEADER_MARK_BUTTON_CLASS}
+            >
+              <AccessibilityStyleIcon size={22} />
+            </button>
+            <button
+              type="button"
+              aria-label={`${content.ariaLangSwitch}: ${content.currentLangLabel}`}
+              title={content.languageModalTitle}
+              aria-haspopup="dialog"
+              aria-expanded={langOpen}
+              onClick={() => setLangOpen(true)}
+              className={HEADER_MARK_BUTTON_CLASS}
+            >
+              <GlobeIcon size={22} />
+            </button>
+          </div>
         </div>
 
         {/* SP: 言語選択をハンバーガーメニューから独立させる。 */}
-        <div className="ml-auto flex items-center gap-2 lg:hidden">
+        <div className="ml-auto flex shrink-0 items-center lg:hidden">
+          <button
+            type="button"
+            aria-label={content.accessibility.ariaOpen}
+            aria-haspopup="dialog"
+            aria-expanded={a11yOpen}
+            onClick={() => setA11yOpen(true)}
+            className={HEADER_MARK_BUTTON_CLASS}
+          >
+            <AccessibilityStyleIcon size={20} />
+          </button>
           <button
             type="button"
             aria-label={`${content.ariaLangSwitch}: ${content.currentLangLabel}`}
             aria-haspopup="dialog"
             aria-expanded={langOpen}
             onClick={() => setLangOpen(true)}
-            className="flex h-10 min-w-10 items-center justify-center rounded-full transition-colors hover:bg-[#F1F2F6]"
+            className={HEADER_MARK_BUTTON_CLASS}
           >
-            {currentFlag}
+            <GlobeIcon size={20} />
           </button>
           <button
             type="button"
@@ -599,6 +635,15 @@ export default function TopHeader({
         </div>
       </dialog>
 
+      {/* アクセシビリティスタイルのモーダル (開いている間だけ描画)。 */}
+      {a11yOpen ? (
+        <AccessibilityStyleDialog
+          copy={content.accessibility}
+          onClose={closeA11y}
+          style={fontStyle}
+        />
+      ) : null}
+
       {/* ログインモーダル (現在のページの上に重ねる) */}
       {loginOpen ? (
         <LoginModal open onClose={() => { setLoginOpen(false); setLoginMessage(undefined); }} locale={locale} notice={loginMessage} />
@@ -653,35 +698,17 @@ function MenuLockIcon() {
   );
 }
 
-// 日の丸アイコン (言語切替マーク)。絵文字の国旗は Windows で表示されないため SVG で描く。
-function JapanFlagIcon() {
+// 言語切替のマーク (地球)。国旗は言語と国が一対一でないため使わない。
+// 塗りの丸から陸地を抜いた形 (fill-rule: evenodd)。currentColor で文字色に追従。
+function GlobeIcon({ size = 24 }: { size?: number }) {
   return (
-    <svg width="22" height="15" viewBox="0 0 22 15" aria-hidden="true">
-      <rect x="0.5" y="0.5" width="21" height="14" rx="2" fill="#FFFFFF" stroke="#D4D4DE" />
-      <circle cx="11" cy="7.5" r="4" fill="#BC002D" />
-    </svg>
-  );
-}
-
-// 太極旗アイコン。四卦と傾けた太極を含め、小さな表示でも韓国旗と分かるようにする。
-function KoreaFlagIcon() {
-  return (
-    <svg width="30" height="20" viewBox="0 0 60 40" className="shrink-0" aria-hidden="true">
-      <rect x="0.75" y="0.75" width="58.5" height="38.5" rx="4" fill="#FFFFFF" stroke="#DADDE6" strokeWidth="1.5" />
-      <g transform="translate(30 20)">
-        <g transform="rotate(-56.3099)" strokeWidth="1.6667">
-          <path d="M-5-20.8333H5M-5-18.3333H5M-5-15.8333H5M-5 15.8333H5M-5 18.3333H5M-5 20.8333H5" stroke="#171717" />
-          <path d="M0 15V21.6667" stroke="#FFFFFF" strokeWidth="0.8333" />
-        </g>
-        <g transform="rotate(56.3099)" strokeWidth="1.6667">
-          <path d="M-5-20.8333H5M-5-18.3333H5M-5-15.8333H5M-5 15.8333H5M-5 18.3333H5M-5 20.8333H5" stroke="#171717" />
-          <path d="M0-21.6667V-20M0-16.6667V-15M0 17.5V19.1667" stroke="#FFFFFF" strokeWidth="0.8333" />
-        </g>
-        <g transform="rotate(33.6901)">
-          <circle r="10" fill="#0047A0" />
-          <path d="M-10 0a10 10 0 0 1 20 0 5 5 0 0 0-10 0 5 5 0 0 1-10 0Z" fill="#CD2E3A" />
-        </g>
-      </g>
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="currentColor"
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20ZM6.3 5.6C7.9 4.3 10.3 3.8 12.3 4.5c.8 1 .1 2.1-1 2.8c-.5 1.1.4 2-.4 3.1c-1 .7-2.1-.1-3.1-.9c-1-.6-2.1-.8-2.8-1.6c.2-.9.6-1.7 1.3-2.3ZM10.9 12.4c1.3-.4 2.9.2 3.5 1.5c.2 1.4-.8 2.5-1.4 3.7c-.4 1-1 1.9-1.7 1.5c-.4-1.2-.3-2.5-1-3.5c-.6-1-.4-2.5.6-3.2ZM16.7 6.2c1.3.3 2.6 1.5 3.2 3.1c.4 1.4.4 2.9 0 4.1c-1 .2-2.1-.6-2.5-1.8c-.8-.8-1.8-1.6-1.6-3c0-1 .3-1.9.9-2.4Z"
+      />
     </svg>
   );
 }

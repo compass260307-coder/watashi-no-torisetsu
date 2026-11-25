@@ -8,6 +8,7 @@
 // 制約: 未診断の友達に「相性が出る」と誤認させない。無料バイパスを作らない。
 //   新規カラー無し・既存フェルトトークン内・reduced-motion 尊重。
 
+import { isMotionReduced } from "@/lib/a11y-style";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { UNOPTIMIZED_IN_DEV } from "@/lib/image-delivery";
@@ -54,9 +55,7 @@ export function TakoAnsweredDetail({
 }: TakoAnsweredDetailProps) {
   const isKo = locale === "ko";
   const [reduced] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => isMotionReduced(),
   );
   const closeRef = useRef<HTMLButtonElement>(null);
 

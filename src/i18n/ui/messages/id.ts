@@ -46,6 +46,23 @@ const header: HeaderContent = {
   languageModalTitle: "Bahasa",
   ariaLangSwitch: "Ganti bahasa",
   ariaLangMenuClose: "Tutup menu bahasa",
+  accessibility: {
+    title: "Gaya aksesibilitas",
+    lead: "Atur kontras teks dan gerakan layar agar lebih nyaman dilihat. Pilihanmu disimpan di perangkat ini.",
+    ariaOpen: "Buka gaya aksesibilitas",
+    ariaClose: "Tutup gaya aksesibilitas",
+    options: {
+      contrast: {
+        title: "Tingkatkan kontras", desc: "Teks yang tipis dibuat lebih gelap agar mudah dibaca"
+      },
+      motion: {
+        title: "Kurangi gerakan", desc: "Mengurangi animasi dan gerakan layar"
+      },
+      focus: {
+        title: "Tampilkan fokus", desc: "Menandai bagian yang dipilih dengan bingkai saat memakai keyboard"
+      },
+    },
+  },
   menuTitle: "Menu",
   ariaMenuOpen: "Buka menu",
   ariaMenuClose: "Tutup menu",

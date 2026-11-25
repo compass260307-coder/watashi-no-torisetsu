@@ -17,6 +17,7 @@
 //   - LikertScale コンポーネント (Day 9 で Brand v2 化済、再利用)
 //   - 既存 components/FloatingCTABar (LP 用、別物)
 
+import { isMotionReduced } from "@/lib/a11y-style";
 import { Suspense, use, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -124,9 +125,9 @@ const SCALE_PAGES: FriendQuestionV2[][] = [
 
 // prefers-reduced-motion 尊重 (自己診断 diagnosis/page.tsx と同挙動)。
 // true のときオートスクロールを smooth ではなく auto (瞬間) にする。
+// サイト内の「動きを抑える」(アクセシビリティスタイル) も同じ扱いにする。
 function prefersReducedMotion(): boolean {
-  if (typeof window === "undefined" || !window.matchMedia) return false;
-  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return isMotionReduced();
 }
 
 export default function FriendDiagnosisPage({

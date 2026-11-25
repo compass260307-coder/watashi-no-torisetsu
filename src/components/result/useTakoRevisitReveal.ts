@@ -17,6 +17,7 @@
 //   pending かつ reduced: 即時に現在値へ (アニメ無し)。
 //   非pending (初回/据え置き): 現在値のまま。いずれも最後に cookie 既読 = serverAnswered を書く。
 
+import { isMotionReduced } from "@/lib/a11y-style";
 import { useLayoutEffect, useRef, useState } from "react";
 
 const REVEAL_DELAY_MS = 650; // 旧状態を見せてから減算に入るまで
@@ -83,9 +84,7 @@ export function useTakoRevisitReveal({
       return clearTimers;
     }
 
-    const reduced = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
+    const reduced = isMotionReduced();
 
     if (reduced) {
       // 即時反映 + 静的バナーのみ。
