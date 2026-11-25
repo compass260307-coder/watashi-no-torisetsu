@@ -63,6 +63,11 @@ type SavedProgress = {
 };
 // Phase 1.5-α Day 12-Polish-B: ニックネームの localStorage 保存先 (再訪時の自動入力)
 const NICKNAME_MAX = 20;
+// 年代 (任意) の前回選択の保存先。プリフィル用で、言語をまたいで共通。
+const AGE_GROUP_STORAGE_KEY = "torisetsu_age_group_v1";
+// 基本情報カードの選択ボタン (性別・年代)。ラジオ本体は隠し、押しやすい高さのボタンにする。
+const profileChip =
+  "flex min-h-[48px] w-full items-center justify-center rounded-xl border border-[#2E2E5C]/25 bg-white px-1 py-2 text-center text-[15px] font-bold leading-tight whitespace-nowrap text-[#2E2E5C] transition-colors peer-checked:border-[#5B5BEF] peer-checked:bg-[#5B5BEF] peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-[#5B5BEF] peer-focus-visible:ring-offset-2 active:scale-[0.98]";
 // 質問ごとに「選んだ値」と「回答時間」を計測するか。false にすれば従来どおり到達だけを送る。
 const ANSWER_VALUE_TRACKING_ENABLED = true;
 const ANSWER_MS_MAX = 600_000;
@@ -218,8 +223,10 @@ export default function DiagnosisPageContent({
   // 送信時に未入力なら、この入力欄へスクロール/フォーカスするための参照。
   const nicknameInputRef = useRef<HTMLInputElement>(null);
   // ジェンダーは任意 (16P 参考)。未選択 = null のまま送信できる。
-  // DB 保存は users にカラムが無いため未対応 (選択は localStorage に保持し、API へは送る)。
+  // 選択は localStorage に保持し (再訪時のプリフィル)、送信時に API が user_demographics に残す。
   const [gender, setGender] = useState<string | null>(null);
+  // 年代 (任意)。ジェンダーと同じ扱い。
+  const [ageGroup, setAgeGroup] = useState<string | null>(null);
 
   const [currentPage, setCurrentPage] = useState(0); // 0-indexed (0..4)
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>({});
@@ -335,6 +342,12 @@ export default function DiagnosisPageContent({
     } catch {
       // 無視
     }
+    try {
+      const savedAge = localStorage.getItem(AGE_GROUP_STORAGE_KEY);
+      if (savedAge) setAgeGroup(savedAge);
+    } catch {
+      // 無視
+    }
     setHydrated(true);
   }, [activeQuestions, questionSetVersion, settings]);
   /* eslint-enable react-hooks/set-state-in-effect */
@@ -428,7 +441,6 @@ export default function DiagnosisPageContent({
   const answeredCount = Object.keys(answers).length;
   const isLastPage = currentPage === TOTAL_PAGES - 1;
   // ニックネームは必須。最終ページの「結果を見る」は全問回答 + ニックネーム入力で活性化。
-  const hasNickname = nickname.trim().length > 0;
   const canAdvance = isPageComplete;
 
   // ニックネーム必須ゲート: 最終ページの送信 (handleSubmit) の前に呼ぶ。
@@ -459,10 +471,23 @@ export default function DiagnosisPageContent({
   };
 
   // ジェンダー選択 (任意): 選択のたびに localStorage へ保存 (再訪時のプリフィル用)
-  const handleGenderSelect = (value: string) => {
+  // 任意項目なので、選択中のボタンをもう一度押すと未選択に戻せる (value = null)。
+  const handleGenderSelect = (value: string | null) => {
     setGender(value);
     try {
-      localStorage.setItem(settings.genderStorageKey, value);
+      if (value) localStorage.setItem(settings.genderStorageKey, value);
+      else localStorage.removeItem(settings.genderStorageKey);
+    } catch {
+      // 無視
+    }
+  };
+
+  // 年代選択 (任意): ジェンダーと同じ扱い。
+  const handleAgeGroupSelect = (value: string | null) => {
+    setAgeGroup(value);
+    try {
+      if (value) localStorage.setItem(AGE_GROUP_STORAGE_KEY, value);
+      else localStorage.removeItem(AGE_GROUP_STORAGE_KEY);
     } catch {
       // 無視
     }
@@ -657,9 +682,9 @@ export default function DiagnosisPageContent({
           sourceInviteCode: sourceInviteCode || undefined,
           // Day 12-Polish-B: 基本情報ステップで取得したニックネーム
           displayName: nickname.trim() || undefined,
-          // 任意のジェンダー (male/female/other)。API 側は未対応のため現状は無視される
-          // (users にカラム追加後に保存を接続する)。
+          // 任意の性別・年代。API が user_demographics に残す (値は src/lib/diagnosis-profile.ts)。
           gender: gender || undefined,
+          ageGroup: ageGroup || undefined,
           // Day 12-C3: SNS媒体別＋キャンペーン別の流入元 (first-touch)
           acquisitionSource: acq.source || undefined,
           acquisitionCampaign: acq.campaign || undefined,
@@ -848,18 +873,83 @@ export default function DiagnosisPageContent({
             置き、カード内の「結果を見る」で送信する。左寄せの見出し + ヘルパー文の 16P の型。 */}
         {isLastPage && (
           <div className="mt-10 mx-auto w-full max-w-[1080px] px-4 md:px-8">
-            <div className="rounded-2xl border border-[#2E2E5C]/10 bg-white p-6 shadow-[0_2px_10px_rgba(42,58,92,0.08)] md:p-8">
-              {/* ニックネーム (必須) */}
+            <div className="rounded-2xl border border-[#2E2E5C]/10 bg-white p-5 shadow-[0_2px_10px_rgba(42,58,92,0.08)] md:p-8">
+              {/* 任意の項目 (性別・年代) を先に置く。どちらもタップだけで終わる。 */}
+              <fieldset>
+                <legend className="text-[17px] font-bold text-[#2E2E5C] md:text-[19px]">
+                  {copy.genderLabel}
+                </legend>
+                <div className="mt-2.5 flex flex-wrap gap-2">
+                  {copy.genderOptions.map((option) => (
+                    <label
+                      key={option.value}
+                      className="relative min-w-fit flex-1 cursor-pointer"
+                    >
+                      <input
+                        type="radio"
+                        name="diagnosis-gender"
+                        value={option.value}
+                        checked={gender === option.value}
+                        onChange={() => handleGenderSelect(option.value)}
+                        onClick={() => {
+                          if (gender === option.value) handleGenderSelect(null);
+                        }}
+                        className="peer sr-only"
+                      />
+                      <span className={profileChip}>{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              {/* 年代 (任意)。文言のある言語だけ出す。 */}
+              {copy.ageLabel && copy.ageOptions && (
+                <fieldset className="mt-6">
+                  <legend className="text-[17px] font-bold text-[#2E2E5C] md:text-[19px]">
+                    {copy.ageLabel}
+                  </legend>
+                  <div className="mt-2.5 grid grid-cols-3 gap-2 md:grid-cols-6">
+                    {copy.ageOptions.map((option) => (
+                      <label
+                        key={option.value}
+                        className="relative cursor-pointer"
+                      >
+                        <input
+                          type="radio"
+                          name="diagnosis-age-group"
+                          value={option.value}
+                          checked={ageGroup === option.value}
+                          onChange={() => handleAgeGroupSelect(option.value)}
+                          onClick={() => {
+                            if (ageGroup === option.value) handleAgeGroupSelect(null);
+                          }}
+                          className="peer sr-only"
+                        />
+                        <span className={profileChip}>{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+
+              {/* ニックネーム (必須)。キーボードを閉じた真下に「結果を見る」が来るよう最後に置く。 */}
               <label
                 htmlFor="diagnosis-nickname"
-                className="block text-[22px] font-bold text-[#2E2E5C]"
+                className="mt-6 flex items-center gap-2 text-[17px] font-bold text-[#2E2E5C] md:text-[19px]"
               >
                 {copy.nicknameLabel}
+                {copy.nicknameRequiredBadge && (
+                  <span className="rounded-md bg-[#E86AA6] px-1.5 py-0.5 text-[12px] font-bold leading-none text-white">
+                    {copy.nicknameRequiredBadge}
+                  </span>
+                )}
               </label>
-              <p className="mt-1.5 text-[17px] leading-relaxed text-[#8A8AA3]">
-                {copy.nicknameHelper}
-              </p>
-              <div className="relative mt-3">
+              {copy.nicknameHelper && (
+                <p className="mt-1 text-[14px] leading-relaxed text-[#8A8AA3] md:text-[15px]">
+                  {copy.nicknameHelper}
+                </p>
+              )}
+              <div className="relative mt-2.5">
                 {/* 入力欄内の人型アイコン (16P のメール欄の ✉ に相当する装飾) */}
                 <svg
                   aria-hidden="true"
@@ -883,10 +973,20 @@ export default function DiagnosisPageContent({
                     setNickname(e.target.value);
                     if (nicknameError) setNicknameError(null);
                   }}
+                  onKeyDown={(e) => {
+                    // 確定キーでキーボードを閉じる (日本語の変換確定の Enter は除く)。
+                    if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  enterKeyHint="done"
                   maxLength={NICKNAME_MAX}
                   placeholder=""
                   autoComplete="off"
-                  className="w-full rounded-xl border border-[#2E2E5C]/25 bg-white py-3.5 pl-11 pr-4 text-[19px] font-bold text-[#2E2E5C] focus:outline-none focus:ring-2 focus:ring-[#5B5BEF] focus:border-[#5B5BEF] transition-colors"
+                  aria-invalid={nicknameError ? true : undefined}
+                  className={`w-full rounded-xl border bg-white py-3 pl-11 pr-4 text-[17px] font-bold text-[#2E2E5C] focus:outline-none focus:ring-2 focus:ring-[#5B5BEF] focus:border-[#5B5BEF] transition-colors ${
+                    nicknameError ? "border-[#E86AA6]" : "border-[#2E2E5C]/25"
+                  }`}
                 />
               </div>
               {nicknameError && (
@@ -895,50 +995,17 @@ export default function DiagnosisPageContent({
                 </p>
               )}
 
-              {/* ジェンダー (任意) */}
-              <fieldset className="mt-8">
-                <legend className="text-[22px] font-bold text-[#2E2E5C]">
-                  {copy.genderLabel}
-                </legend>
-                <div className="mt-3 flex flex-col gap-1">
-                  {copy.genderOptions.map((option) => (
-                    <label
-                      key={option.value}
-                      className="flex cursor-pointer items-center gap-3 py-1.5"
-                    >
-                      <input
-                        type="radio"
-                        name="diagnosis-gender"
-                        value={option.value}
-                        checked={gender === option.value}
-                        onChange={() => handleGenderSelect(option.value)}
-                        className="h-6 w-6 accent-[#5B5BEF]"
-                      />
-                      <span className="text-lg text-[#2E2E5C]">
-                        {option.label}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-
               {/* 結果を見る: 16P 同様カード内に置く (SP は全幅 / PC は左寄せピル)。
-                  全問回答 + ニックネーム入力で活性化。 */}
-              <div className="mt-8 flex flex-col items-start gap-2">
+                  全問回答で活性化。ニックネームが空のまま押したら、入力欄へ動いてエラーを出す。 */}
+              <div className="mt-6 flex flex-col items-start gap-2">
                 <button
                   type="button"
                   onClick={handleSubmit}
-                  disabled={!isAllComplete || !hasNickname || submitting}
+                  disabled={!isAllComplete || submitting}
                   className={`${soraPrimary} w-full md:w-auto`}
                 >
                   {submitting ? copy.submittingButton : copy.resultButton}
                 </button>
-                {/* 全問回答済みなのにニックネーム未入力なら、必須である旨を明示 */}
-                {isPageComplete && !hasNickname && (
-                  <p className="text-[15px] font-bold text-[#E86AA6]">
-                    {copy.nicknameRequired}
-                  </p>
-                )}
                 {submitError && (
                   <p className="text-[15px] font-bold text-[#E86AA6]">
                     {copy.submitError}
