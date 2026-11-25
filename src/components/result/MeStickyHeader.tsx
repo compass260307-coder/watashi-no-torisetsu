@@ -13,7 +13,8 @@
 //
 // /me のシェアは上部バーの丸ボタン1個に集約し、押すとシェアカードを開く。
 // その隣に、本人の友達診断ページへ移動する丸アイコンを表示する。
-// /tako の招待モードも、従来どおり丸ボタンからモーダルを開く。
+// /tako の招待モードは、「友達を招待」ボタン (ほかのピルが出る画面では丸ボタン) から、同じページの
+// 招待カード (TakoFriendTabs の「＋招待」と同じもの) を開く。このヘッダーの招待モーダルは使わない。
 // モーダルは createPortal で body 直下に出す。ヘッダーは隠れるとき transform を
 // 持つため、この中で fixed を使うと基準がヘッダーになり画面全体を覆えない。
 
@@ -41,6 +42,7 @@ import { withRef } from "@/lib/acquisition-link";
 import { KakaoTalkGlyph } from "@/components/icons/KakaoTalkGlyph";
 import { shareToKakaoTalk, kakaoShareFeedback, kakaoShareMetadata, KO_FRIEND_INVITE_TEXT } from "@/lib/kakao-share";
 import { SHARE_OPEN_EVENT } from "@/components/result/ShareModalOpenButton";
+import { TAKO_INVITE_CARD_OPEN_EVENT } from "@/components/result/tako-invite-card-open";
 import type { AppResultLocale } from "@/i18n/result";
 import { resultActionColorsForGroup } from "@/lib/hero-colors";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
@@ -185,6 +187,13 @@ function FriendDiagnosisGlyph({ size = 24 }: { size?: number }) {
   );
 }
 
+/**
+ * 「友達を招待」ボタンの見た目 (白地・紫の枠線。丸いシェアボタンを文字つきの横長にしたもの)。
+ * 友達診断結果の上部バーと、見本ページの上部バー (TakoDemoInvite) で同じものを使う。
+ */
+export const INVITE_PILL_CLASS =
+  "inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-full border-2 border-[#5B5BEF]/35 bg-white pl-3.5 pr-4 text-[13px] font-black leading-none text-[#5B5BEF] shadow-[0_2px_8px_rgba(91,91,239,0.10)] transition-all hover:border-[#5B5BEF]/60 hover:bg-[#F4F4FE] active:scale-95 sm:h-11 sm:pl-4 sm:pr-5 sm:text-[14px]";
+
 function CopyGlyph({ copied }: { copied: boolean }) {
   return copied ? (
     <svg
@@ -327,6 +336,20 @@ export function MeStickyHeader({
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // invite モード (/tako) の招待UIを開く。同じページの「＋招待」タブと同じ招待カード
+  // (TakoFriendTabs) に頼む。2026-11-25: 以前はこのヘッダーの招待モーダル (丸いSNSアイコン +
+  // 招待リンク + QRコード) を開いていたが、使わないことにした。
+  // 招待カードを持たないページでは誰も受け取らないので、そのときだけ従来のモーダルを開く。
+  const openInviteUi = () => {
+    setShareSource("sticky_bar");
+    const handled = !window.dispatchEvent(
+      new CustomEvent(TAKO_INVITE_CARD_OPEN_EVENT, { cancelable: true }),
+    );
+    if (handled) return;
+    setActiveShareKind("invite");
+    setShareOpen(true);
+  };
+
   // 本文中の「シェア」ピル (ShareModalOpenButton) からの開く要求を拾う。
   // shareUrl の無いページ (獲得ランディング等) では無視する。
   useEffect(() => {
@@ -339,6 +362,13 @@ export function MeStickyHeader({
       if (friendShareUrl && shareKind === "character") {
         setActiveShareKind("character");
         setSharePickerOpen(true);
+      } else if (shareKind === "invite") {
+        const handled = !window.dispatchEvent(
+          new CustomEvent(TAKO_INVITE_CARD_OPEN_EVENT, { cancelable: true }),
+        );
+        if (handled) return;
+        setActiveShareKind("invite");
+        setShareOpen(true);
       } else {
         setActiveShareKind(shareKind);
         setShareOpen(true);
@@ -362,6 +392,9 @@ export function MeStickyHeader({
   }, [shareOpen, sharePickerOpen]);
 
   const defaultIsInvite = shareKind === "invite";
+  // invite モード (/tako) で、ほかのピル (レポート/解除CTA) が無いときに出す「友達を招待」ボタン。
+  const showInvitePill =
+    defaultIsInvite && !reportHref && !reportCta && !showUnlockCta;
   const isInvite = activeShareKind === "invite";
   const isKo = locale === "ko";
   const isEn = locale === "en";
@@ -756,7 +789,9 @@ export function MeStickyHeader({
                 </a>
               )}
 
-              {!lineAddHref && shareUrl && (
+              {/* 「友達を招待」ボタンが出るときは、同じ招待モーダルを開く丸ボタンは出さない
+                  (2026-11-25: 見本ページの上部バーとそろえ、ボタンを1つにした)。 */}
+              {!lineAddHref && shareUrl && !showInvitePill && (
                 <button
                   type="button"
                   aria-label={
@@ -779,8 +814,12 @@ export function MeStickyHeader({
                   aria-haspopup="dialog"
                   aria-expanded={sharePickerOpen || shareOpen}
                   onClick={() => {
+                    if (defaultIsInvite) {
+                      openInviteUi();
+                      return;
+                    }
                     setShareSource("sticky_bar");
-                    if (friendShareUrl && !defaultIsInvite) {
+                    if (friendShareUrl) {
                       setActiveShareKind("character");
                       setSharePickerOpen(true);
                     } else {
@@ -808,24 +847,21 @@ export function MeStickyHeader({
                 </Link>
               )}
 
-              {/* invite モード (/tako ロック中) の明示CTAピル: シェア丸ボタンと同じ招待
-                  モーダルを開く (2026-08-03 指示。「ロックを解除」ピルと同スタイル)。
-                  他のピル (レポート/解除CTA) が出る画面では二重にしない。 */}
-              {defaultIsInvite && !reportHref && !reportCta && !showUnlockCta && (
+              {/* invite モード (/tako) の「友達を招待」ボタン: 招待カードを開く (openInviteUi)。
+                  他のピル (レポート/解除CTA) が出る画面では出さない (そちらは丸ボタンから開く)。
+                  2026-11-25: 紫で塗ったピル「友達に診断してもらう」+ 丸ボタンの2つから、
+                  白地・枠線のこのボタン1つに変更 (見本ページの上部バーと同じ見た目)。 */}
+              {showInvitePill && (
                 <button
                   type="button"
                   aria-haspopup="dialog"
-                  onClick={() => {
-                    setShareSource("sticky_bar");
-                    setActiveShareKind("invite");
-                    setShareOpen(true);
-                  }}
-                  className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-full bg-[#5B5BEF] px-4 py-1.5 text-center text-[12px] font-bold leading-[1.2] text-white shadow-[0_2px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] active:scale-[0.99] sm:min-h-11 sm:px-5 sm:text-[13px]"
-                  style={primaryButtonStyle}
+                  onClick={openInviteUi}
+                  className={INVITE_PILL_CLASS}
+                  style={circleButtonStyle}
                 >
                   <svg
-                    width="15"
-                    height="15"
+                    width="18"
+                    height="18"
                     viewBox="0 0 24 24"
                     fill="none"
                     stroke="currentColor"
@@ -839,7 +875,7 @@ export function MeStickyHeader({
                     <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                   </svg>
-                  {isEn ? "Invite a friend" : isId ? "Undang teman" : isKo ? "친구에게 진단 부탁하기" : "友達に診断してもらう"}
+                  {isEn ? "Invite a friend" : isId ? "Undang teman" : isKo ? "친구 초대" : "友達を招待"}
                 </button>
               )}
 

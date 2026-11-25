@@ -1755,3 +1755,121 @@ html[data-upgrade-chat-open="true"] [data-bottom-nav] {
     opacity: 0;
   }
 }
+
+
+/* ===== アクセシビリティスタイル (ヘッダーのボタンから選ぶ、見え方の追加設定) =====
+   <html> の data-a11y-* 属性で切り替える。属性を付けるのは lib/a11y-style.ts
+   (再訪時は layout.tsx の a11y-style-init が初回描画の前に付ける)。
+   通常の見た目 (世界観) は変えず、選んだ人にだけ効かせる。 */
+
+/* --- コントラストを高める ---
+   白っぽい背景の上に置いている薄いグレーの文字を、濃いグレーへ寄せる。
+   文字色は各コンポーネントに直書きされているため、クラス名の部分一致で拾う。
+   対象は「白地で 4.5:1 に届かない無彩色寄りのグレー」だけ。金色や淡い白など、
+   暗い背景の上で使っている色はここに入れない (濃くすると逆に読めなくなる)。
+   色を足したときは、置いている背景が明るいことを確かめてから並べる。 */
+html[data-a11y-contrast] {
+  --muted: #5c5252;
+  --card-border: #b9a9a9;
+}
+
+html[data-a11y-contrast]
+  :is(
+    [class*="text-[#B9BCCF]"],
+    [class*="text-[#B4B7C9]"],
+    [class*="text-[#B4B4C4]"],
+    [class*="text-[#9BA3B4]"],
+    [class*="text-[#A0A0B4]"],
+    [class*="text-[#9AA1B4]"],
+    [class*="text-[#9A9DB0]"],
+    [class*="text-[#9A9AB5]"],
+    [class*="text-[#9A9AB0]"],
+    [class*="text-[#9A9AAD]"],
+    [class*="text-[#9B94A8]"],
+    [class*="text-[#9992A6]"],
+    [class*="text-[#8B91A3]"],
+    [class*="text-[#8A8AA3]"],
+    [class*="text-[#8A8A9E]"],
+    [class*="text-[#8F86A1]"],
+    [class*="text-[#85859C]"],
+    [class*="text-[#8A8295]"],
+    [class*="text-[#7D8493]"],
+    [class*="text-[#7A8498]"],
+    [class*="text-[#878091]"],
+    [class*="text-[#7F8294]"],
+    [class*="text-[#7D7E8E]"],
+    [class*="text-[#7A7A96]"],
+    [class*="text-[#777A8F]"],
+    [class*="text-[#77798B]"],
+    [class*="text-[#77778F]"],
+    [class*="text-[#77778D]"],
+    [class*="text-[#717887]"],
+    [class*="text-gray-400"],
+    [class*="text-gray-500"],
+    [class*="text-stone-400"]
+  ) {
+  color: #55556e !important;
+}
+
+/* 取扱説明書の紙色 (温かいオフホワイト) の上で使う、黄みのグレー。 */
+html[data-a11y-contrast]
+  :is(
+    [class*="text-[#B5B0A4]"],
+    [class*="text-[#A89E8E]"],
+    [class*="text-[#A29C8F]"],
+    [class*="text-[#9A9585]"],
+    [class*="text-[#8E887C]"]
+  ) {
+  color: #5c574c !important;
+}
+
+/* 透明度で薄めた本文色 (text-[#2E2E5C]/60 など) は、薄めない元の色に戻す。 */
+html[data-a11y-contrast] [class*="text-[#2E2E5C]/"] {
+  color: #2e2e5c !important;
+}
+
+html[data-a11y-contrast] [class*="text-[#1A1A1A]/"] {
+  color: #1a1a1a !important;
+}
+
+/* style 属性に直書きされたグレー (ロック中のメニュー項目など)。
+   サーバー描画の文字列 (color:#9BA3B4) と、ブラウザが書き直した形 (rgb) の両方を拾う。
+   同じ色を背景に使っている要素 (鍵のバッジなど) は文字色を変えない。 */
+html[data-a11y-contrast]
+  :is([style*="color:#9BA3B4" i], [style*="color: rgb(155, 163, 180)"]):not(
+    [style*="background"]
+  ) {
+  color: #55556e !important;
+}
+
+html[data-a11y-contrast] ::placeholder {
+  color: #55556e !important;
+  opacity: 1 !important;
+}
+
+html[data-a11y-contrast] :is(input, textarea, select) {
+  border-color: #55556e !important;
+}
+
+/* --- 動きを抑える ---
+   端末側の設定 (prefers-reduced-motion) と同じ考え方で、アニメーションと
+   トランジションを一瞬で終わらせる。終わりの状態にはなるので、表示が欠けることはない。
+   スクリプトで動かしている演出は isMotionReduced() (lib/a11y-style.ts) で分岐する。 */
+html[data-a11y-motion],
+html[data-a11y-motion] *,
+html[data-a11y-motion] *::before,
+html[data-a11y-motion] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* --- フォーカスを表示する ---
+   キーボード操作中の要素を、はっきりした枠で示す。各所の outline-none より優先する。
+   tabindex="-1" (スクリプトがフォーカスを移すだけのモーダル本体など) は除く。 */
+html[data-a11y-focus] :focus-visible:not([tabindex="-1"]),
+html[data-a11y-focus] .peer:focus-visible ~ [aria-hidden="true"] {
+  outline: 3px solid #5b5bef !important;
+  outline-offset: 3px !important;
+}

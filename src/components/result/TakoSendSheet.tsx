@@ -13,6 +13,7 @@
 // 送信後: 呼び出し側に onSent を返し、空スロットを楽観的に pending へ (クライアント表示のみ)。
 // 世界観: 既存フェルトトークン内。reduced-motion 尊重 (スライドを止める)。
 
+import { isMotionReduced } from "@/lib/a11y-style";
 import { useEffect, useRef, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { track } from "@/lib/track";
@@ -93,9 +94,7 @@ export function TakoSendSheet({
       : SHARE_TEXT);
   // reduced は一度だけ遅延評価 (シートは開いた時=クライアントでのみ描画)。
   const [reduced] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+    () => isMotionReduced(),
   );
   const [copied, setCopied] = useState(false);
   const [kakaoBusy, setKakaoBusy] = useState(false);

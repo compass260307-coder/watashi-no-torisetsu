@@ -9,6 +9,7 @@
 //     reduced-motion / 再生不可時は同じ動画の透過済み先頭フレームを表示。
 //   - MESSAGES / STEPS の文言は i18n 側 (copy.analyzing) が正本。メッセージは
 //     messageDurationsMs で個別の表示時間を指定でき、省略時は一律2秒。
+import { isMotionReduced, subscribeA11yStyle } from "@/lib/a11y-style";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { SmoothImage } from "@/components/ui/SmoothImage";
 import type { AnalyzingSlide } from "@/i18n/diagnosis";
@@ -28,10 +29,15 @@ const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 function subscribeToReducedMotion(onChange: () => void) {
   const query = window.matchMedia(REDUCED_MOTION_QUERY);
   query.addEventListener("change", onChange);
-  return () => query.removeEventListener("change", onChange);
+  // サイト内の「動きを抑える」(アクセシビリティスタイル) の切り替えにも追従する。
+  const unsubscribeA11yStyle = subscribeA11yStyle(onChange);
+  return () => {
+    query.removeEventListener("change", onChange);
+    unsubscribeA11yStyle();
+  };
 }
 function getReducedMotion() {
-  return window.matchMedia(REDUCED_MOTION_QUERY).matches;
+  return isMotionReduced();
 }
 function getServerReducedMotion() {
   return true;
