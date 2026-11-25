@@ -361,6 +361,175 @@ input[type="reset"]:active {
   }
 }
 
+/* 完全版の購入後の準備画面の1枚目 (いつものキャラ → あなた専用のキャラへの変身)。
+   動かしていないとき (奥のカード / reduced-motion) は、変身後の完成形で止まる:
+   飛ぶきらめき・影・届いた瞬間の光は見えず、専用キャラと光の筋だけが残る。 */
+/* 金色のきらめきが、いつものキャラから専用キャラへ弧を描いて飛ぶ (終点が置いた位置)。 */
+@keyframes slide-upgrade-comet {
+  0% { opacity: 0; transform: translate(-81px, 9px) scale(0.4) rotate(0deg); }
+  12% { opacity: 1; }
+  25% { transform: translate(-63px, -11px) scale(0.9) rotate(70deg); }
+  50% { transform: translate(-44px, -20px) scale(1.15) rotate(140deg); }
+  75% { transform: translate(-23px, -16px) scale(1) rotate(210deg); }
+  88% { opacity: 1; }
+  100% { opacity: 0; transform: translate(0, 0) scale(0.6) rotate(280deg); }
+}
+
+.slide-upgrade-comet {
+  opacity: 0;
+  animation: slide-upgrade-comet 0.85s linear both;
+}
+
+/* 変身前の影: ふわっと出て待ち、きらめきが届いた瞬間に消える (長さは部品側で指定)。 */
+@keyframes slide-upgrade-shadow {
+  0% { opacity: 0; }
+  14% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.slide-upgrade-shadow {
+  opacity: 0;
+  animation: slide-upgrade-shadow 1.95s linear both;
+}
+
+/* 届いた瞬間の光: 中心からふくらんで消える。 */
+@keyframes slide-upgrade-flash {
+  0% { opacity: 0; transform: scale(0.2); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.75); }
+}
+
+.slide-upgrade-flash {
+  opacity: 0;
+  animation: slide-upgrade-flash 0.7s cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+/* 専用キャラ: 光の中から弾んで出る。 */
+@keyframes slide-upgrade-reveal {
+  0% { opacity: 0; transform: scale(0.8); }
+  45% { opacity: 1; transform: scale(1.12); }
+  72% { transform: scale(0.97); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.slide-upgrade-reveal {
+  animation: slide-upgrade-reveal 0.7s cubic-bezier(0.34, 1.3, 0.64, 1) both;
+}
+
+/* 出たあとは、ゆっくり浮かび続ける。 */
+@keyframes slide-upgrade-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
+.slide-upgrade-float {
+  animation: slide-upgrade-float 2.6s ease-in-out infinite;
+}
+
+/* うしろの光の筋は、ゆっくり回り続ける。 */
+@keyframes slide-upgrade-rays {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.slide-upgrade-rays {
+  animation: slide-upgrade-rays 16s linear infinite;
+}
+
+/* まわりのきらめきは、またたき続ける。 */
+@keyframes slide-upgrade-twinkle {
+  0%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  50% { opacity: 0.35; transform: scale(0.6) rotate(45deg); }
+}
+
+.slide-upgrade-twinkle {
+  animation: slide-upgrade-twinkle 1.7s ease-in-out infinite;
+}
+
+/* 準備画面の2枚目: 「結果をアップグレード」のボタンのまわりに、金色の光の輪が広がり続ける。
+   --edge はボタンの下の縁 (実物と同じ) で、輪と一緒に出し続ける。 */
+@keyframes slide-upgrade-halo {
+  0% { box-shadow: var(--edge), 0 0 0 0 rgba(232, 184, 74, 0.75); }
+  70%, 100% { box-shadow: var(--edge), 0 0 0 11px rgba(232, 184, 74, 0); }
+}
+
+.slide-upgrade-halo {
+  animation: slide-upgrade-halo 1.5s ease-out infinite;
+}
+
+/* 準備画面の3枚目 (Aliceとの会話画面の見立て)。止まった姿 = 最後まで進んだ完成形。 */
+/* 目盛りが1つずつ左から埋まる。 */
+@keyframes slide-qa-fill {
+  0% { transform: scaleX(0); }
+  100% { transform: scaleX(1); }
+}
+
+.slide-qa-fill {
+  transform-origin: left center;
+  animation: slide-qa-fill 0.2s ease-out both;
+}
+
+/* 「n / 7」の数字: 縦に並べた数字を1つずつ上へ送る (行き先 --to・長さ・刻みは部品側で指定)。 */
+@keyframes slide-qa-count {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(var(--to)); }
+}
+
+.slide-qa-count {
+  animation: slide-qa-count 1.3s both;
+}
+
+/* 数え終わると、札が金色に変わって小さく弾む (それまでは実物と同じ薄い色)。 */
+@keyframes slide-qa-done {
+  0% { background: #EFEDE6; color: #2E2E5C; transform: scale(1); }
+  60% { background: #E8B84A; color: #FFFFFF; transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+
+.slide-qa-done {
+  animation: slide-qa-done 0.45s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+/* 準備画面の4枚目 (星空の書斎で Alice が専用キャラと鑑定書を見せている1枚絵)。
+   絵は少し寄った所からゆっくり引き、暗い幕がすぐ晴れて明かりが灯る。止まった姿 = 明かりが灯った絵。 */
+@keyframes slide-finale-zoom {
+  0% { transform: scale(1.14); }
+  100% { transform: scale(1); }
+}
+
+.slide-finale-zoom {
+  animation: slide-finale-zoom 5.2s cubic-bezier(0.2, 0.6, 0.3, 1) both;
+}
+
+@keyframes slide-finale-veil {
+  0%, 18% { opacity: 0.62; }
+  100% { opacity: 0; }
+}
+
+.slide-finale-veil {
+  opacity: 0;
+  animation: slide-finale-veil 1.2s ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide-finale-zoom,
+  .slide-finale-veil,
+  .slide-qa-fill,
+  .slide-qa-count,
+  .slide-qa-done,
+  .slide-upgrade-halo,
+  .slide-upgrade-comet,
+  .slide-upgrade-shadow,
+  .slide-upgrade-flash,
+  .slide-upgrade-reveal,
+  .slide-upgrade-float,
+  .slide-upgrade-rays,
+  .slide-upgrade-twinkle {
+    animation: none;
+  }
+}
+
 /* 友達診断の「ようこそ」画面の始まり: カードの山が下から弾んで出てくる。 */
 @keyframes friend-welcome-enter {
   0% { opacity: 0; transform: translateY(56px) scale(0.86); }

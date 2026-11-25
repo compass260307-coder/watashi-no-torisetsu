@@ -9,7 +9,7 @@
 //   20秒たっても反映されていなければ、今までの「決済処理中...」(PaidUnlockWatcher) に引き継ぐ。
 // - スライドはボタンを持たない。紹介だけにして、買ったもの (自己診断結果) を先に見せる。
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import type { AnalyzingSlide } from "@/i18n/diagnosis";
@@ -18,13 +18,27 @@ import { startVisiblePolling } from "@/lib/visible-polling";
 
 export const PURCHASE_LOADING_MS = 20_000; // 4枚 × 5秒 (2026-11-24 本人指示で15秒から延長)
 
+// 2枚目の図 (本人の結果ページの上の端の見立て) に使う、本人の結果ページの見た目。
+export type PurchaseLoadingSelf = {
+  // 本人のキャラの顔。
+  face: string;
+  // ヒーローの大きい名前 (結果ページの実物と同じもの)。
+  typeName: string;
+  // ヒーローの帯の色。
+  heroColor: string;
+  // 「結果をアップグレード」のボタンの色と、下の縁の色。
+  buttonColor: string;
+  buttonShadow: string;
+};
+
 // 1枚目で「結果をアップグレードできる」と伝え、そのやり方を3枚で見せる (2026-11-24 本人指示)。
 // 値段の手順は入れない (本人指示)。1枚5秒なので、文は短くする。
-const SLIDES: AnalyzingSlide[] = [
+const buildSlides = (self: PurchaseLoadingSelf): AnalyzingSlide[] => [
   {
     visual: {
       kind: "upgrade",
-      beforeFace: "/characters/face/penguin_N.webp",
+      // 変身後の見本 (benefit-character.webp) はうさぎなので、変身前も同じうさぎにする。
+      beforeFace: "/characters/face/rabbit_N.webp",
       beforeLabel: "いつものキャラ",
       afterArt: "/result-upgrade/benefit-character.webp",
       afterLabel: "あなた専用",
@@ -34,22 +48,31 @@ const SLIDES: AnalyzingSlide[] = [
     highlight: "結果をアップグレード",
   },
   {
+    // 「結果をアップグレード」は、結果ページの右上にいつも出ている (上の固定バー)。
+    // 準備画面が終わった直後に見える画面と同じ並び・同じ色で見せる。
     visual: {
       kind: "upgradeButton",
-      selfFace: "/characters/face/penguin_N.webp",
-      pageLabel: "あなたの診断結果",
+      selfFace: self.face,
+      heroLabel: "あなたの性格タイプ:",
+      typeName: self.typeName,
+      heroColor: self.heroColor,
       buttonLabel: "結果をアップグレード",
+      buttonColor: self.buttonColor,
+      buttonShadow: self.buttonShadow,
       bubble: "ここ！",
     },
     tint: "#FFF4DA",
-    text: "結果ページの一番下から\nアップグレード！",
-    highlight: "一番下",
+    text: "結果ページの右上から\nアップグレード！",
+    highlight: "右上",
   },
   {
+    // 実際の会話画面 (ResultUpgradeChat) と同じ並び: 上に Alice と「n / 7」と7つの目盛り、下に質問と答え。
     visual: {
       kind: "aliceQa",
-      aliceArt: "/result-upgrade/alice-cheer.webp",
-      counter: "質問 1 / 7",
+      aliceAvatar: "/mascot/hoshiyomi-alice-avatar-transparent.png",
+      aliceName: "Alice",
+      total: 7,
+      questionLabel: "質問 1/7",
       question: "自分を動物にたとえるなら？",
       answer: "ねこ！気まぐれだから",
     },
@@ -58,14 +81,13 @@ const SLIDES: AnalyzingSlide[] = [
     highlight: "7つの質問",
   },
   {
+    // 絵は ChatGPT で作成 (2026-11-25)。「専用キャラ」「鑑定書」の札は絵の中の刺しゅう。
     visual: {
       kind: "upgradeResult",
-      characterArt: "/result-upgrade/benefit-character.webp",
-      characterLabel: "専用キャラ",
-      bookArt: "/result-upgrade/benefit-book.webp",
-      bookLabel: "鑑定書",
+      art: "/result-upgrade/alice-presents-gifts-v1.webp",
     },
-    tint: "#FFF4DA",
+    // 絵が出るまでの地色 (絵の夜空の紺)。
+    tint: "#1A1F4B",
     text: "Aliceが、あなた専用の\nキャラと鑑定書を作るよ！",
     highlight: "あなた専用",
   },
@@ -85,11 +107,13 @@ const MAX_POLL_INTERVAL_MS = 10_000;
 
 export function PurchaseLoadingScreen({
   ownerToken,
+  self,
   waitingForAccess,
   durationMs = PURCHASE_LOADING_MS,
   preview = false,
 }: {
   ownerToken: string;
+  self: PurchaseLoadingSelf;
   // 戻った時点で、完全版の権利がまだ反映されていないか。
   waitingForAccess: boolean;
   durationMs?: number;
@@ -98,6 +122,11 @@ export function PurchaseLoadingScreen({
 }) {
   const [phase, setPhase] = useState<"loading" | "waiting" | "done">("loading");
   const unlockedRef = useRef(!waitingForAccess);
+  const { face, typeName, heroColor, buttonColor, buttonShadow } = self;
+  const slides = useMemo(
+    () => buildSlides({ face, typeName, heroColor, buttonColor, buttonShadow }),
+    [face, typeName, heroColor, buttonColor, buttonShadow],
+  );
 
   // 準備画面のあいだは、うしろの結果ページを動かさない。
   useEffect(() => {
@@ -174,7 +203,7 @@ export function PurchaseLoadingScreen({
         theme="premium"
         steps={STEPS}
         totalMs={durationMs}
-        slides={SLIDES}
+        slides={slides}
         slidesLabel="完全版を購入した方へ"
       />
     </div>
