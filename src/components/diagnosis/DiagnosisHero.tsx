@@ -16,6 +16,7 @@ import stepThree from "../../../public/mascot/diagnosis-step-3.webp";
 //   スマホでは大きなイラストに押されて 1 問目の回答の○が最初の画面に入らず、
 //   1 問も答えずに離れる人が多かったため。手順は 1 枚の表にまとめて、
 //   1 問目の○まで最初の画面に収める。PC は説明文つきの 3 枚のカード。
+//   スマホは文字が多すぎたので、titleSp があれば「番号 + 1 行」だけにする (説明文は PC だけ)。
 //   見た目は落ち着かせる: 淡い帯・白い表・色は 1 色・絵はフェルトの小物
 //   (キャラクターの顔やパステルの飾りを増やすと、信頼感が落ちる)。
 
@@ -30,6 +31,10 @@ export interface DiagnosisHeroStep {
   label: string;
   // 手順の名前
   title: string;
+  // スマホ用の短い手順の名前 (数字を入れて 1 行で伝える)。
+  // 指定するとスマホでは説明文を出さず、番号 + この 1 行だけにする (2026-11-25)。
+  // 全角 13 字ぶん以内 (幅 320px の画面でも 1 行に収める)
+  titleSp?: string;
   // 手順の説明。読点・句点で 2 つに分かれ、それぞれ 18 字以内 (スマホで 2 行に収める)
   body: string;
 }
@@ -124,20 +129,46 @@ export function DiagnosisHero({
                 </div>
                 <div className="min-w-0 md:px-4 md:pb-5 md:pt-5">
                   <p className="flex items-center gap-2 md:flex-col md:items-start md:gap-2.5">
+                    {/* スマホの短い表示では「ステップ1」の代わりに番号だけを出す。 */}
+                    {step.titleSp && (
+                      <span
+                        aria-hidden="true"
+                        className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-[#EEEDFC] text-[11px] font-bold leading-none md:hidden"
+                        style={{ color: ACCENT }}
+                      >
+                        {index + 1}
+                      </span>
+                    )}
                     <span
-                      className="shrink-0 rounded-full bg-[#EEEDFC] px-2 py-[3px] text-[10.5px] font-bold leading-none tracking-[0.04em] md:px-3 md:py-[5px] md:text-[12.5px] md:tracking-[0.06em]"
+                      className={`shrink-0 rounded-full bg-[#EEEDFC] px-2 py-[3px] text-[10.5px] font-bold leading-none tracking-[0.04em] md:px-3 md:py-[5px] md:text-[12.5px] md:tracking-[0.06em] ${
+                        step.titleSp ? "hidden md:inline-block" : ""
+                      }`}
                       style={{ color: ACCENT }}
                     >
                       {step.label}
                     </span>
+                    {step.titleSp && (
+                      <span
+                        className="text-[clamp(13px,4.1vw,16px)] font-bold leading-[1.4] tracking-[0.01em] md:hidden"
+                        style={{ color: NAVY, fontFeatureSettings: PALT }}
+                      >
+                        {step.titleSp}
+                      </span>
+                    )}
                     <span
-                      className="text-[17px] font-bold leading-[1.4] tracking-[0.01em] md:text-[23px]"
+                      className={`text-[17px] font-bold leading-[1.4] tracking-[0.01em] md:text-[23px] ${
+                        step.titleSp ? "hidden md:inline" : ""
+                      }`}
                       style={{ color: NAVY, fontFeatureSettings: PALT }}
                     >
                       {step.title}
                     </span>
                   </p>
-                  <p className="phrase-jp mt-[3px] text-[13px] leading-[1.5] text-[#4F4F6E] md:mt-2 md:text-[15.5px] md:leading-[1.8]">
+                  <p
+                    className={`phrase-jp mt-[3px] text-[13px] leading-[1.5] text-[#4F4F6E] md:mt-2 md:text-[15.5px] md:leading-[1.8] ${
+                      step.titleSp ? "hidden md:block" : ""
+                    }`}
+                  >
                     {phraseWrapJa(step.body)}
                   </p>
                 </div>
