@@ -7,6 +7,8 @@ import {
   FULL_ACCESS_PRICE_JPY,
   FULL_ACCESS_PRICE_KRW,
   FULL_ACCESS_TEST_LIST_PRICE_JPY,
+  FULL_ACCESS_TEST_899_LIST_PRICE_JPY,
+  FULL_ACCESS_TEST_899_PRICE_JPY,
   FULL_ACCESS_TEST_PRICE_JPY,
   ID_FULL_ACCESS_LIST_PRICE_IDR_MINOR,
   ID_FULL_ACCESS_PRICE_IDR_MINOR,
@@ -57,7 +59,8 @@ export function fullAccessMarketForCountry(country: string | null): FullAccessMa
 
 // 日本円の完全版の価格テスト（FULL_ACCESS_PRICE_TEST_VERSION）。control は従来の¥499、test は¥699。
 // テスト終了（2026-11-26 0:00 JST）からは、全員に test と同じ¥699を出す。
-export type JaFullAccessPriceArm = "control" | "test";
+// test899 は次の価格テスト（FULL_ACCESS_PRICE_TEST_899_VERSION）で¥899を見る群。
+export type JaFullAccessPriceArm = "control" | "test" | "test899";
 
 export type JaFullAccessOffer = {
   arm: JaFullAccessPriceArm;
@@ -79,6 +82,12 @@ const JA_FULL_ACCESS_OFFERS: Record<JaFullAccessPriceArm, JaFullAccessOffer> = {
     listAmount: FULL_ACCESS_TEST_LIST_PRICE_JPY,
     couponAmount: FULL_ACCESS_TEST_LIST_PRICE_JPY - FULL_ACCESS_TEST_PRICE_JPY,
   },
+  test899: {
+    arm: "test899",
+    saleAmount: FULL_ACCESS_TEST_899_PRICE_JPY,
+    listAmount: FULL_ACCESS_TEST_899_LIST_PRICE_JPY,
+    couponAmount: FULL_ACCESS_TEST_899_LIST_PRICE_JPY - FULL_ACCESS_TEST_899_PRICE_JPY,
+  },
 };
 
 export function jaFullAccessOfferForArm(arm: JaFullAccessPriceArm): JaFullAccessOffer {
@@ -87,7 +96,7 @@ export function jaFullAccessOfferForArm(arm: JaFullAccessPriceArm): JaFullAccess
 
 /**
  * 見積もり（日本円）の請求額から、画面に出す通常価格・クーポン額を引く。
- * 日本円の完全版として売っている額（¥499 / テストの¥699）でなければ null。
+ * 日本円の完全版として売っている額（¥499 / ¥699 / テストの¥899）でなければ null。
  */
 export function jaFullAccessOfferForQuote(
   quote: FullAccessQuote | null | undefined,

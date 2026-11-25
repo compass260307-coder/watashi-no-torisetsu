@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isSafeOpaqueToken, readJsonObject } from "@/lib/api-security";
 import { hasSelfReportAccess } from "@/lib/entitlements";
-import { fullAccessQuoteForMarket } from "@/lib/full-access-pricing";
+import { fullAccessQuoteForMarket, type JaFullAccessPriceArm } from "@/lib/full-access-pricing";
 import {
   fullAccessMarketForRequest,
   resolveFullAccessBuyer,
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     }
   }
   // 日本円は価格テストの群（人ごとに固定）で請求額が決まる。決済APIも同じ判定で検証する。
-  let jaPriceArm: "control" | "test" = "control";
+  let jaPriceArm: JaFullAccessPriceArm = "control";
   if (market === "ja") {
     try {
       jaPriceArm = (await resolveJaFullAccessPriceAssignmentForRequest(request, ownerToken)).arm;

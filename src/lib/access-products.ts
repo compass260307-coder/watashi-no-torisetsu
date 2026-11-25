@@ -316,6 +316,19 @@ export const FULL_ACCESS_PRICE_TEST_PAUSE_END_AT =
   "2026-11-23T01:00:00+09:00" as const;
 export const FULL_ACCESS_TEST_LIST_PRICE_JPY = 1499;
 export const FULL_ACCESS_TEST_PRICE_JPY = 699;
+// 2026-11-25の明示判断による次の価格テスト（日本円の完全版だけ。¥699 と ¥899）。開始時刻から終了時刻までに
+// 初めて診断した人を人ごとに半々へ固定で分け、片方は通常価格 ¥1,699 − 同じ ¥800 クーポン = 請求額 ¥899 にする。
+// もう片方と、開始前に診断した人・本人を特定できない人は ¥1,499 − ¥800 = ¥699 のまま。
+// 期間は3日間。終了時刻を過ぎたら、¥899の群だった人も含めて全員 ¥699 に戻る。
+// 途中で止めるときは環境変数 FULL_ACCESS_PRICE_TEST_899=off（全員 ¥699 に戻る）。
+export const FULL_ACCESS_PRICE_TEST_899_VERSION =
+  "ja_full_access_price_test_899_v1_20261126" as const;
+export const FULL_ACCESS_PRICE_TEST_899_START_AT =
+  "2026-11-26T12:00:00+09:00" as const;
+export const FULL_ACCESS_PRICE_TEST_899_END_AT =
+  "2026-11-29T12:00:00+09:00" as const;
+export const FULL_ACCESS_TEST_899_LIST_PRICE_JPY = 1699;
+export const FULL_ACCESS_TEST_899_PRICE_JPY = 899;
 export const PREMIUM_BUNDLE_LIST_PRICE_JPY = 1980;
 export const PREMIUM_BUNDLE_PRICE_JPY = 1299;
 // 旧完全版からのアップグレード価格。新規完全版の価格テストとは独立させる。
