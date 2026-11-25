@@ -17,6 +17,7 @@ import {
   shiftNumbersMonth,
   sumDailyRows,
   todayInJst,
+  type NumbersAdAccountsDaily,
   type NumbersDailyAmounts,
   type NumbersDailyPayload,
   type NumbersDailyRow,
@@ -438,6 +439,11 @@ export function NumbersDaily() {
               filling={filling}
               failed={failed}
               todayLoaded={todayPayload !== null}
+            />
+            <AdAccountsTable
+              data={data.ad_accounts ?? null}
+              days={data.days.map((entry) => entry.day)}
+              today={data.today}
             />
           </>
         )}
@@ -1002,6 +1008,14 @@ function DailyChart({
 const quiet = (value: number | null | undefined) =>
   value === 0 ? "text-[var(--nb-faint)]" : "";
 
+// 枠や見出しの地色は使わず、行の下の細い線だけで区切る。左右の端はページの余白にそろえる。
+const TABLE_CELL =
+  "whitespace-nowrap border-b border-[var(--nb-border)] px-3 py-[11px] text-right tabular-nums last:pr-0";
+const TABLE_FIRST =
+  "sticky left-0 whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-bg)] py-[11px] pl-0 pr-3 text-left font-medium tabular-nums group-hover:bg-[var(--nb-surface-2)]";
+const TABLE_HEAD =
+  "whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-bg)] px-3 py-2.5 text-[13px] font-medium text-[var(--nb-text-3)] last:pr-0";
+
 function DailyTable({
   rows,
   today,
@@ -1029,11 +1043,8 @@ function DailyTable({
     "友達診断率",
     "シェア率",
   ];
-  // 枠や見出しの地色は使わず、行の下の細い線だけで区切る。左右の端はページの余白にそろえる。
-  const cell =
-    "whitespace-nowrap border-b border-[var(--nb-border)] px-3 py-[11px] text-right tabular-nums last:pr-0";
-  const first =
-    "sticky left-0 whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-bg)] py-[11px] pl-0 pr-3 text-left font-medium tabular-nums group-hover:bg-[var(--nb-surface-2)]";
+  const cell = TABLE_CELL;
+  const first = TABLE_FIRST;
   // 新しい日を上に。
   const ordered = [...rows].reverse();
   return (
@@ -1050,7 +1061,7 @@ function DailyTable({
                 <th
                   key={label}
                   scope="col"
-                  className={`whitespace-nowrap border-b border-[var(--nb-border)] bg-[var(--nb-bg)] px-3 py-2.5 text-[13px] font-medium text-[var(--nb-text-3)] last:pr-0 ${
+                  className={`${TABLE_HEAD} ${
                     index === 0
                       ? "sticky left-0 z-[1] pl-0 text-left"
                       : "text-right"
@@ -1184,6 +1195,118 @@ function DailyTable({
           </p>
         )}
       </div>
+    </Section>
+  );
+}
+
+/* ------------------------------------------------- アカウント別の広告費 */
+
+/** X の広告費の実績を、日付 × アカウントで並べる。実績が無いところは「–」。 */
+function AdAccountsTable({
+  data,
+  days,
+  today,
+}: {
+  /** null は、読めなかった。 */
+  data: NumbersAdAccountsDaily | null;
+  /** 表に出す日 (上の日別実績と同じ)。 */
+  days: string[];
+  today: string;
+}) {
+  const none = <span className="text-[var(--nb-faint)]">–</span>;
+  const byDay = new Map((data?.days ?? []).map((entry) => [entry.day, entry]));
+  const monthTotal = (data?.accounts ?? []).reduce(
+    (sum, account) => sum + account.total,
+    0,
+  );
+  // 新しい日を上に。
+  const ordered = [...days].sort().reverse();
+  const total = `${TABLE_CELL} font-semibold`;
+  return (
+    <Section
+      title="X広告費（アカウント別）"
+      plain
+      hint="Xの時間別の実績を、アカウントごとに1日分ずつ足した金額です。配信計画で補った推定、X以外の媒体、クーポンは入りません"
+    >
+      {!data ? (
+        <p role="alert" className="py-8 text-base text-[var(--nb-text-2)]">
+          アカウント別の広告費を取得できませんでした。
+        </p>
+      ) : data.accounts.length === 0 ? (
+        <p className="py-12 text-center text-base text-[var(--nb-text-2)]">
+          この月のXの実績は、まだありません
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-max border-separate border-spacing-0 text-base">
+            <thead>
+              <tr>
+                <th
+                  scope="col"
+                  className={`${TABLE_HEAD} sticky left-0 z-[1] pl-0 text-left`}
+                >
+                  日付
+                </th>
+                <th scope="col" className={`${TABLE_HEAD} text-right`}>
+                  合計
+                </th>
+                {data.accounts.map((account) => (
+                  <th
+                    key={account.code}
+                    scope="col"
+                    title={`${account.name}（${account.code}）`}
+                    className={`${TABLE_HEAD} text-right`}
+                  >
+                    {account.name}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="group">
+                <th scope="row" className={`${TABLE_FIRST} font-semibold`}>
+                  月の合計
+                </th>
+                <td className={total}>{signedYen(monthTotal)}</td>
+                {data.accounts.map((account) => (
+                  <td key={account.code} className={total}>
+                    {signedYen(account.total)}
+                  </td>
+                ))}
+              </tr>
+              {ordered.map((day) => {
+                const entry = byDay.get(day);
+                return (
+                  <tr key={day} className="group hover:bg-[var(--nb-surface-2)]">
+                    <th scope="row" className={TABLE_FIRST}>
+                      {formatNumbersDay(day)}
+                      {day === today && (
+                        <span className="ml-2 rounded-[5px] bg-[var(--nb-surface-2)] px-1.5 py-0.5 text-[13px] font-normal leading-none text-[var(--nb-text-2)]">
+                          途中
+                        </span>
+                      )}
+                    </th>
+                    <td className={`${total} ${quiet(entry?.total)}`}>
+                      {entry ? signedYen(entry.total) : none}
+                    </td>
+                    {data.accounts.map((account) => {
+                      const spend = entry?.spend[account.code];
+                      return (
+                        <td
+                          key={account.code}
+                          className={`${TABLE_CELL} ${quiet(spend)}`}
+                        >
+                          {spend === undefined ? none : signedYen(spend)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </Section>
   );
 }
