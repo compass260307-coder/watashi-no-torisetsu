@@ -5,8 +5,25 @@ import {
 } from "@/lib/question-sets";
 const JA_COPY: DiagnosisCopy = {
   heroTitle: "無料性格診断テスト",
-  heroSubtitle: "ビッグファイブ理論で分かる32タイプ",
+  heroSubtitle: "Big Five 性格特性モデル準拠",
   heroImageAlt: "ワタシのトリセツのマスコット",
+  heroSteps: [
+    {
+      label: "ステップ1",
+      title: "テストに答える",
+      body: "質問は50問、約5分で終わります。ありのままの自分で答えてください。",
+    },
+    {
+      label: "ステップ2",
+      title: "性格タイプを知る",
+      body: "32タイプの中から診断し、あなたの性格をくわしく解説します。",
+    },
+    {
+      label: "ステップ3",
+      title: "新しい自分に出会おう",
+      body: "友達にも答えてもらえば、自分では気づけない一面が見つかります。",
+    },
+  ],
   nicknameLabel: "ニックネーム",
   nicknameHelper: "結果ページに表示される名前です。",
   genderLabel: "あなたのジェンダー（任意）",

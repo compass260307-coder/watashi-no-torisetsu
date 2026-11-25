@@ -797,6 +797,7 @@ export default function DiagnosisPageContent({
           title={copy.heroTitle}
           subtitle={copy.heroSubtitle}
           imageAlt={copy.heroImageAlt}
+          steps={copy.heroSteps}
         />
       )}
       {/* 最初のページ (page 0) には進捗バーを出さない (ヒーローに集中させる)。 */}
@@ -813,7 +814,12 @@ export default function DiagnosisPageContent({
         />
       )}
 
-      <main className="flex flex-col flex-1 w-full pt-6 pb-4">
+      {/* 手順つきのヒーローを出す最初のページは、1 問目の回答の○を最初の画面に入れるため上の余白を取らない。 */}
+      <main
+        className={`flex flex-col flex-1 w-full pb-4 ${
+          currentPage === 0 && copy.heroSteps ? "pt-0" : "pt-6"
+        }`}
+      >
         {pageQuestions.map((q) => (
           // ref + tabIndex(-1): 回答時に次の未回答質問へ scrollIntoView/focus するための受け皿。
           // 視覚は QuestionCard が担うので wrapper は無装飾 (outline は programmatic focus 用に消す)。
