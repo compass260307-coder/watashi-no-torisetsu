@@ -29,7 +29,10 @@ import { AISHO_RANK_IMAGE_DIMENSIONS } from "@/lib/aisho-rank-image";
 import { UNOPTIMIZED_IN_DEV } from "@/lib/image-delivery";
 import { TakoFriendTabs } from "@/components/result/TakoFriendTabs";
 import { TakoFaq } from "@/components/result/TakoFaq";
-import { TakoDemoBar } from "@/components/result/TakoDemoBar";
+import {
+  TakoDemoBarContent,
+  TakoDemoInvitePopup,
+} from "@/components/result/TakoDemoInvite";
 import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
 import { LockedInviteShare } from "@/components/result/LockedInviteShare";
 import { TakoViewTracker } from "@/components/result/TakoViewTracker";
@@ -523,8 +526,18 @@ export async function TakoResultPage({
 
   const previewMode = Boolean(previewType || previewLocked);
   // &demo=1: 招待カードの「友達から見たあなた」リンクから開く見本表示。
-  // 招待タブ・共有・レポート生成 (見本用のリンクが出てしまう操作) を隠し、戻るバーを出す。
+  // 招待タブ・共有・レポート生成 (見本用のリンクが出てしまう操作) を隠し、上部バーに
+  // 「見本を確認中...」と招待ボタンを出す。
   const demoMode = Boolean(previewType) && sp.demo === "1";
+  // &invite=: 見本へのリンクに付けてある本人の招待コード。あれば、見本の途中と上部バーから
+  // 本人の招待カードを開く (日本語のみ)。無ければ、ボタンは元のページへ戻す。
+  const demoInviteCode =
+    demoMode &&
+    locale === "ja" &&
+    typeof sp.invite === "string" &&
+    /^[A-Za-z0-9_-]{6,64}$/.test(sp.invite)
+      ? sp.invite
+      : null;
 
   // ===== 解放判定 =====
   // 友達診断は hasTakoAccess で判定する。
@@ -662,6 +675,15 @@ export async function TakoResultPage({
               : `${isId ? "/id" : ""}/tako-report/${encodeURIComponent(token)}/pdf${isKo ? "?locale=ko" : isId ? "?locale=id" : ""}`
             : undefined
         }
+        // 見本表示: 下に固定バーを出す代わりに、この上部バーに注意書きと招待ボタンを出す。
+        reportCta={
+          demoMode ? (
+            <TakoDemoBarContent
+              locale={isKo ? "ko" : "ja"}
+              opensInviteCard={demoInviteCode !== null}
+            />
+          ) : undefined
+        }
         locale={locale}
       >
         {isKo ? <KoTopHeader /> : <TopHeader locale={isId ? "id" : "ja"} />}
@@ -708,7 +730,9 @@ export async function TakoResultPage({
                     ? // 本人のタイプで見本を作る (不明なら既定タイプ)。friends=1 = 友達1人分。
                       `${isKo ? "/ko" : ""}/tako/preview?previewType=${encodeURIComponent(
                         data.ownerType32 ?? "idea-monkey__R",
-                      )}&friends=1&fromPreview=1&demo=1`
+                      )}&friends=1&fromPreview=1&demo=1&invite=${encodeURIComponent(
+                        data.inviteCode,
+                      )}`
                     : undefined
                 }
                 locale={locale}
@@ -1348,7 +1372,12 @@ export async function TakoResultPage({
       {data.friends.length === 0 && <TakoFaq locale={locale} />}
       {/* サイト共通フッター (トップ / /me / /types / /about と同じ) */}
       {isKo ? <KoTopFooter /> : <TopFooter locale={isId ? "id" : "ja"} />}
-      {demoMode && <TakoDemoBar locale={isKo ? "ko" : "ja"} />}
+      {demoInviteCode !== null && (
+        <TakoDemoInvitePopup
+          inviteUrl={`${SITE_URL}/friend/${encodeURIComponent(demoInviteCode)}`}
+          inviteCode={demoInviteCode}
+        />
+      )}
     </>
   );
 }

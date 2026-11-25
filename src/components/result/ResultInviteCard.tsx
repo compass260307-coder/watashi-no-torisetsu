@@ -13,13 +13,12 @@
 //   友達診断ページを見たかどうかは、下部ナビの未確認バッジが消えているかで見分ける。
 // - 出さない相手: このカードを2回見た人。購入済み・友達の回答がある人は親が描画しない。
 //   (11/23〜11/24 は半分の人にだけ出す A/B だった。友達診断率が上がったので全員に出す)
-// - 計測: 中身の LockedInviteShare が、既存の tako_invite_ui_shown / friend_invite_clicked を
+// - 計測: 中身 (InviteCardDialog の LockedInviteShare) が、既存の tako_invite_ui_shown / friend_invite_clicked を
 //   surface / source = "me_read_end" (2回目は "me_read_end_again"、友達診断ページを見たあとの
 //   人に出した分は "me_read_end_after_tako") で送る (新しいイベント名は足さない)。
 
 import { useCallback, useEffect, useState } from "react";
-import { LockedInviteShare } from "@/components/result/LockedInviteShare";
-import { TakoEmptyInviteHeader } from "@/components/result/TakoEmptyInviteHeader";
+import { InviteCardDialog } from "@/components/result/InviteCardDialog";
 import {
   RESULT_INVITE_CARD_AFTER_TAKO_SOURCE,
   RESULT_INVITE_CARD_AGAIN_AFTER_MS,
@@ -182,68 +181,20 @@ export function ResultInviteCard({
     };
   }, [anchorId, canShowAfterTako, delayMs, nextRound, notYetVisitedTako, ownerToken, previewMode]);
 
-  // 開いている間は背面をスクロールさせない。Esc で閉じる。
-  useEffect(() => {
-    if (!open) return;
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
-    body.style.overflow = "hidden";
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => {
-      body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  const close = useCallback(() => setOpen(false), []);
 
   if (!open) return null;
 
   // 見た目は友達診断ページの招待カード (TakoFriendTabs の日本語・友達0人) と同じ。
   return (
-    <div
-      className="animate-modal-fade-in fixed inset-0 z-[120] flex items-center justify-center bg-[#2E2E5C]/40 px-3 py-2 backdrop-blur-[2px] md:px-6 md:py-8"
-      onPointerDown={(event) => {
-        if (event.target === event.currentTarget) setOpen(false);
-      }}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={TITLE_ID}
-        // 開いた直後のフォーカスはダイアログ本体へ。閉じるボタンに当てると選択枠が出っぱなしになる。
-        tabIndex={-1}
-        autoFocus
-        className="animate-bubble-pop relative max-h-[calc(100dvh-1rem)] w-full max-w-[640px] overflow-y-auto rounded-[24px] border border-[#DEDFEC] bg-white shadow-[0_24px_70px_rgba(34,34,70,0.28)] outline-none md:max-h-[calc(100dvh-4rem)] md:rounded-[28px]"
-        style={{ transformOrigin: "center" }}
-      >
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          aria-label="招待カードを閉じる"
-          className="absolute right-3 top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-[#F4F4F9] text-[#9A9AB0] outline-none transition hover:bg-[#EBEBF3] hover:text-[#2E2E5C] focus-visible:ring-2 focus-visible:ring-[#5B5BEF]/45 md:right-4 md:top-4"
-        >
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
-            <path d="M6 6l12 12M18 6 6 18" />
-          </svg>
-        </button>
-        <div className="px-5 pb-6 pt-8 md:px-8 md:pb-8 md:pt-9">
-          <TakoEmptyInviteHeader titleId={TITLE_ID} demoHref={demoHref} />
-          <div className="mt-5">
-            <LockedInviteShare
-              inviteUrl={inviteUrl}
-              trackSource={previewMode ? undefined : source}
-              ownerToken={ownerToken}
-              inviteCode={inviteCode}
-              compact
-              deferQr
-              hideQr
-              locale="ja"
-            />
-          </div>
-        </div>
-      </div>
-    </div>
+    <InviteCardDialog
+      titleId={TITLE_ID}
+      onClose={close}
+      inviteUrl={inviteUrl}
+      trackSource={previewMode ? undefined : source}
+      ownerToken={ownerToken}
+      inviteCode={inviteCode}
+      demoHref={demoHref}
+    />
   );
 }
