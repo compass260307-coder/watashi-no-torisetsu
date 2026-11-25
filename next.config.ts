@@ -73,8 +73,10 @@ const nextConfig: NextConfig = {
     return [
       // ブラウザがページ遷移のたびにサイトアイコンを再検証しないよう、長期保存する。
       // favicon / apple-icon は Next.js が更新ごとのクエリ付きURLを HTML に出力する。
-      // /icon.png を差し替える場合は、ファイル名と参照先も同時に更新すること。
-      ...["/favicon.ico", "/apple-icon.png", "/icon.png"].map((source) => ({
+      // /icon-v2.png を差し替える場合は、ファイル名と参照先も同時に更新すること
+      // (2026-11-25 に配色を変えたため /icon.png → /icon-v2.png へ切り替えた。
+      //  旧 /icon.png は決済まわりが参照しているので残している)。
+      ...["/favicon.ico", "/apple-icon.png", "/icon.png", "/icon-v2.png"].map((source) => ({
         source,
         headers: immutableAssetHeaders,
       })),

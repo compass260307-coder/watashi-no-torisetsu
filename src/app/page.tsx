@@ -73,7 +73,7 @@ const jsonLd = {
       brand: { "@id": `${BASE_URL}/#brand` },
       logo: {
         "@type": "ImageObject",
-        url: `${BASE_URL}/icon.png`,
+        url: `${BASE_URL}/icon-v2.png`,
       },
     },
   ],
