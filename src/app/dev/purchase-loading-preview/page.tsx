@@ -12,10 +12,11 @@ import {
 // 完全版の購入直後の準備画面の UI 確認専用ページ。本番デプロイではページ自体を公開しない。
 // 本番と同じ文言・20秒で流れ、終わると最初から流し直す。
 //   ?type=sparkle-dolphin__N のように、2枚目の図に出す本人のタイプを選べる (指定なしは earnest-elephant__N)。
+//   ?reveal=1 を付けると、20秒の準備画面を飛ばして、最後の「解放の発表」だけをくり返し流す。
 export default async function PurchaseLoadingPreviewPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string | string[] }>;
+  searchParams: Promise<{ type?: string | string[]; reveal?: string | string[] }>;
 }) {
   if (process.env.NODE_ENV !== "development") notFound();
 
@@ -33,6 +34,7 @@ export default async function PurchaseLoadingPreviewPage({
       ownerToken="preview"
       waitingForAccess={false}
       preview
+      durationMs={params.reveal === "1" ? 600 : undefined}
       self={{
         face: preferFaceImage(thirtyTwoImagePath(typeId)),
         typeName: thirtyTwoEssence(typeId),

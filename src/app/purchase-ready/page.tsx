@@ -1,23 +1,17 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { PurchaseLoadingScreen } from "@/components/result/PurchaseLoadingScreen";
-import { preferFaceImage } from "@/lib/character-image";
-import { heroColorsForGroup, resultActionColorsForGroup } from "@/lib/hero-colors";
 import {
   isCheckoutSessionId,
   verifyPaidFullAccessCheckoutSession,
 } from "@/lib/paid-checkout-session";
 import { purchaseReadyDestination } from "@/lib/purchase-ready";
 import { supabaseAdmin } from "@/lib/supabase-server";
-import {
-  classifyThirtyTwoType,
-  thirtyTwoEssence,
-  thirtyTwoGroup,
-  thirtyTwoImagePath,
-} from "@/lib/thirty-two-types";
 
-// 完全版 (日本語 Web) を /me 以外のページから買った人に、準備画面を見せてから元のページへ送る中継。
-// 仕組みと戻り先の決め方は src/lib/purchase-ready.ts。
+// 完全版 (日本語 Web) を /me 以外のページから買った人の中継 (2026-11-26 の数時間だけ使った戻り先)。
+// いまは、どのページから買っても Stripe から自己診断結果ページ (/me) に直接戻る (create-full-access-session)。
+// このページは、切り替え前に作られた決済ページから戻ってくる人のために残す:
+//   支払い済みの日本語の完全版と確かめられたら /me へ送り、準備画面と解放の発表を /me で見せる。
+//   確かめられないときは、何も足さずに元の戻り先へ送る。
 export const metadata: Metadata = {
   title: "完全版を準備しています",
   robots: { index: false, follow: false },
@@ -39,34 +33,16 @@ export default async function PurchaseReadyPage({
   const destination = purchaseReadyDestination(sp.next, sessionId);
   if (!destination) redirect("/");
 
-  // 支払い済みの日本語の完全版と確かめられたときだけ準備画面を出す。
-  // 確かめられないときは、何も足さずに元の戻り先へ送る (今までどおりの流れ)。
   const session = await verifyPaidFullAccessCheckoutSession(sessionId);
   if (!session || session.locale !== "ja" || !session.userId) redirect(destination);
 
   const { data: user } = await supabaseAdmin
     .from("users")
-    .select("scores")
+    .select("owner_token")
     .eq("id", session.userId)
     .maybeSingle();
-  if (!user?.scores) redirect(destination);
+  const ownerToken = typeof user?.owner_token === "string" ? user.owner_token.trim() : "";
+  if (!ownerToken) redirect(destination);
 
-  const typeId = classifyThirtyTwoType(user.scores);
-  const group = thirtyTwoGroup(typeId);
-  const action = resultActionColorsForGroup(group);
-
-  return (
-    <PurchaseLoadingScreen
-      ownerToken=""
-      waitingForAccess={false}
-      redirectTo={destination}
-      self={{
-        face: preferFaceImage(thirtyTwoImagePath(typeId)),
-        typeName: thirtyTwoEssence(typeId),
-        heroColor: heroColorsForGroup(group).heroBg,
-        buttonColor: action.accent,
-        buttonShadow: action.shadow,
-      }}
-    />
-  );
+  redirect(`/me/${encodeURIComponent(ownerToken)}?paid=1&session_id=${encodeURIComponent(sessionId)}`);
 }

@@ -4,14 +4,24 @@
 //
 // - 自己診断の解析待ち画面 (DiagnosisAnalyzingLoader) を金色の豪華版 (theme="premium") で使い、
 //   20秒 (1枚5秒) のあいだ、「結果をアップグレードできる」(1枚) とそのやり方 (3枚) を流す。
-// - 権利がもう反映済みでも、20秒は必ず見せる。終わったら ?paid= を外して自己診断結果を出す。
-// - 戻った時点でまだ反映されていない (webhook 待ち) ときは、裏で反映を確かめる。
+// - 権利がもう反映済みでも、20秒は必ず見せる。
+// - 戻った時点でまだ反映されていない (webhook 待ち) ときは、裏で反映を確かめる。反映されたら、準備画面は
+//   出したまま、うしろの結果ページだけを解放後の中身に描き直す (router.refresh。読み込み直さない)。
 //   20秒たっても反映されていなければ、今までの「決済処理中...」(PaidUnlockWatcher) に引き継ぐ。
+// - 20秒が終わったら「解放の発表」(PurchaseUnlockedReveal、6秒ほど) を出し、そのまま、うしろの
+//   自己診断結果ページへ着地する。終わったら ?paid= を外す。
+//   反映がまだのときは出さない (解放されていないのに「解放されたよ」と言わない)。
+// - どのページから買っても、Stripe からはこの結果ページ (/me) に戻る (create-full-access-session)。
 // - スライドはボタンを持たない。紹介だけにして、買ったもの (自己診断結果) を先に見せる。
 
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
+import {
+  PURCHASE_REVEAL_IMAGES,
+  PurchaseUnlockedReveal,
+} from "@/components/result/PurchaseUnlockedReveal";
 import type { AnalyzingSlide } from "@/i18n/diagnosis";
 import { requestFullAccessStatus } from "@/lib/full-access-status-client";
 import { startVisiblePolling } from "@/lib/visible-polling";
@@ -94,9 +104,9 @@ const buildSlides = (self: PurchaseLoadingSelf): AnalyzingSlide[] => [
 ];
 
 const STEPS = [
-  "お支払いを確認",
-  "完全版の特典をひらく",
-  "あなた専用のページを仕上げ",
+  "お支払いを確認中",
+  "7つの特典を準備中",
+  "あなた専用の結果を作成中",
 ];
 
 // 反映待ちの確かめ方は PaidUnlockWatcher と同じ (2秒から ×1.5、上限10秒)。
@@ -111,30 +121,33 @@ export function PurchaseLoadingScreen({
   waitingForAccess,
   durationMs = PURCHASE_LOADING_MS,
   preview = false,
-  redirectTo,
 }: {
   ownerToken: string;
   self: PurchaseLoadingSelf;
-  // 戻った時点で、完全版の権利がまだ反映されていないか。
+  // 完全版の権利がまだ反映されていないか (反映されると、描き直しで false に変わる)。
   waitingForAccess: boolean;
   durationMs?: number;
-  // dev のプレビュー: 反映の確かめも URL の書き換えもせず、時間がたったら最初から流し直す。
+  // dev のプレビュー: 反映の確かめも URL の書き換えもせず、終わったら最初から流し直す。
   preview?: boolean;
-  // /me 以外へ戻る購入の中継ページ (/purchase-ready) 用: 時間がたったらこの戻り先へ送る。
-  // 反映待ちは戻り先のページが扱うので、ここでは確かめない。
-  redirectTo?: string;
 }) {
-  const [phase, setPhase] = useState<"loading" | "waiting" | "done">("loading");
-  const unlockedRef = useRef(!waitingForAccess);
+  const router = useRouter();
+  const [phase, setPhase] = useState<"loading" | "reveal" | "waiting" | "done">("loading");
+  // 解放の発表の夜空が準備画面を覆いきったか (覆ったら準備画面を外し、うしろを結果ページにする)。
+  const [covered, setCovered] = useState(false);
+  // うしろの結果ページが解放後の中身になっているか。時間の進行を巻き戻さないよう、ref で持つ。
+  const waitingRef = useRef(waitingForAccess);
+  useEffect(() => {
+    waitingRef.current = waitingForAccess;
+  }, [waitingForAccess]);
   const { face, typeName, heroColor, buttonColor, buttonShadow } = self;
   const slides = useMemo(
     () => buildSlides({ face, typeName, heroColor, buttonColor, buttonShadow }),
     [face, typeName, heroColor, buttonColor, buttonShadow],
   );
 
-  // 準備画面のあいだは、うしろの結果ページを動かさない。
+  // 準備画面と発表のあいだは、うしろの結果ページを動かさない。
   useEffect(() => {
-    if (phase !== "loading") return;
+    if (phase !== "loading" && phase !== "reveal") return;
     const root = document.documentElement;
     const previous = root.style.overflow;
     root.style.overflow = "hidden";
@@ -143,16 +156,16 @@ export function PurchaseLoadingScreen({
     };
   }, [phase]);
 
-  // まだ反映されていなければ、裏で反映を確かめる。
+  // まだ反映されていなければ、裏で反映を確かめる。反映されたら、うしろの結果ページを描き直す。
   useEffect(() => {
-    if (preview || redirectTo || !waitingForAccess) return;
+    if (preview || !waitingForAccess || phase !== "loading") return;
     let pollDelay = INITIAL_POLL_INTERVAL_MS;
     return startVisiblePolling(async (signal) => {
       try {
         const data = await requestFullAccessStatus(ownerToken, { fresh: true });
         if (signal.aborted) return false;
         if (data && data.astrologer === true && data.unmei === true && data.tarot === true) {
-          unlockedRef.current = true;
+          router.refresh();
           return false;
         }
       } catch {
@@ -163,58 +176,63 @@ export function PurchaseLoadingScreen({
       pollDelay = Math.min(Math.round(pollDelay * POLL_BACKOFF_FACTOR), MAX_POLL_INTERVAL_MS);
       return nextDelay;
     }, FIRST_DELAY_MS);
-  }, [ownerToken, preview, redirectTo, waitingForAccess]);
+  }, [ownerToken, phase, preview, router, waitingForAccess]);
+
+  // 解放の発表で使う絵を、準備画面のあいだに読み込んでおく。
+  useEffect(() => {
+    for (const src of PURCHASE_REVEAL_IMAGES) {
+      const img = new Image();
+      img.src = src;
+    }
+  }, []);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
-      if (preview) {
-        window.location.reload();
-        return;
-      }
-      if (redirectTo) {
-        // 準備画面は出したまま、元の戻り先へ送る (履歴には中継ページを残さない)。
-        window.location.replace(redirectTo);
-        return;
-      }
-      if (!waitingForAccess) {
-        // 権利は反映済みで、うしろには解放後の結果ページが描かれている。
-        // 読み込み直さずに ?paid= と session_id を外し、再読み込みで準備画面が出直さないようにする。
-        const url = new URL(window.location.href);
-        url.searchParams.delete("paid");
-        url.searchParams.delete("session_id");
-        window.history.replaceState(window.history.state, "", url.toString());
-        setPhase("done");
-        return;
-      }
-      if (unlockedRef.current) {
-        // 待っているあいだに反映された。解放後の結果ページを読み込み直す。
-        window.location.replace(`/me/${encodeURIComponent(ownerToken)}`);
-        return;
-      }
-      // まだ反映されていない: 今までの「決済処理中...」に引き継ぐ。
-      setPhase("waiting");
+      // まだ反映されていない: 発表はせず、今までの「決済処理中...」に引き継ぐ。
+      setPhase(!preview && waitingRef.current ? "waiting" : "reveal");
     }, durationMs);
     return () => clearTimeout(timeout);
-  }, [durationMs, ownerToken, preview, redirectTo, waitingForAccess]);
+  }, [durationMs, preview]);
+
+  // 解放の発表が終わった (うしろの結果ページへ着地した)。
+  const finishReveal = () => {
+    if (preview) {
+      window.location.reload();
+      return;
+    }
+    // 読み込み直さずに ?paid= と session_id を外し、再読み込みで準備画面が出直さないようにする。
+    const url = new URL(window.location.href);
+    url.searchParams.delete("paid");
+    url.searchParams.delete("session_id");
+    window.history.replaceState(window.history.state, "", url.toString());
+    setPhase("done");
+  };
 
   if (phase === "done") return null;
   if (phase === "waiting") {
     return <PaidUnlockWatcher ownerToken={ownerToken} locale="ja" product="full_access" />;
   }
   return (
-    <div
-      className="fixed inset-0 z-[60] overflow-y-auto"
-      role="status"
-      aria-live="polite"
-      aria-label="完全版を準備しています"
-    >
-      <DiagnosisAnalyzingLoader
-        theme="premium"
-        steps={STEPS}
-        totalMs={durationMs}
-        slides={slides}
-        slidesLabel="完全版を購入した方へ"
-      />
-    </div>
+    <>
+      {phase === "reveal" && (
+        <PurchaseUnlockedReveal onCovered={() => setCovered(true)} onDone={finishReveal} />
+      )}
+      {covered ? null : (
+        <div
+          className="fixed inset-0 z-[60] overflow-y-auto"
+          role="status"
+          aria-live="polite"
+          aria-label="完全版を準備しています"
+        >
+          <DiagnosisAnalyzingLoader
+            theme="premium"
+            steps={STEPS}
+            totalMs={durationMs}
+            slides={slides}
+            slidesLabel="完全版を購入した方へ"
+          />
+        </div>
+      )}
+    </>
   );
 }

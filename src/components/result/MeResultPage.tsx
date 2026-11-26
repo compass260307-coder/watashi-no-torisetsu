@@ -277,6 +277,15 @@ async function MeResultPageContent({
     sp.previewProduct === "full_access"
       ? "full_access"
       : null;
+  // ローカル専用: 見本の結果ページの上に、完全版の購入直後の準備画面と解放の発表を流す
+  // (結果ページへの着地まで確認するため)。"1" は20秒の準備画面から、"reveal" は発表から。
+  // 例: /me/x?previewType=earnest-elephant__N&previewProduct=full_access&previewPurchaseLoading=reveal
+  const previewPurchaseLoading =
+    process.env.NODE_ENV === "development" &&
+    previewType !== null &&
+    (sp.previewPurchaseLoading === "1" || sp.previewPurchaseLoading === "reveal")
+      ? sp.previewPurchaseLoading
+      : null;
   const previewUpgrade =
     process.env.NODE_ENV === "development" &&
     previewType !== null &&
@@ -1108,10 +1117,12 @@ async function MeResultPageContent({
       {/* 決済直後 (?paid=1) だが webhook 反映がまだで未課金表示のとき、「決済処理中...」を出して
           status をポーリング → full 反映で自動的にロック解除表示へ (払ったのにロック→再購入 を防ぐ)。 */}
       {/* 完全版の準備画面を出すときは、反映待ちも準備画面の中で扱う (20秒後に反映前なら PaidUnlockWatcher へ)。 */}
-      {showPurchaseLoading && (
+      {(showPurchaseLoading || previewPurchaseLoading) && (
         <PurchaseLoadingScreen
           ownerToken={token}
-          waitingForAccess={waitingForPaidAccess}
+          waitingForAccess={previewPurchaseLoading ? false : waitingForPaidAccess}
+          preview={previewPurchaseLoading !== null}
+          durationMs={previewPurchaseLoading === "reveal" ? 600 : undefined}
           self={{
             face: preferFaceImage(v3Image),
             typeName: dispEssence,
