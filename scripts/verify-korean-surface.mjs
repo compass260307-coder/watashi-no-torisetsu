@@ -373,7 +373,7 @@ for (const required of [
   "/ko/articles/torisetsu-tsukurikata",
   "/ko/articles/sixteen-types-vs-ocean",
   "https://www.instagram.com/torisetsu_app",
-  "https://x.com/torisetsu_app",
+  "https://x.com/AliceTypes32",
   "https://www.tiktok.com/@torisetsu_app",
 ]) {
   if (!koreanFooter.includes(required)) {
