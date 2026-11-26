@@ -101,7 +101,6 @@ import { ResultViewTracker } from "@/components/result/ResultViewTracker";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import { PurchaseLoadingScreen } from "@/components/result/PurchaseLoadingScreen";
-import { purchaseLoadingArmForUser } from "@/lib/purchase-loading";
 import { TakoAttentionOnResult } from "@/components/result/TakoAttentionOnResult";
 import { TakoBubbleReplayTrigger } from "@/components/result/TakoBubbleReplayTrigger";
 import { ResultInviteCard } from "@/components/result/ResultInviteCard";
@@ -1075,14 +1074,15 @@ async function MeResultPageContent({
   // /share と公開プレビューは /me の表示コンポーネントを再利用するが、本人結果ではない。
   // result_viewed や本人向けバッジを疑似 token (`share-*`) で発火させない。
   const isOwnedResult = !previewType && !acquisition && !publicPreview;
-  // 完全版の購入直後の準備画面 (A/B、src/lib/purchase-loading.ts)。日本語の本人の full_access 購入だけ。
+  // 完全版の購入直後の準備画面。日本語の本人の full_access 購入なら全員に出す。
+  //   2026-11-26 0:00 JST から半分にだけ出す A/B (群 = sha256(`ja_purchase_loading_v1:${user.id}`) の
+  //   先頭バイトが奇数なら出す) だったが、同日に本人指示で全員に出すことにした。
   const showPurchaseLoading =
     isOwnedResult &&
     locale === "ja" &&
     sp.paid === "1" &&
     paidCheckoutSession?.product === "full_access" &&
-    shouldTrackMetaPurchase &&
-    purchaseLoadingArmForUser(user.id) === "show";
+    shouldTrackMetaPurchase;
 
   return (
     // 背景は全面白。ヒーローのキャラ画像をフルブリード (モバイル全幅 / md 以上は max-w-[640px]
@@ -1107,7 +1107,7 @@ async function MeResultPageContent({
         )}
       {/* 決済直後 (?paid=1) だが webhook 反映がまだで未課金表示のとき、「決済処理中...」を出して
           status をポーリング → full 反映で自動的にロック解除表示へ (払ったのにロック→再購入 を防ぐ)。 */}
-      {/* 完全版の準備画面の群は、反映待ちも準備画面の中で扱う (20秒後に反映前なら PaidUnlockWatcher へ)。 */}
+      {/* 完全版の準備画面を出すときは、反映待ちも準備画面の中で扱う (20秒後に反映前なら PaidUnlockWatcher へ)。 */}
       {showPurchaseLoading && (
         <PurchaseLoadingScreen
           ownerToken={token}
