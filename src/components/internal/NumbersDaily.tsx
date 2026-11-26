@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   NUMBERS_EARLIEST_DAY,
   buildDailyRow,
+  SERVER_COST_USD_JPY,
   costUntil,
   dailyAmounts,
   formatNumbersDay,
@@ -282,6 +283,10 @@ export function NumbersDaily() {
   // 日付の古い順 (グラフ用)。表は新しい順に並べ替えて出す。
   const rows = useMemo<NumbersDailyRow[]>(() => {
     if (!data) return [];
+    // サーバー費の実額 (円)。取り込みが済んだ日だけ入っている。
+    const serverActual = new Map(
+      (data.server_costs?.days ?? []).map((entry) => [entry.day, entry.total]),
+    );
     return data.days.map((entry) => {
       if (entry.day === data.today) {
         if (!todayPayload || todayPayload.meta.day !== entry.day) {
@@ -308,6 +313,7 @@ export function NumbersDaily() {
         entry.cohort ?? counted?.cohort ?? null,
         entry.cost,
         data.settings,
+        serverActual.get(entry.day) ?? null,
       );
     });
   }, [data, todayPayload, filled]);
@@ -1042,6 +1048,7 @@ function DailyTable({
     "課金率",
     "診断あたり",
     "広告費",
+    "サーバー費",
     "利益",
     "CPA",
     "非広告比率",
@@ -1056,7 +1063,7 @@ function DailyTable({
     <Section
       title="日別実績"
       plain
-      hint="日付を押すと、その日の詳しい数字に移ります。広告費の「推定」は、配信計画の金額で補った分を含む日です"
+      hint="日付を押すと、その日の詳しい数字に移ります。広告費の「推定」は、配信計画の金額で補った分を含む日です。サーバー費はVercelの請求額を円に直した実額で、利益から引いています。実額は2日ほど遅れて入るので、それまでは診断1件あたりの単価で出した「概算」です"
     >
       <div className="overflow-x-auto">
         <table className="w-full min-w-max border-separate border-spacing-0 text-base">
@@ -1156,6 +1163,20 @@ function DailyTable({
                           </span>
                         )}
                         {signedYen(row.cost)}
+                      </>
+                    )}
+                  </td>
+                  <td className={cell}>
+                    {row.server === null ? (
+                      <span className="text-[var(--nb-text-3)]">–</span>
+                    ) : (
+                      <>
+                        {row.serverEstimated && (
+                          <span className="mr-2 text-[13px] text-[var(--nb-text-3)]">
+                            概算
+                          </span>
+                        )}
+                        {signedYen(row.server)}
                       </>
                     )}
                   </td>
@@ -1384,10 +1405,7 @@ function AdAccountsTable({
   );
 }
 
-const signedUsd = (value: number) =>
-  `${value < 0 ? "−" : ""}$${Math.abs(value).toFixed(2)}`;
-
-/** サーバー費の実額 (Vercel の請求額、米ドル) を、日付 × プロジェクトで並べる。 */
+/** サーバー費の実額 (Vercel の請求額を円に直したもの) を、日付 × プロジェクトで並べる。 */
 function ServerCostsTable({
   data,
   days,
@@ -1398,8 +1416,8 @@ function ServerCostsTable({
 }) {
   return (
     <BreakdownTable
-      title="サーバー費（Vercelの実額）"
-      hint="Vercelの請求額（ドル）です。毎朝4:50に、終わった日の分までを取り込みます。1日の区切りは日本時間の17時で、表の日付はその日の17時から翌日17時までの分です。Supabaseなど、Vercel以外の費用は入りません。利益の計算には、まだ使っていません"
+      title="サーバー費（プロジェクト別）"
+      hint={`日別実績の「サーバー費」の内訳です。Vercelの請求額（ドル）を、1ドル${data?.usd_jpy ?? SERVER_COST_USD_JPY}円で円に直しています。Vercelの1日は日本時間の17時に始まるので、時間の比で日本時間の1日に分け直しています。毎朝4:50に取り込み、前後の分がそろった日（おおむね2日前まで）だけ出ます。Supabaseなど、Vercel以外の費用は入りません`}
       columns={
         data
           ? data.projects.map((project) => ({
@@ -1415,7 +1433,7 @@ function ServerCostsTable({
         values: entry.cost,
       }))}
       days={days}
-      format={signedUsd}
+      format={signedYen}
       failedText="サーバー費の実額を取得できませんでした。"
       emptyText="この月のサーバー費の実額は、まだ取り込まれていません"
     />
