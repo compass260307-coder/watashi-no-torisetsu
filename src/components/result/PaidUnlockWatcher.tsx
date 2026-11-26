@@ -16,6 +16,7 @@ import type { AppResultLocale } from "@/i18n/result";
 import { requestFullAccessStatus } from "@/lib/full-access-status-client";
 import type { AccessProduct } from "@/lib/access-products";
 import { startVisiblePolling } from "@/lib/visible-polling";
+import { PaidUnlockRecovery } from "./PaidUnlockRecovery";
 
 const NAVY = "#2E2E5C";
 // ポーリングは 2 秒から始めて徐々に間隔を広げる (×1.5、上限 10 秒)。
@@ -63,6 +64,8 @@ export function PaidUnlockWatcher({
   product?: AccessProduct;
 }) {
   const [timedOut, setTimedOut] = useState(false);
+  // 時間切れのあと「もう一度確認する」を押した回数。増えると、反映の確かめを最初からやり直す。
+  const [round, setRound] = useState(0);
 
   useEffect(() => {
     let tries = 0;
@@ -114,7 +117,25 @@ export function PaidUnlockWatcher({
       );
       return nextDelay;
     }, FIRST_DELAY_MS);
-  }, [locale, ownerToken, product, returnTo]);
+  }, [locale, ownerToken, product, returnTo, round]);
+
+  // 日本語は専用の画面。時間切れのあとは、ロック中のページへ戻す前に、この画面のまま確かめ直せる
+  // (戻すと購入ボタンがまた出て、もう一度買ってしまうおそれがあるため)。
+  if (locale === "ja") {
+    return (
+      <PaidUnlockRecovery
+        state={timedOut ? "timedOut" : "waiting"}
+        product={product}
+        onRetry={() => {
+          setTimedOut(false);
+          setRound((value) => value + 1);
+        }}
+        onLater={() =>
+          window.location.replace(unlockedUrl(returnTo, ownerToken, locale))
+        }
+      />
+    );
+  }
 
   return (
     <div
