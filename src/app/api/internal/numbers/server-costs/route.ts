@@ -2,8 +2,15 @@
 //   GET  : 取るだけで保存しない (日ごと・プロジェクトごとの合計と、応答の形を返す)
 //   POST : 取って保存する (1 日 1 回の定期実行と同じ処理を、いま 1 回)
 //   どちらも ?days=N (1〜31、既定 10) か、?from=YYYY-MM-DD&to=YYYY-MM-DD (UTC の日、31 日まで)
+// ?source=ai を付けると、AI費 (利用の記録 × 単価) の取り込みを同じように確かめる
+// (日は日本時間で、終わった日だけ。?days の既定は 3)。
 import { NextResponse, type NextRequest } from "next/server";
 
+import {
+  AI_COST_MAX_DAYS,
+  aiCostBackfillWindow,
+  syncAiCosts,
+} from "@/lib/ai-costs";
 import { isInternalDashboardViewer } from "@/lib/internal-numbers-access";
 import {
   SERVER_COST_MAX_DAYS,
@@ -34,6 +41,31 @@ function rangeParam(
   return serverCostBackfillWindow(from ?? "", to ?? from ?? "");
 }
 
+/** ?source=ai のとき: AI費の取り込み。 */
+async function aiCosts(request: NextRequest, dryRun: boolean) {
+  const from = request.nextUrl.searchParams.get("from");
+  const to = request.nextUrl.searchParams.get("to");
+  const range =
+    from === null && to === null
+      ? null
+      : aiCostBackfillWindow(from ?? "", to ?? from ?? "");
+  if (range && "error" in range) return json(range, 400);
+  const days = Number(request.nextUrl.searchParams.get("days") ?? "3");
+  return json(
+    await syncAiCosts({
+      days:
+        Number.isInteger(days) && days >= 1 && days <= AI_COST_MAX_DAYS
+          ? days
+          : 3,
+      dryRun,
+      range: range ?? undefined,
+    }),
+  );
+}
+
+const isAi = (request: NextRequest) =>
+  request.nextUrl.searchParams.get("source") === "ai";
+
 function daysParam(request: NextRequest): number {
   const value = Number(request.nextUrl.searchParams.get("days") ?? "10");
   return Number.isInteger(value) && value >= 1 && value <= SERVER_COST_MAX_DAYS
@@ -45,6 +77,7 @@ export async function GET(request: NextRequest) {
   if (!(await isInternalDashboardViewer(await getSession(request)))) {
     return json({ error: "not_found" }, 404);
   }
+  if (isAi(request)) return aiCosts(request, true);
   const range = rangeParam(request);
   if (range && "error" in range) return json(range, 400);
   return json(
@@ -65,6 +98,7 @@ export async function POST(request: NextRequest) {
   if (!origin || new URL(origin).host !== request.nextUrl.host) {
     return json({ error: "forbidden" }, 403);
   }
+  if (isAi(request)) return aiCosts(request, false);
   const range = rangeParam(request);
   if (range && "error" in range) return json(range, 400);
   return json(

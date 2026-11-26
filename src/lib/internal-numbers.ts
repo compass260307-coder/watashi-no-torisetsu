@@ -456,7 +456,7 @@ export interface NumbersEconomics {
   fee: number;
   server: number;
   ai: number;
-  /** 純売上 − 決済手数料 − サーバー費 (実額、無ければ概算) − AI費の概算 − 広告費。 */
+  /** 純売上 − 決済手数料 − サーバー費 − AI費 (どちらも実額、無ければ概算) − 広告費。 */
   profit: number;
   /** 広告費 ÷ 広告流入の診断数。 */
   cpaAd: number | null;
@@ -464,9 +464,20 @@ export interface NumbersEconomics {
   cpaAll: number | null;
 }
 
+/** AI費の概算 (買い切り・アップグレード 1 件あたりの単価 × 件数)。 */
+function aiCostEstimate(
+  amounts: Pick<NumbersSubtotal, "purchases_full" | "purchases_upgrade">,
+  settings: NumbersSettings,
+): number {
+  return (
+    amounts.purchases_full * settings.ai_cost_per_purchase +
+    amounts.purchases_upgrade * settings.ai_cost_per_upgrade
+  );
+}
+
 /**
- * 利益ダッシュボードの「参考利益」と同じ計算。serverActual (サーバー費の実額、円) を
- * 渡すと、診断 1 件あたりの概算の代わりにそれを引く。
+ * 利益ダッシュボードの「参考利益」と同じ計算。serverActual・aiActual (サーバー費・AI費の
+ * 実額、円) を渡すと、概算の代わりにそれを引く。
  */
 export function economics(
   amounts: Pick<
@@ -480,13 +491,12 @@ export function economics(
   cost: number,
   settings: NumbersSettings,
   serverActual: number | null = null,
+  aiActual: number | null = null,
 ): NumbersEconomics {
   const fee = amounts.net * settings.fee_rate;
   const server =
     serverActual ?? amounts.diagnoses * settings.server_cost_per_diagnosis;
-  const ai =
-    amounts.purchases_full * settings.ai_cost_per_purchase +
-    amounts.purchases_upgrade * settings.ai_cost_per_upgrade;
+  const ai = aiActual ?? aiCostEstimate(amounts, settings);
   return {
     cost,
     fee,
@@ -619,6 +629,18 @@ export interface NumbersServerCostsDaily {
   days: { day: string; total: number; cost: Record<string, number> }[];
 }
 
+/**
+ * AI費を、日本時間の日 × 機能で並べたもの (月の推移)。利用の記録 (トークン数) に Anthropic の
+ * 単価を掛けた金額を、サーバー費と同じ固定の為替で円に直してある。終わった日だけ。
+ */
+export interface NumbersAiCostsDaily {
+  currency: "JPY";
+  usd_jpy: number;
+  /** その月に利用がある機能。月の合計が大きい順。 */
+  features: { key: string; name: string; total: number }[];
+  days: { day: string; total: number; cost: Record<string, number> }[];
+}
+
 export interface NumbersDailyPayload {
   days: NumbersDailyDay[];
   settings: NumbersSettings | null;
@@ -628,6 +650,8 @@ export interface NumbersDailyPayload {
   ad_accounts?: NumbersAdAccountsDaily | null;
   /** サーバー費の実額 (日 × プロジェクト)。null・無しなら、読めなかった。 */
   server_costs?: NumbersServerCostsDaily | null;
+  /** AI費 (日 × 機能)。null・無しなら、読めなかった。 */
+  ai_costs?: NumbersAiCostsDaily | null;
   /**
    * その月に使ったクーポンの額 (手入力)。amount が null なら未入力。
    * coupon 自体が null・無しなら、保存先がまだ無い (入力欄を出さない)。
@@ -655,6 +679,10 @@ export interface NumbersDailyRow {
   server: number | null;
   /** サーバー費が概算か (実額がまだ取り込まれていない日)。 */
   serverEstimated: boolean;
+  /** AI費 (円)。実額があれば実額、無ければ買い切り・アップグレード 1 件あたりの概算。 */
+  ai: number | null;
+  /** AI費が概算か (実額がまだ保存されていない日)。 */
+  aiEstimated: boolean;
   economics: NumbersEconomics | null;
 }
 
@@ -686,6 +714,8 @@ export function buildDailyRow(
   settings: NumbersSettings | null,
   /** サーバー費の実額 (円)。まだ無い日は null。 */
   serverActual: number | null = null,
+  /** AI費の実額 (円)。まだ無い日は null。 */
+  aiActual: number | null = null,
 ): NumbersDailyRow {
   // jsonb の numeric は文字列で届くことがあるので、数に直してから使う。
   const actual = cost ? Number(cost.actual) : 0;
@@ -709,9 +739,13 @@ export function buildDailyRow(
         ? amounts.diagnoses * settings.server_cost_per_diagnosis
         : null),
     serverEstimated: serverActual === null,
+    ai:
+      aiActual ??
+      (amounts && settings ? aiCostEstimate(amounts, settings) : null),
+    aiEstimated: aiActual === null,
     economics:
       amounts && total !== null && settings
-        ? economics(amounts, total, settings, serverActual)
+        ? economics(amounts, total, settings, serverActual, aiActual)
         : null,
   };
 }

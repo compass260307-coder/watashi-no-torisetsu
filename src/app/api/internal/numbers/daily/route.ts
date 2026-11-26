@@ -5,7 +5,10 @@ import { NextResponse, type NextRequest } from "next/server";
 import { NUMBERS_EARLIEST_DAY, todayInJst } from "@/lib/internal-numbers";
 import { isInternalDashboardViewer } from "@/lib/internal-numbers-access";
 import { readAdAccountsDaily } from "@/lib/internal-numbers-ad-accounts";
-import { readServerCostsDaily } from "@/lib/internal-numbers-server-costs";
+import {
+  readAiCostsDaily,
+  readServerCostsDaily,
+} from "@/lib/internal-numbers-server-costs";
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
@@ -50,25 +53,33 @@ export async function GET(request: NextRequest) {
 
   // アカウント別の広告費とサーバー費の実額は、日ごとの数字と同時に読む
   // (読めなくても、ほかの数字は出す)。
-  const [{ data, error }, adAccounts, serverCosts] = await Promise.all([
-    supabaseAdmin.rpc("internal_numbers_daily", {
-      p_from: from,
-      p_to: to,
-      p_locale: "ja",
-    }),
-    readAdAccountsDaily(from, to, "ja").catch((cause: unknown) => {
-      console.error("[internal-numbers] ad accounts failed", {
-        message: cause instanceof Error ? cause.message : String(cause),
-      });
-      return null;
-    }),
-    readServerCostsDaily(from, to).catch((cause: unknown) => {
-      console.error("[internal-numbers] server costs failed", {
-        message: cause instanceof Error ? cause.message : String(cause),
-      });
-      return null;
-    }),
-  ]);
+  const [{ data, error }, adAccounts, serverCosts, aiCosts] = await Promise.all(
+    [
+      supabaseAdmin.rpc("internal_numbers_daily", {
+        p_from: from,
+        p_to: to,
+        p_locale: "ja",
+      }),
+      readAdAccountsDaily(from, to, "ja").catch((cause: unknown) => {
+        console.error("[internal-numbers] ad accounts failed", {
+          message: cause instanceof Error ? cause.message : String(cause),
+        });
+        return null;
+      }),
+      readServerCostsDaily(from, to).catch((cause: unknown) => {
+        console.error("[internal-numbers] server costs failed", {
+          message: cause instanceof Error ? cause.message : String(cause),
+        });
+        return null;
+      }),
+      readAiCostsDaily(from, to).catch((cause: unknown) => {
+        console.error("[internal-numbers] ai costs failed", {
+          message: cause instanceof Error ? cause.message : String(cause),
+        });
+        return null;
+      }),
+    ],
+  );
   if (error) {
     console.error("[internal-numbers] daily failed", {
       code: error.code,
@@ -111,5 +122,6 @@ export async function GET(request: NextRequest) {
     coupon,
     ad_accounts: adAccounts,
     server_costs: serverCosts,
+    ai_costs: aiCosts,
   });
 }

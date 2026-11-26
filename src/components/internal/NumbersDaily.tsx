@@ -24,6 +24,7 @@ import {
   type NumbersDailyRow,
   type NumbersDayBlock,
   type NumbersPayload,
+  type NumbersAiCostsDaily,
   type NumbersServerCostsDaily,
 } from "@/lib/internal-numbers";
 
@@ -287,6 +288,10 @@ export function NumbersDaily() {
     const serverActual = new Map(
       (data.server_costs?.days ?? []).map((entry) => [entry.day, entry.total]),
     );
+    // AI費 (円)。終わった日で、保存が済んだ日だけ入っている。
+    const aiActual = new Map(
+      (data.ai_costs?.days ?? []).map((entry) => [entry.day, entry.total]),
+    );
     return data.days.map((entry) => {
       if (entry.day === data.today) {
         if (!todayPayload || todayPayload.meta.day !== entry.day) {
@@ -314,6 +319,7 @@ export function NumbersDaily() {
         entry.cost,
         data.settings,
         serverActual.get(entry.day) ?? null,
+        aiActual.get(entry.day) ?? null,
       );
     });
   }, [data, todayPayload, filled]);
@@ -454,6 +460,10 @@ export function NumbersDaily() {
             />
             <ServerCostsTable
               data={data.server_costs ?? null}
+              days={data.days.map((entry) => entry.day)}
+            />
+            <AiCostsTable
+              data={data.ai_costs ?? null}
               days={data.days.map((entry) => entry.day)}
             />
           </>
@@ -1049,6 +1059,7 @@ function DailyTable({
     "診断あたり",
     "広告費",
     "サーバー費",
+    "AI費",
     "利益",
     "CPA",
     "非広告比率",
@@ -1063,7 +1074,7 @@ function DailyTable({
     <Section
       title="日別実績"
       plain
-      hint="日付を押すと、その日の詳しい数字に移ります。広告費の「推定」は、配信計画の金額で補った分を含む日です。サーバー費はVercelの請求額を円に直した実額で、利益から引いています。実額は2日ほど遅れて入るので、それまでは診断1件あたりの単価で出した「概算」です"
+      hint="日付を押すと、その日の詳しい数字に移ります。広告費の「推定」は、配信計画の金額で補った分を含む日です。サーバー費はVercelの請求額を円に直した実額で、利益から引いています。実額は2日ほど遅れて入るので、それまでは診断1件あたりの単価で出した「概算」です。AI費は、AIの利用の記録に単価を掛けて円に直した金額で、これも利益から引いています。終わった日の分が翌朝に入り、それまでは購入1件あたりの単価で出した「概算」です"
     >
       <div className="overflow-x-auto">
         <table className="w-full min-w-max border-separate border-spacing-0 text-base">
@@ -1129,7 +1140,10 @@ function DailyTable({
               }
               const profit = row.economics?.profit ?? null;
               return (
-                <tr key={row.day} className="group hover:bg-[var(--nb-surface-2)]">
+                <tr
+                  key={row.day}
+                  className="group hover:bg-[var(--nb-surface-2)]"
+                >
                   {date}
                   <td className={`${cell} font-semibold`}>
                     {numberFormat.format(row.amounts.diagnoses)}
@@ -1177,6 +1191,20 @@ function DailyTable({
                           </span>
                         )}
                         {signedYen(row.server)}
+                      </>
+                    )}
+                  </td>
+                  <td className={cell}>
+                    {row.ai === null ? (
+                      <span className="text-[var(--nb-text-3)]">–</span>
+                    ) : (
+                      <>
+                        {row.aiEstimated && (
+                          <span className="mr-2 text-[13px] text-[var(--nb-text-3)]">
+                            概算
+                          </span>
+                        )}
+                        {signedYen(row.ai)}
                       </>
                     )}
                   </td>
@@ -1436,6 +1464,41 @@ function ServerCostsTable({
       format={signedYen}
       failedText="サーバー費の実額を取得できませんでした。"
       emptyText="この月のサーバー費の実額は、まだ取り込まれていません"
+    />
+  );
+}
+
+/** AI費 (利用の記録 × 単価を円に直したもの) を、日付 × 機能で並べる。 */
+function AiCostsTable({
+  data,
+  days,
+}: {
+  /** null は、読めなかった。 */
+  data: NumbersAiCostsDaily | null;
+  days: string[];
+}) {
+  return (
+    <BreakdownTable
+      title="AI費（機能別）"
+      hint={`日別実績の「AI費」の内訳です。AIを1回呼ぶごとに残している利用量（トークン数）に、Anthropicの単価を掛けた金額を、1ドル${data?.usd_jpy ?? SERVER_COST_USD_JPY}円で円に直しています。毎朝4:50に、終わった日の分を保存します。請求書そのものの金額ではありません。専用キャラの絵の生成（Vercel経由）は入りません`}
+      columns={
+        data
+          ? data.features.map((feature) => ({
+              key: feature.key,
+              label: feature.name,
+              total: feature.total,
+            }))
+          : null
+      }
+      rows={(data?.days ?? []).map((entry) => ({
+        day: entry.day,
+        total: entry.total,
+        values: entry.cost,
+      }))}
+      days={days}
+      format={signedYen}
+      failedText="AI費を取得できませんでした。"
+      emptyText="この月のAI費は、まだ保存されていません"
     />
   );
 }
