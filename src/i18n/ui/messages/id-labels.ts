@@ -5,7 +5,8 @@ const labels: Record<string, Record<string, string>> = {
     "Aliceを試す・本格相談を選ぶ": "Aliceを試す・本格相談を選ぶ"
   },
   "top.TopFooter": {
-    "（ロック中）": " (Terkunci)"
+    "（ロック中）": " (Terkunci)",
+    "Aliceを試す・本格相談を選ぶ": "Aliceを試す・本格相談を選ぶ"
   },
   "result.FullAccessPromoCard": {
     "自己診断と友達診断の専用電子書籍": "Ebook khusus untuk hasil kepribadian dan temanmu",

@@ -15,6 +15,7 @@ import type { BigFiveDimension } from "@/lib/types";
 import type { AppResultLocale } from "@/i18n/result";
 import { EN_RESULT_AXES } from "@/i18n/en/result";
 import { ID_RESULT_AXES } from "@/i18n/id/result";
+import { selfTraitPercent } from "@/lib/trait-display-percent";
 
 interface AxisMeta {
   dim: BigFiveDimension;
@@ -137,6 +138,12 @@ interface BigFiveDivergingBarsProps {
   footer?: ReactNode;
   className?: string;
   locale?: AppResultLocale;
+  /**
+   * true のとき、scores を自己診断の結果 (users.scores) として、小項目を 55:45 で混ぜた
+   * 表示用の % にする (lib/trait-display-percent)。自己診断の結果ページ専用。
+   * 友達から見たスコアや、自分と友達を比べる表示では false のままにする。
+   */
+  facetWeighted?: boolean;
 }
 
 export function BigFiveDivergingBars({
@@ -152,6 +159,7 @@ export function BigFiveDivergingBars({
   footer,
   className = "",
   locale = "ja",
+  facetWeighted = false,
 }: BigFiveDivergingBarsProps) {
   const hasFriend = !!friendScores;
   const axes = locale === "en" ? EN_RESULT_AXES : locale === "ko" ? KO_AXES : locale === "id" ? ID_RESULT_AXES : AXES;
@@ -220,7 +228,9 @@ export function BigFiveDivergingBars({
           </div>
         )}
         {axes.map((axis) => {
-          const value = toPercent(scores[axis.dim]);
+          const value = facetWeighted
+            ? selfTraitPercent(scores, axis.dim)
+            : toPercent(scores[axis.dim]);
           const lean = leanLabel(value, axis.left, axis.right, locale);
           // 発散フィル: 中央 50% を起点に、傾いた側へ伸ばす。
           const fillLeft = value >= 50 ? 50 : value;

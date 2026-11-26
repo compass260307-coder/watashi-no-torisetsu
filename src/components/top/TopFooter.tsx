@@ -1,14 +1,19 @@
 "use client";
 
 import { withTakoEntry } from "@/lib/tako-entry";
+import { DeferredPaywallOverlay as PaywallOverlay } from "@/components/DeferredOverlays";
 import { TakoLockPopover } from "@/components/TakoLockPopover";
 import { useNavigationCopy, useNavigationText } from "@/i18n/ui/use-navigation-copy";
+import { accessPaywallVersionForLocale } from "@/lib/access-products";
 import type { SiteLocale } from "@/lib/locale-switch";
+import { preloadPaywall } from "@/lib/paywall-loader";
+import { track } from "@/lib/track";
+import { trackingPageFromPathname } from "@/lib/tracking-page";
 import { useAishoNavigationAccess } from "@/lib/use-aisho-navigation-access";
 import { useCourseNavigationAccess } from "@/lib/use-course-navigation-access";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // feat/top-page: トップページのフッター (16Personalities 型のマルチカラム)。
 // 配色は Sora (navy #2E2E5C 見出し / blue #5B5BEF アクセント)、フォントは Noto Sans JP。
@@ -148,6 +153,34 @@ export default function TopFooter({
   // BottomNav と同じリクエストを共有し、購入済みの場合だけ通常リンクへ戻す。
   const resolvedCourseAccess = useCourseNavigationAccess(ownerToken);
 
+  // 鍵付きの Alice・相性診断・タロットは、押すとヘッダーのメニューと同じ課金カードを開く
+  // (未課金の人には宝箱。2026-11-26 指示)。流入元の名前もヘッダー・下部ナビと同じにする。
+  // 西洋占星術は完全版では開かない (プレミアムの商品) ので、従来どおりページへのリンクのまま。
+  const [coursePaywall, setCoursePaywall] = useState<"hoshiyomi" | "tarot" | "aisho" | null>(null);
+  // 毎レンダー新しい関数を渡すと、開いている間もフォーカスが動く (TopHeader と同じ理由)。
+  const closeCoursePaywall = useCallback(() => setCoursePaywall(null), []);
+  const warmPurchase = () => {
+    void preloadPaywall(locale).catch(() => {});
+  };
+  const purchaseIntent = { onPointerEnter: warmPurchase, onFocus: warmPurchase, onTouchStart: warmPurchase };
+  const openCoursePaywall = (target: "hoshiyomi" | "tarot" | "aisho") => {
+    track("paywall_scroll_clicked", {
+      ownerToken,
+      metadata: {
+        source: `nav_locked_${target}`,
+        page: trackingPageFromPathname(pathname),
+        surface: target,
+        destination: target,
+        paywall_version: accessPaywallVersionForLocale(locale),
+      },
+    });
+    setCoursePaywall(target);
+  };
+  // 相性診断は、診断済みなら未課金でも鍵付きで出す (2026-11-26 指示)。
+  // 下部ナビ・ヘッダーと同じく、購入済みと確認できたらリンクにする。
+  const aishoUnlocked =
+    hasAishoNavigationAccess || resolvedCourseAccess?.paid === true;
+
   // 自己診断が終わるまでは、ハンバーガーメニューと同じく友達診断・相性・Alice・運命・タロットを出さない
   // (2026-11-19 指示: 診断前にこれらの機能を見せる必要はない)。
   // 診断済み (owner_token あり) なら従来どおり全項目を出す (未課金のコースは鍵付き)。
@@ -161,7 +194,7 @@ export default function TopFooter({
       )
       .filter(
         (link) =>
-          !link.href.includes("/aisho") || hasAishoNavigationAccess,
+          !link.href.includes("/aisho") || aishoUnlocked || Boolean(ownerToken),
       )
       .map((l) => (l.tako ? { ...l, href: takoUrl } : l)),
   }));
@@ -199,6 +232,14 @@ export default function TopFooter({
                 const courseLocked = Boolean(
                   l.course && !(resolvedCourseAccess?.[l.course] ?? false),
                 );
+                const paywallTarget =
+                  courseLocked && l.course === "astrologer"
+                    ? ("hoshiyomi" as const)
+                    : courseLocked && l.course === "tarot"
+                      ? ("tarot" as const)
+                      : l.href.includes("/aisho") && !aishoUnlocked
+                        ? ("aisho" as const)
+                        : null;
 
                 return l.disabled ? (
                   <span
@@ -218,6 +259,21 @@ export default function TopFooter({
                     onClick={() => setTakoLockOpen(true)}
                     // 南京錠だけが折り返して孤立しないよう常に1行 (はみ出す数pxは
                     // カラム間の gap-x-10 に逃がす。グリッドは overflow を切らない)。
+                    className="flex w-fit items-center gap-1 whitespace-nowrap text-left text-[18px]"
+                    style={{ color: "#9BA3B4" }}
+                  >
+                    {l.label}
+                    <MenuLockIcon />
+                  </button>
+                ) : paywallTarget ? (
+                  <button
+                    key={l.label}
+                    type="button"
+                    aria-label={`${l.label}${
+                      uiText("（ロック中）")
+                    }`}
+                    {...purchaseIntent}
+                    onClick={() => openCoursePaywall(paywallTarget)}
                     className="flex w-fit items-center gap-1 whitespace-nowrap text-left text-[18px]"
                     style={{ color: "#9BA3B4" }}
                   >
@@ -350,6 +406,24 @@ export default function TopFooter({
         onClose={() => setTakoLockOpen(false)}
         locale={locale}
       />
+
+      {coursePaywall ? (
+        <PaywallOverlay
+          ownerToken={ownerToken ?? undefined}
+          locale={locale}
+          returnTo={coursePaywall === "tarot" ? "me" : coursePaywall}
+          ctaSource={`nav_locked_${coursePaywall}`}
+          treasureEntry={resolvedCourseAccess?.paid === false}
+          products={coursePaywall === "hoshiyomi" ? ["full_access", "premium_bundle"] : ["full_access"]}
+          defaultProduct="full_access"
+          heading={
+            isKo || coursePaywall !== "hoshiyomi"
+              ? undefined
+              : uiText("Aliceを試す・本格相談を選ぶ")
+          }
+          onClose={closeCoursePaywall}
+        />
+      ) : null}
     </footer>
   );
 }

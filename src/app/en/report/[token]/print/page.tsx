@@ -26,6 +26,7 @@ import {
 } from "@/lib/thirty-two-types";
 import type { BigFiveDimension } from "@/lib/types";
 import styles from "@/app/report/[token]/print/page.module.css";
+import { selfTraitPercent } from "@/lib/trait-display-percent";
 
 export const dynamic = "force-dynamic";
 
@@ -62,8 +63,7 @@ function ScoreRows({ scores }: { scores: Scores }) {
   return (
     <div className={styles.scoreList}>
       {EN_RESULT_AXES.map((axis) => {
-        const normalized = Math.max(0, Math.min(10, scores[axis.dim] ?? 5));
-        const value = Math.round(normalized * 10);
+        const value = selfTraitPercent(scores, axis.dim);
         return (
           <div className={styles.scoreRow} key={axis.dim}>
             <div className={styles.scoreCopy}>
