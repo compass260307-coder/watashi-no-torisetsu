@@ -180,16 +180,33 @@ function readOwnerToken(): string | null {
 
 const subscribeNothing = () => () => {};
 
+// 結果ページ (/me/...) と友達診断ページ (/tako/...) の URL。該当する結果が無いと、ここへ来る。
+const RESULT_PATH = /^\/(?:me|tako)\/([^/]+)/;
+
 /**
  * 404 (日本語)。行き先は、この端末に診断結果があるかどうかで変える。
  * - ある人: 自分の結果 / 友達診断 (どちらもログイン不要でひらける)
  * - ない人: 診断をはじめる / 診断したことがある人はログイン
  * 「トップに戻る」は上の2つと行き先が重なるので、表の下の小さなリンクにする。
+ *
+ * 結果ページの URL で来た人には、見出しと説明を結果ページ向けに変える。
+ * 開けなかった URL がこの端末の結果そのものなら、「ある人」向けを出すと同じ 404 に戻るので「ない人」向けにする。
  */
-export function NotFoundScreenJa() {
+export function NotFoundScreenJa({ pathname = "" }: { pathname?: string }) {
   // サーバーでは分からないので「ない人」向けを描き、ブラウザで読めたら差し替える。
   const ownerToken = useSyncExternalStore(subscribeNothing, readOwnerToken, () => null);
-  const tokenPath = ownerToken ? encodeURIComponent(ownerToken) : null;
+  const resultMatch = RESULT_PATH.exec(pathname);
+  const isResultPath = resultMatch !== null;
+  let failedToken: string | null = null;
+  if (resultMatch) {
+    try {
+      failedToken = decodeURIComponent(resultMatch[1]);
+    } catch {
+      failedToken = resultMatch[1];
+    }
+  }
+  const tokenPath =
+    ownerToken && ownerToken !== failedToken ? encodeURIComponent(ownerToken) : null;
 
   return (
     <Frame
@@ -198,10 +215,18 @@ export function NotFoundScreenJa() {
           <SearchBadge />
         </WindowArt>
       }
-      label="404"
-      title="ページが見つかりませんでした"
-      lead="URLが正しいか、もう一度ご確認ください"
-      sub="ページが移動したか、なくなった可能性があります"
+      label={isResultPath ? "診断結果" : "404"}
+      title={isResultPath ? "結果ページを開けませんでした" : "ページが見つかりませんでした"}
+      lead={
+        isResultPath
+          ? "URLが途中で切れていないか、ご確認ください"
+          : "URLが正しいか、もう一度ご確認ください"
+      }
+      sub={
+        isResultPath
+          ? "URLが違うか、この結果がなくなった可能性があります"
+          : "ページが移動したか、なくなった可能性があります"
+      }
       card={
         tokenPath ? (
           <ul>

@@ -30,8 +30,8 @@ const LOGIN_COPY = {
     emailLabel: "メールアドレス",
     submitting: "送信中...",
     submit: "リンクを送る",
-    sendError: "送信に失敗しました",
-    networkError: "通信エラー",
+    sendError: "送信できませんでした。少し待ってから、もう一度お試しください。",
+    networkError: "通信できませんでした。電波のいい場所で、もう一度お試しください。",
     sentHeading: "メールをご確認ください",
     sentBody: "宛にログインリンクをお送りしました。",
     sentHelp:
@@ -145,19 +145,24 @@ export function LoginCard({
         setPhase("error");
         setErrorMessage(
           res.status === 429
-            ? ({ ja: "新しいコードは60秒後にリクエストできます。", en: "Please wait 60 seconds before requesting another code.", ko: "60초 후 새 코드를 요청해 주세요.", id: "Tunggu 60 detik sebelum meminta kode baru." }[locale])
+            ? ({ ja: "続けては送れません。60秒待ってから、もう一度お試しください。", en: "Please wait 60 seconds before requesting another code.", ko: "60초 후 새 코드를 요청해 주세요.", id: "Tunggu 60 detik sebelum meminta kode baru." }[locale])
             : copy.sendError,
         );
         return;
       }
       const data = await res.json();
-      if (typeof data.challenge !== "string") throw new Error(copy.sendError);
+      if (typeof data.challenge !== "string") {
+        setPhase("error");
+        setErrorMessage(copy.sendError);
+        return;
+      }
       setChallenge(data.challenge);
       setPreview(data.preview === true);
       setPhase("sent");
-    } catch (err) {
+    } catch {
+      // 通信そのものの失敗。ブラウザのエラー文 ("Failed to fetch" など) は英語なので、そのまま出さない。
       setPhase("error");
-      setErrorMessage(err instanceof Error ? err.message : copy.networkError);
+      setErrorMessage(copy.networkError);
     }
   };
 

@@ -49,7 +49,7 @@ export function LocalizedNotFound() {
   }, [locale]);
 
   // 日本語は専用の画面 (行き先を3つ並べる)。ほかの言語は今までの画面。
-  if (locale === "ja") return <NotFoundScreenJa />;
+  if (locale === "ja") return <NotFoundScreenJa pathname={pathname} />;
 
   return (
     <main

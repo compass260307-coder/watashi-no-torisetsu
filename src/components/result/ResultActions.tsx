@@ -92,7 +92,7 @@ export function ResultActions({
       a.download = `watashi-torisetsu-${shareCode}.png`;
       a.click();
     } catch {
-      setImageNotice("画像の保存に失敗しました");
+      setImageNotice("画像を保存できませんでした。もう一度お試しください。");
       window.setTimeout(() => setImageNotice(null), 2400);
     } finally {
       setSaving(false);
