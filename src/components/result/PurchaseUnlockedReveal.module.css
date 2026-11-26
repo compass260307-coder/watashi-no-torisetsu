@@ -22,22 +22,12 @@
   animation: stage-out 0.56s ease-in both;
   pointer-events: none;
 }
-/* 着地のあいだ: 星空は片づけ、金色の舞台が晴れると、うしろの結果ページが見える。 */
+/* 結果ページへ移るあいだ: 星空は片づけ、金色の舞台が晴れると、うしろの結果ページが見える。 */
 .landing {
   cursor: default;
 }
 .landing .night {
   display: none;
-}
-.landChar,
-.landName {
-  position: absolute;
-  margin: 0;
-  opacity: 0;
-  pointer-events: none;
-}
-.landChar {
-  transform-origin: 50% 50%;
 }
 @keyframes stage-in {
   from { opacity: 0; }

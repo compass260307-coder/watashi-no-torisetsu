@@ -7,18 +7,14 @@
 //      かたかた揺れがだんだん強くなる。「ご購入ありがとう！」
 //   2. ぱっと光って金色の舞台に変わり、宝箱が開く。買った7つの特典 (購入前に宝箱で見せていた絵) が
 //      1つずつ宝箱から飛び出して上に並ぶ。「完全版が解放されたよ！」と紙吹雪、Alice が喜ぶ
-//   3. 少し見せてから、うしろの自己診断結果ページへ着地する (自己診断の発表の終わり方と同じ):
-//      本人のキャラクターが宝箱から飛び出して結果ページの絵の位置へおさまり、名前が出て、金色の舞台が晴れる。
-//      位置は結果ページの実物 (ResultHero の data-result-hero*) を測って合わせるので、入れ替わりの継ぎ目が見えない。
-//      うしろに結果ページがない、動きを減らす設定などで着地できないときは、全体がふわっと消える。
+//   3. 少し見せてから、うしろの自己診断結果ページへ移る: 宝箱・特典・言葉が先に引き、少し遅れて
+//      金色の舞台がゆっくり晴れて、結果ページが見えてくる。結果ページのキャラクターと名前は動かさない
+//      (2026-11-26 本人指示。はじめは宝箱から結果ページの位置へ飛ばしていた)。
+//      動きを減らす設定などのときは、全体がふわっと消える。
 //
-// 画面を押すと先へ進む (じらしの途中なら発表へ、見せている途中なら着地へ)。
+// 画面を押すと先へ進む (じらしの途中なら発表へ、見せている途中なら結果ページへ)。
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import {
-  Confetti,
-  readResultRevealTarget,
-  type ResultRevealTarget,
-} from "@/components/result/ResultRevealStage";
+import { Confetti } from "@/components/result/ResultRevealStage";
 import styles from "./PurchaseUnlockedReveal.module.css";
 
 const CHEST_CLOSED_SRC = "/result-upgrade/treasure-closed.webp";
@@ -46,9 +42,11 @@ export const PURCHASE_REVEAL_IMAGES = [
 
 const TEASE_MS = 2100; // 閉じた宝箱でじらす
 const HOLD_MS = 3800; // 開いてから消え始めるまで
-const LEAVE_MS = 560; // (着地できないとき) ふわっと消える
-const LAND_MS = 1500; // キャラクターが宝箱から結果ページの位置へ着地する
-const LAND_TAIL_MS = 1500; // 着地のあと、残った紙吹雪が落ちきるまで
+const LEAVE_MS = 560; // (動きを減らす設定のとき) ふわっと消える
+const CONTENT_OUT_MS = 800; // 宝箱・特典・言葉が引く
+const BACKDROP_OUT_DELAY_MS = 600; // 金色の舞台が晴れ始めるまで
+const BACKDROP_OUT_MS = 1600; // 金色の舞台が晴れる
+const LAND_TAIL_MS = 2400; // 晴れたあと、残った紙吹雪が落ちきるまで
 const COVER_MS = 420; // 夜空がうしろの画面を覆いきるまで
 const SKIP_GUARD_MS = 700; // 開いた直後の押しまちがいで飛ばさない
 const BENEFIT_FIRST_MS = 260; // 開いてから1つ目の特典が飛び出すまで
@@ -59,7 +57,7 @@ const HEADLINE = "完全版が解放されたよ！";
 // 紙吹雪の色の芯 (準備画面の金)。
 const GOLD_RGB: [number, number, number] = [217, 164, 58];
 
-// leave: ふわっと消える / land: 結果ページへ着地する
+// leave: ふわっと消える / land: 中身が引いてから、金色の舞台が晴れる
 type Phase = "tease" | "open" | "leave" | "land";
 
 function canLand() {
@@ -77,11 +75,7 @@ export function PurchaseUnlockedReveal({
   onDone: () => void;
 }) {
   const [phase, setPhase] = useState<Phase>("tease");
-  // 着地先 (結果ページの実物の名前と絵)。着地を始めるときに測る。
-  const [land, setLand] = useState<(ResultRevealTarget & { nameColor: string }) | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const landCharRef = useRef<HTMLImageElement | null>(null);
-  const landNameRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const chestRef = useRef<HTMLDivElement | null>(null);
   const openedAtRef = useRef(0);
@@ -103,19 +97,10 @@ export function PurchaseUnlockedReveal({
     return () => clearTimeout(t);
   }, []);
 
-  // 見せ終わったら、うしろの結果ページへ着地する。着地できないときは、ふわっと消える。
-  const startLeaving = () => {
-    const target = canLand() ? readResultRevealTarget() : null;
-    const nameEl = document.querySelector<HTMLElement>("[data-result-hero] [data-result-hero-name]");
-    if (!target || !nameEl) {
-      setPhase("leave");
-      return;
-    }
-    setLand({ ...target, nameColor: getComputedStyle(nameEl).color });
-    setPhase("land");
-  };
+  // 見せ終わったら、うしろの結果ページへ移る。
+  const startLeaving = () => setPhase(canLand() ? "land" : "leave");
 
-  // 段階を時間で進める (着地は下の effect が終わりを決める)。
+  // 段階を時間で進める (結果ページへ移るところは下の effect が終わりを決める)。
   useEffect(() => {
     if (phase === "land") return;
     const ms = phase === "tease" ? TEASE_MS : phase === "open" ? HOLD_MS : LEAVE_MS;
@@ -127,78 +112,46 @@ export function PurchaseUnlockedReveal({
     return () => clearTimeout(t);
   }, [phase]);
 
-  // 着地: キャラクターが宝箱から飛び出して結果ページの絵の位置へおさまり、金色の舞台が晴れる。
+  // 結果ページへ: 宝箱・特典・言葉が先に引き、少し遅れて金色の舞台が晴れる。
   useEffect(() => {
-    if (phase !== "land" || !land) return;
-    const root = rootRef.current, char = landCharRef.current, name = landNameRef.current;
-    const chest = chestRef.current?.getBoundingClientRect();
-    if (!root || !char || !name) {
+    if (phase !== "land") return;
+    const root = rootRef.current;
+    if (!root) {
       done();
       return;
     }
-    const html = document.documentElement;
-    // 結果ページ本体の名前と絵は、着地するまで隠しておく (globals.css の data-result-reveal)。
-    html.setAttribute("data-result-reveal", "on");
     const anims: Animation[] = [];
     const play = (el: Element, keyframes: Keyframe[], options: KeyframeAnimationOptions) => {
-      const a = el.animate(keyframes, { fill: "both", ...options });
-      anims.push(a);
-      return a;
+      anims.push(el.animate(keyframes, { fill: "both", ...options }));
     };
-    const timers: ReturnType<typeof setTimeout>[] = [];
-    const im = land.imageBox;
-    // 宝箱の口から出てくるように見せる出発点 (着地先の絵の枠からのずれと縮み)。
-    const dx = chest ? chest.left + chest.width / 2 - (im.left + im.width / 2) : 0;
-    const dy = chest ? chest.top + chest.height * 0.4 - (im.top + im.height / 2) : 0;
-    const k = chest ? Math.max(0.12, (chest.width * 0.5) / im.width) : 0.3;
-    const ease = "cubic-bezier(0.6, 0, 0.2, 1)";
-    const landing = play(
-      char,
-      [
-        { transform: `translate(${dx}px, ${dy}px) scale(${k})`, opacity: 0 },
-        { opacity: 1, offset: 0.18 },
-        { transform: "translate(0px, 0px) scale(1)", opacity: 1 },
-      ],
-      { duration: LAND_MS, easing: ease },
-    );
-    play(name, [{ opacity: 0, transform: "translateY(12px)" }, { opacity: 1, transform: "translateY(0)" }], {
-      duration: 650,
-      delay: LAND_MS - 650,
-      easing: "ease-out",
-    });
-    // 宝箱・特典・言葉は先に引き、金色の舞台は少し遅れて晴れる。
     for (const el of root.querySelectorAll("[data-reveal-content]")) {
-      play(el, [{ opacity: 1 }, { opacity: 0 }], { duration: 520, easing: "ease-in" });
+      play(el, [{ opacity: 1 }, { opacity: 0 }], { duration: CONTENT_OUT_MS, easing: "ease-in" });
     }
     for (const el of root.querySelectorAll("[data-reveal-backdrop]")) {
-      play(el, [{ opacity: 1 }, { opacity: 0 }], { duration: 950, delay: 430, easing: "ease-out" });
+      play(el, [{ opacity: 1 }, { opacity: 0 }], {
+        duration: BACKDROP_OUT_MS,
+        delay: BACKDROP_OUT_DELAY_MS,
+        easing: "ease-out",
+      });
     }
-    let cancelled = false;
-    // 着地の動きが終わりきってから入れ替える (時間だけで待つと、動き出しが遅れた端末で二重に見える)。
-    void Promise.race([
-      landing.finished.then(() => undefined, () => undefined),
-      new Promise<void>((resolve) => timers.push(setTimeout(resolve, LAND_MS + 400))),
-    ]).then(() => {
-      if (cancelled) return;
-      // 着地した。結果ページ本体の名前と絵を出し、上に重なっている演出側を消す。
-      html.removeAttribute("data-result-reveal");
-      root.style.pointerEvents = "none";
-      play(char, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
-      play(name, [{ opacity: 1 }, { opacity: 0 }], { duration: 200 });
-      // 残った紙吹雪は、結果ページの上に落ちきってから消える
-      if (canvasRef.current) {
-        play(canvasRef.current, [{ opacity: 1 }, { opacity: 0 }], { duration: 800, delay: 500, easing: "ease-in" });
-      }
-      timers.push(setTimeout(done, LAND_TAIL_MS));
-    });
+    const cleared = BACKDROP_OUT_DELAY_MS + BACKDROP_OUT_MS;
+    // 残った紙吹雪は、結果ページの上に落ちきってから消える
+    if (canvasRef.current) {
+      play(canvasRef.current, [{ opacity: 1 }, { opacity: 0 }], { duration: 1000, delay: cleared + 1300, easing: "ease-in" });
+    }
+    const timers = [
+      // 晴れたら、結果ページをすぐ触れるようにする。
+      setTimeout(() => {
+        root.style.pointerEvents = "none";
+      }, cleared),
+      setTimeout(done, cleared + LAND_TAIL_MS),
+    ];
     return () => {
-      cancelled = true;
       timers.forEach(clearTimeout);
       for (const a of anims) a.cancel();
-      html.removeAttribute("data-result-reveal");
       root.style.pointerEvents = "";
     };
-  }, [phase, land]);
+  }, [phase]);
 
   // 開いた瞬間の紙吹雪と、特典が並ぶたびのきらめき。
   const opened = phase !== "tease";
@@ -217,15 +170,21 @@ export function PurchaseUnlockedReveal({
     const cx = r ? r.left + r.width / 2 : vw / 2;
     const cy = r ? r.top + r.height / 2 : vh * 0.6;
     const up = -Math.PI / 2;
-    confetti.burst(cx, cy - w * 0.1, 84, up, Math.PI * 1.1, [620, 1400]);
+    confetti.burst(cx, cy - w * 0.1, 120, up, Math.PI * 1.1, [620, 1400]);
     confetti.sparkle(cx, cy, w * 0.62, 12);
     confetti.dust(vw / 2, vh * 0.5, vw * 0.55, vh * 0.5, 10, [30, 90], 2600);
     const timers = [
       setTimeout(() => {
-        confetti.burst(-10, vh * 0.9, 38, up + 0.6, 0.7, [950, 1550]);
-        confetti.burst(vw + 10, vh * 0.9, 38, up - 0.6, 0.7, [950, 1550]);
+        confetti.burst(-10, vh * 0.9, 56, up + 0.6, 0.7, [950, 1550]);
+        confetti.burst(vw + 10, vh * 0.9, 56, up - 0.6, 0.7, [950, 1550]);
       }, 300),
-      setTimeout(() => confetti.rain(44, 2400), 900),
+      // 2回目: 少し間をおいて、左右からもう一度上がる。
+      setTimeout(() => {
+        confetti.burst(-10, vh * 0.9, 34, up + 0.5, 0.8, [900, 1500]);
+        confetti.burst(vw + 10, vh * 0.9, 34, up - 0.5, 0.8, [900, 1500]);
+      }, 1500),
+      // 上からは、結果ページへ移ったあとまで降り続ける。
+      setTimeout(() => confetti.rain(120, 6000), 700),
       // 特典が並んだところに、きらっと光る。
       ...BENEFITS.map((b) =>
         setTimeout(
@@ -327,47 +286,6 @@ export function PurchaseUnlockedReveal({
           </p>
         </div>
       </div>
-
-      {/* 着地: 結果ページの実物と同じ位置・大きさの絵と名前。ここへおさまってから、本体と入れ替わる。 */}
-      {land && (
-        <>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            ref={landCharRef}
-            className={styles.landChar}
-            src={land.imageSrc}
-            alt=""
-            draggable={false}
-            style={{
-              left: land.imageBox.left,
-              top: land.imageBox.top,
-              width: land.imageBox.width,
-              height: land.imageBox.height,
-              objectFit: land.imageFit as CSSProperties["objectFit"],
-            }}
-          />
-          <div
-            ref={landNameRef}
-            className={styles.landName}
-            aria-hidden="true"
-            style={{
-              left: land.nameBox.left,
-              top: land.nameBox.top,
-              width: land.nameBox.width,
-              height: land.nameBox.height,
-              color: land.nameColor,
-              fontSize: land.nameStyle.fontSize,
-              fontWeight: land.nameStyle.fontWeight,
-              fontFamily: land.nameStyle.fontFamily,
-              lineHeight: land.nameStyle.lineHeight,
-              letterSpacing: land.nameStyle.letterSpacing,
-              textAlign: land.nameStyle.textAlign as CSSProperties["textAlign"],
-            }}
-          >
-            {land.name}
-          </div>
-        </>
-      )}
 
       <div className={styles.flash} aria-hidden="true" />
       <canvas ref={canvasRef} className={styles.confetti} aria-hidden="true" />
