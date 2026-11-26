@@ -195,10 +195,17 @@ export async function syncVercelCosts(options: {
   }
 
   if (!dryRun) {
+    // 入れ替えるのは、料金が返ってきた最後の日まで。料金の入口は「期間の中で終わる 1 日分」
+    // だけを返すので、期間の最後の日 (まだ終わっていない、または終わりが期間の外) の行は
+    // 返らないことがある。そこまで消すと、前に保存した分が消えたままになる。
+    const lastDay = cells.reduce(
+      (max, cell) => (cell.day > max ? cell.day : max),
+      window.fromDay,
+    );
     const { data, error } = await supabaseAdmin.rpc("server_cost_replace", {
       p_provider: "vercel",
       p_from: window.fromDay,
-      p_to: window.toDay,
+      p_to: lastDay,
       p_rows: cells.map((cell) => ({
         day: cell.day,
         project: cell.project,

@@ -594,6 +594,18 @@ export interface NumbersAdAccountsDaily {
   days: { day: string; total: number; spend: Record<string, number> }[];
 }
 
+/**
+ * サーバー費の実額 (Vercel の請求額) を、日 × プロジェクトで並べたもの (月の推移の表)。
+ * day は課金期間の開始日で、日本時間の 17 時が区切り。
+ */
+export interface NumbersServerCostsDaily {
+  currency: "USD";
+  /** その月に料金があるプロジェクト。月の合計が大きい順 (小さいものは「そのほか」にまとめる)。 */
+  projects: { key: string; name: string; total: number }[];
+  /** 料金がある日だけ。cost は「プロジェクトの key → その日の金額」。 */
+  days: { day: string; total: number; cost: Record<string, number> }[];
+}
+
 export interface NumbersDailyPayload {
   days: NumbersDailyDay[];
   settings: NumbersSettings | null;
@@ -601,6 +613,8 @@ export interface NumbersDailyPayload {
   today: string;
   /** アカウント別の X の広告費。null・無しなら、読めなかった。 */
   ad_accounts?: NumbersAdAccountsDaily | null;
+  /** サーバー費の実額 (日 × プロジェクト)。null・無しなら、読めなかった。 */
+  server_costs?: NumbersServerCostsDaily | null;
   /**
    * その月に使ったクーポンの額 (手入力)。amount が null なら未入力。
    * coupon 自体が null・無しなら、保存先がまだ無い (入力欄を出さない)。

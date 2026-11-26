@@ -23,6 +23,7 @@ import {
   type NumbersDailyRow,
   type NumbersDayBlock,
   type NumbersPayload,
+  type NumbersServerCostsDaily,
 } from "@/lib/internal-numbers";
 
 import {
@@ -444,6 +445,10 @@ export function NumbersDaily() {
               data={data.ad_accounts ?? null}
               days={data.days.map((entry) => entry.day)}
               today={data.today}
+            />
+            <ServerCostsTable
+              data={data.server_costs ?? null}
+              days={data.days.map((entry) => entry.day)}
             />
           </>
         )}
@@ -1199,42 +1204,68 @@ function DailyTable({
   );
 }
 
-/* ------------------------------------------------- アカウント別の広告費 */
+/* ------------------------------------------- 日付 × 内訳の表 (広告費・サーバー費) */
 
-/** X の広告費の実績を、日付 × アカウントで並べる。実績が無いところは「–」。 */
-function AdAccountsTable({
-  data,
+interface BreakdownColumn {
+  key: string;
+  label: string;
+  /** 見出しに指を置いたときに出す、省略しない名前。 */
+  title?: string;
+  total: number;
+}
+
+interface BreakdownDay {
+  day: string;
+  total: number;
+  values: Record<string, number>;
+}
+
+/**
+ * 日付を縦、内訳 (アカウントやプロジェクト) を横に並べる表。いちばん上に月の合計、
+ * 左に全体の合計を置く。金額が無いところは「–」。
+ */
+function BreakdownTable({
+  title,
+  hint,
+  columns,
+  rows,
   days,
-  today,
+  partialDay,
+  format,
+  failedText,
+  emptyText,
 }: {
+  title: string;
+  hint: string;
   /** null は、読めなかった。 */
-  data: NumbersAdAccountsDaily | null;
+  columns: BreakdownColumn[] | null;
+  rows: BreakdownDay[];
   /** 表に出す日 (上の日別実績と同じ)。 */
   days: string[];
-  today: string;
+  /** 「途中」と添える日 (無ければ添えない)。 */
+  partialDay?: string;
+  format: (value: number) => string;
+  failedText: string;
+  emptyText: string;
 }) {
   const none = <span className="text-[var(--nb-faint)]">–</span>;
-  const byDay = new Map((data?.days ?? []).map((entry) => [entry.day, entry]));
-  const monthTotal = (data?.accounts ?? []).reduce(
-    (sum, account) => sum + account.total,
+  const byDay = new Map(rows.map((entry) => [entry.day, entry]));
+  const monthTotal = (columns ?? []).reduce(
+    (sum, column) => sum + column.total,
     0,
   );
   // 新しい日を上に。
   const ordered = [...days].sort().reverse();
   const total = `${TABLE_CELL} font-semibold`;
   return (
-    <Section
-      title="X広告費（アカウント別）"
-      plain
-      hint="Xの時間別の実績を、アカウントごとに1日分ずつ足した金額です。配信計画で補った推定、X以外の媒体、クーポンは入りません"
-    >
-      {!data ? (
+    <Section title={title} plain hint={hint}>
+      {!columns ? (
         <p role="alert" className="py-8 text-base text-[var(--nb-text-2)]">
-          アカウント別の広告費を取得できませんでした。
+          {failedText}
         </p>
-      ) : data.accounts.length === 0 ? (
+      ) : columns.length === 0 ? (
         <p className="py-12 text-center text-base text-[var(--nb-text-2)]">
-          この月のXの実績は、まだありません
+          {emptyText}
         </p>
       ) : (
         <div className="overflow-x-auto">
@@ -1250,14 +1281,14 @@ function AdAccountsTable({
                 <th scope="col" className={`${TABLE_HEAD} text-right`}>
                   合計
                 </th>
-                {data.accounts.map((account) => (
+                {columns.map((column) => (
                   <th
-                    key={account.code}
+                    key={column.key}
                     scope="col"
-                    title={`${account.name}（${account.code}）`}
+                    title={column.title}
                     className={`${TABLE_HEAD} text-right`}
                   >
-                    {account.name}
+                    {column.label}
                   </th>
                 ))}
               </tr>
@@ -1267,36 +1298,39 @@ function AdAccountsTable({
                 <th scope="row" className={`${TABLE_FIRST} font-semibold`}>
                   月の合計
                 </th>
-                <td className={total}>{signedYen(monthTotal)}</td>
-                {data.accounts.map((account) => (
-                  <td key={account.code} className={total}>
-                    {signedYen(account.total)}
+                <td className={total}>{format(monthTotal)}</td>
+                {columns.map((column) => (
+                  <td key={column.key} className={total}>
+                    {format(column.total)}
                   </td>
                 ))}
               </tr>
               {ordered.map((day) => {
                 const entry = byDay.get(day);
                 return (
-                  <tr key={day} className="group hover:bg-[var(--nb-surface-2)]">
+                  <tr
+                    key={day}
+                    className="group hover:bg-[var(--nb-surface-2)]"
+                  >
                     <th scope="row" className={TABLE_FIRST}>
                       {formatNumbersDay(day)}
-                      {day === today && (
+                      {day === partialDay && (
                         <span className="ml-2 rounded-[5px] bg-[var(--nb-surface-2)] px-1.5 py-0.5 text-[13px] font-normal leading-none text-[var(--nb-text-2)]">
                           途中
                         </span>
                       )}
                     </th>
                     <td className={`${total} ${quiet(entry?.total)}`}>
-                      {entry ? signedYen(entry.total) : none}
+                      {entry ? format(entry.total) : none}
                     </td>
-                    {data.accounts.map((account) => {
-                      const spend = entry?.spend[account.code];
+                    {columns.map((column) => {
+                      const value = entry?.values[column.key];
                       return (
                         <td
-                          key={account.code}
-                          className={`${TABLE_CELL} ${quiet(spend)}`}
+                          key={column.key}
+                          className={`${TABLE_CELL} ${quiet(value)}`}
                         >
-                          {spend === undefined ? none : signedYen(spend)}
+                          {value === undefined ? none : format(value)}
                         </td>
                       );
                     })}
@@ -1308,5 +1342,82 @@ function AdAccountsTable({
         </div>
       )}
     </Section>
+  );
+}
+
+/** X の広告費の実績を、日付 × アカウントで並べる。 */
+function AdAccountsTable({
+  data,
+  days,
+  today,
+}: {
+  /** null は、読めなかった。 */
+  data: NumbersAdAccountsDaily | null;
+  days: string[];
+  today: string;
+}) {
+  return (
+    <BreakdownTable
+      title="X広告費（アカウント別）"
+      hint="Xの時間別の実績を、アカウントごとに1日分ずつ足した金額です。配信計画で補った推定、X以外の媒体、クーポンは入りません"
+      columns={
+        data
+          ? data.accounts.map((account) => ({
+              key: account.code,
+              label: account.name,
+              title: `${account.name}（${account.code}）`,
+              total: account.total,
+            }))
+          : null
+      }
+      rows={(data?.days ?? []).map((entry) => ({
+        day: entry.day,
+        total: entry.total,
+        values: entry.spend,
+      }))}
+      days={days}
+      partialDay={today}
+      format={signedYen}
+      failedText="アカウント別の広告費を取得できませんでした。"
+      emptyText="この月のXの実績は、まだありません"
+    />
+  );
+}
+
+const signedUsd = (value: number) =>
+  `${value < 0 ? "−" : ""}$${Math.abs(value).toFixed(2)}`;
+
+/** サーバー費の実額 (Vercel の請求額、米ドル) を、日付 × プロジェクトで並べる。 */
+function ServerCostsTable({
+  data,
+  days,
+}: {
+  /** null は、読めなかった。 */
+  data: NumbersServerCostsDaily | null;
+  days: string[];
+}) {
+  return (
+    <BreakdownTable
+      title="サーバー費（Vercelの実額）"
+      hint="Vercelの請求額（ドル）です。毎朝4:50に、終わった日の分までを取り込みます。1日の区切りは日本時間の17時で、表の日付はその日の17時から翌日17時までの分です。Supabaseなど、Vercel以外の費用は入りません。利益の計算には、まだ使っていません"
+      columns={
+        data
+          ? data.projects.map((project) => ({
+              key: project.key,
+              label: project.name,
+              total: project.total,
+            }))
+          : null
+      }
+      rows={(data?.days ?? []).map((entry) => ({
+        day: entry.day,
+        total: entry.total,
+        values: entry.cost,
+      }))}
+      days={days}
+      format={signedUsd}
+      failedText="サーバー費の実額を取得できませんでした。"
+      emptyText="この月のサーバー費の実額は、まだ取り込まれていません"
+    />
   );
 }
