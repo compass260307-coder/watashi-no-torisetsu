@@ -552,7 +552,7 @@ export async function TakoResultPage({
   const takoLocked = !takoUnlocked;
 
   // 日本語は、課金の入口を宝箱にする (2026-11-26)。上部バーは「特典を受け取る」になり、
-  // 上部バー・鍵つきの友達タブから宝箱が開く。ページ末尾の課金カードは従来のまま。
+  // 上部バー・鍵つきの友達タブ・ページ末尾のカードから宝箱が開く。ページ末尾のカードは価格を出さない。
   // 背景: 上部バーの「結果をアップグレード」が、課金後の自己診断結果ページの同じ言葉（追加商品）と重なっていた。
   //   鍵つきの友達タブを押した回数のうち購入ボタンまで進むのは 3.9% だった（上部バーは 20%。11/19〜11/26）。
   // 前後比較の基準（11/19〜11/25診断）: 鍵の対象→購入 5.9%、課金表示を開いた人→決済画面 15%。
@@ -612,6 +612,9 @@ export async function TakoResultPage({
             imageAlt={promoAlt}
             group={promoGroup}
             locale={locale}
+            // 日本語は、価格を出さずに宝箱を開くカードにする (2026-11-26)。
+            opensTreasure={takoTreasure}
+            previewMode={previewMode && takoTreasure}
           />
         </div>
         <PaywallModal

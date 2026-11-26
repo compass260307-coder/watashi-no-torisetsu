@@ -275,6 +275,7 @@ export function FullAccessPromoCard({
   /**
    * 日本語・完全版¥499のとき、価格を出さずに「全ての結果をアンロック」で宝箱の演出を開く
    * (ページ内の PaywallModal に treasureEntry を渡しておく)。自己診断結果ページ末尾のカード用。
+   * 友達診断ページ末尾のカードでも使う (PaywallModal には takoTreasure を渡しておく・2026-11-26)。
    */
   opensTreasure?: boolean;
 }) {
@@ -435,15 +436,15 @@ export function FullAccessPromoCard({
   const priceState = useFullAccessQuote(!previewMode && !usesPlanCarousel && product === "full_access", locale, ownerToken);
   const quote = priceState.quote;
   // 宝箱を開くカード: 見積もりが日本円の完全版の額(¥499 / 価格テストの¥699)以外と分かったとき・取得に失敗したときは従来の価格つきカードに戻す。
+  // 見本表示は見積もりを取らないので、友達診断ページの見本だけ、そのまま宝箱を開くカードとして見せる。
   const usesTreasureCta =
     opensTreasure &&
-    !previewMode &&
-    !!ownerToken &&
     locale === "ja" &&
     usesLegacyFullAccessCard &&
     product === "full_access" &&
-    !priceState.failed &&
-    (!quote || jaFullAccessOfferForQuote(quote) !== null);
+    (previewMode
+      ? surface === "tako"
+      : !!ownerToken && !priceState.failed && (!quote || jaFullAccessOfferForQuote(quote) !== null));
   const salePrice = previewMode ? copy.price.sale
     : quote ? formatFullAccessAmount(quote.market, quote.amountMinor)
     : "—";
@@ -772,7 +773,10 @@ export function FullAccessPromoCard({
               {usesTreasureCta ? (
                 <button
                   type="button"
-                  onClick={() => scrollToPaywall(getLastPaywallSource(), anchorId)}
+                  // 友達診断ページでは、このカードから開いたと分かる名前で記録する (従来の購入ボタンと同じ tako_promo_card)。
+                  onClick={() =>
+                    scrollToPaywall(surface === "tako" ? "tako_promo_card" : getLastPaywallSource(), anchorId)
+                  }
                   style={{
                     backgroundColor: actionTone.accent,
                     boxShadow: `0 4px 0 ${actionTone.shadow}`,

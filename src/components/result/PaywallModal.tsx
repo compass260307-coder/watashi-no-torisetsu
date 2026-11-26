@@ -164,8 +164,8 @@ const TREASURE_CTA_SOURCES: ReadonlySet<string> = new Set([
 // 自己診断結果ページ（surface が tako 以外）のときだけ宝箱にする導線。
 const TREASURE_SELF_ONLY_CTA_SOURCES: ReadonlySet<string> = new Set(["sticky_bar"]);
 // 友達診断ページで宝箱にする導線（takoTreasure を指定したページだけ）。
-// ページ末尾の課金カード（tako_promo_card）は従来のまま。
-const TREASURE_TAKO_CTA_SOURCES: ReadonlySet<string> = new Set(["sticky_bar", "friend_list"]);
+// 上部バー・鍵つきの友達タブ・ページ末尾のカード（価格を出さずに宝箱を開くボタン）。
+const TREASURE_TAKO_CTA_SOURCES: ReadonlySet<string> = new Set(["sticky_bar", "friend_list", "tako_promo_card"]);
 // 見積もりが返るまでは暗い背景だけを出し、返らなければ従来のカードにする。
 // 一度決めた表示は、見積もりがあとから届いても切り替えない。
 const TREASURE_QUOTE_WAIT_MS = 2500;
