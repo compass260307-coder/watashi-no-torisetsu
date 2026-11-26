@@ -123,9 +123,13 @@ export function BirthProfileForm({
           // for simplicity, latitude/longitude resolved server-side later
         }),
       });
-      const j = await res.json();
       if (!res.ok) {
-        setError(j?.error ?? "保存に失敗しました");
+        // サーバーが返すエラー文は開発者向けの英語 ("db error" など) なので、そのまま出さない。
+        setError(
+          res.status === 429
+            ? "続けては保存できません。少し待ってから、もう一度お試しください。"
+            : "保存できませんでした。入力内容を確かめて、もう一度お試しください。",
+        );
         setSubmitting(false);
         return;
       }
@@ -138,7 +142,7 @@ export function BirthProfileForm({
       });
       onSaved?.();
     } catch {
-      setError("ネットワークエラー");
+      setError("通信できませんでした。電波のいい場所で、もう一度お試しください。");
     } finally {
       setSubmitting(false);
     }
