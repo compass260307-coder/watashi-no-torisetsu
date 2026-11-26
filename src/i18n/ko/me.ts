@@ -21,6 +21,7 @@ import type {
 import type { SelfSection } from "@/lib/self-result-content";
 import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import type { BigFiveDimension } from "@/lib/types";
+import { selfTraitPercent } from "@/lib/trait-display-percent";
 
 type Scores = Partial<Record<BigFiveDimension, number>>;
 type Direction = "high" | "low";
@@ -152,7 +153,7 @@ function strength(scores: Scores, dimension: BigFiveDimension) {
 }
 
 function percent(scores: Scores, dimension: BigFiveDimension): number {
-  return Math.max(0, Math.min(100, Math.round(value(scores, dimension) * 10)));
+  return selfTraitPercent(scores, dimension);
 }
 
 function strongestDimensions(scores: Scores): BigFiveDimension[] {
