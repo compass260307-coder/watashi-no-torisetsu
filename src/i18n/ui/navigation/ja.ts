@@ -119,15 +119,7 @@ const footer: FooterContent = {
               label: "ビッグファイブとは", href: "/articles/ocean-shindan"
             },
             {
-              label: "他己分析のやり方", href: "/articles/tako-bunseki"
-            },
-            {
-              label: "トリセツの作り方",
-              href: "/articles/torisetsu-tsukurikata",
-            },
-            {
-              label: "16タイプとの違い",
-              href: "/articles/sixteen-types-vs-ocean",
+              label: "外向性とは", href: "/articles/gaikousei"
             },
           ],
         },
