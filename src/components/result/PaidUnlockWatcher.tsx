@@ -15,6 +15,7 @@ import { useEffect, useState } from "react";
 import type { AppResultLocale } from "@/i18n/result";
 import { requestFullAccessStatus } from "@/lib/full-access-status-client";
 import type { AccessProduct } from "@/lib/access-products";
+import { reportErrorScreen } from "@/lib/error-screen-tracking";
 import { startVisiblePolling } from "@/lib/visible-polling";
 import { PaidUnlockRecovery } from "./PaidUnlockRecovery";
 
@@ -107,6 +108,8 @@ export function PaidUnlockWatcher({
       }
       if (signal.aborted) return false;
       if (tries >= MAX_TRIES) {
+        // 時間切れの回数の記録。round は「もう一度確認する」を押した回数 (0 が最初の時間切れ)。
+        reportErrorScreen("paid_unlock_timeout", { return_to: returnTo, product, round });
         setTimedOut(true);
         return false;
       }

@@ -58,6 +58,9 @@ const CLIENT_EVENT_NAMES = new Set([
   "paywall_plan_viewed",
   "paywall_scroll_clicked",
   "purchase_cta_clicked",
+  // エラー画面・404・購入まわりの「うまくいかなかった」画面が出た回数 (2026-11-26)。
+  // Supabase の受け口の許可リストには無いので、track() ではなく trackViaApi() でここへ直接送る。
+  "error_screen_shown",
 ]);
 
 type OptionalIdentifierResult =
