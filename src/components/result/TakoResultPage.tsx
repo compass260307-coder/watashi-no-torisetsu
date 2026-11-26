@@ -36,7 +36,6 @@ import {
 import { REPORT_FRIEND_THRESHOLD } from "@/lib/report-data";
 import { LockedInviteShare } from "@/components/result/LockedInviteShare";
 import { TakoViewTracker } from "@/components/result/TakoViewTracker";
-import { TakoLockedBlock } from "@/components/result/TakoLockedBlock";
 import { JohariWindow } from "@/components/result/JohariWindow";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaywallModal } from "@/components/result/PaywallModal";
@@ -810,41 +809,12 @@ export async function TakoResultPage({
                   // 1人目 (最初に回答した友達) は無料公開 = 価値のデモ。
                   // 2人目以降 (未購入) はシートまるごと非公開で早期 return する
                   // (2026-07-28。キャラ・本文・相性・ジョハリの一切を描画しない)。
-                  // 以降の本文中に残るセクション別ゲート (sheetLocked 参照) は到達時
-                  // つねに false (部分ロック時代の名残。全ロック方針を戻す時のため残置)。
+                  // 以降の本文に残る sheetLocked 参照は、到達時つねに false (部分ロック時代の名残)。
                   const sheetLocked = takoLocked && shIdx > 0;
                   if (sheetLocked) {
-                    return (
-                      <div key={sh.key}>
-                        <section className="mb-14 mt-10">
-                          <h2 className="mb-2 text-center text-[24px] font-black leading-tight text-[#2E2E5C] md:text-[30px]">
-                            {isKo
-                              ? `${koSubject(sh.viewer)} 보는 나는…?`
-                              : isId
-                                ? `Bagaimana ${sh.viewer} melihat Anda?`
-                              : `${sh.viewer}から見たあなたは...？`}
-                          </h2>
-                          <p className="mx-auto mb-8 max-w-[440px] text-center text-[13px] font-bold leading-[1.75] text-[#8A8AA3]">
-                            {isKo
-                              ? `${sh.viewer}의 답변은 이미 도착했어요. 두 번째 친구부터의 분석 결과는 완전판에서 모두 열려요.`
-                              : isId
-                                ? `Jawaban ${sh.viewer} sudah tiba. Hasil dari teman kedua dan seterusnya terbuka dalam Edisi Lengkap.`
-                              : `${sh.viewer}の回答はもう届いています。2人目からの結果シートは、完全版でぜんぶ開きます。`}
-                          </p>
-                          <TakoLockedBlock
-                            source="tako_sheet_lock"
-                            description={
-                              isKo
-                                ? `완전판에서는 ${koSubject(sh.viewer)} 보는 내 캐릭터, 성격 차이, 연애 성향, 궁합까지 분석 결과 전체를 읽을 수 있어요.`
-                                : isId
-                                  ? `Dalam Edisi Lengkap, baca seluruh hasil menurut ${sh.viewer}: karakter Anda, perbedaan kepribadian, kecenderungan cinta, dan kecocokan.`
-                                : `完全版で、${sh.viewer}から見たあなたのキャラ・性格のギャップ・恋愛傾向・相性まで、この結果シートをまるごと読めます。`
-                            }
-                            locale={locale}
-                          />
-                        </section>
-                      </div>
-                    );
+                    // 鍵つきの友達タブは押してもパネルを切り替えず、宝箱 (課金の表示) を開く。
+                    // このパネルは画面に出ないので、中身は描画しない (2026-11-26: 出ていなかった鍵つきシートを削除)。
+                    return <div key={sh.key} />;
                   }
                   return (
                   <div key={sh.key}>
@@ -1188,19 +1158,7 @@ export async function TakoResultPage({
                                     : `ぶっちゃけ、${sh.viewer}に嫌われていない...？`}
                                 </h3>
 
-                                {sheetLocked ? (
-                                  <TakoLockedBlock
-                                    source="tako_kirai_card"
-                                    description={
-                                      isKo
-                                        ? `완전판에서 ${koSubject(sh.viewer)} 느끼는 신호와 관계가 꼬이기 전에 주의할 점을 읽을 수 있어요.`
-                                        : isId
-                                          ? `Dalam Edisi Lengkap, lihat sinyal yang dirasakan ${sh.viewer} dan hal yang perlu diperhatikan sebelum muncul salah paham.`
-                                        : `完全版で、${sh.viewer}が感じている“危険信号”と、こじれる前に気をつけたいポイントが読めます。`
-                                    }
-                                    locale={locale}
-                                  />
-                                ) : (
+                                {(
                                   <>
                                     {/* 安心ブロック (答えてくれた=好意の証拠)。淡ラベンダーカード。 */}
                                     <div className="mb-6 rounded-3xl bg-[#F4F4FE] px-6 py-6">
@@ -1244,19 +1202,7 @@ export async function TakoResultPage({
                                     ? "Petunjuk untuk memperdalam hubungan dan jebakan yang perlu dihindari"
                                   : "関係を深めるヒント・壊すワナ"}
                               </h3>
-                              {sheetLocked ? (
-                                <TakoLockedBlock
-                                  source="tako_kotsu_wana_card"
-                                  description={
-                                    isKo
-                                      ? `완전판에서 ${koWith(sh.viewer)} 더 가까워지는 방법과 피하고 싶은 오해 포인트를 모두 읽을 수 있어요.`
-                                      : isId
-                                        ? `Dalam Edisi Lengkap, lihat cara menjadi lebih dekat dengan ${sh.viewer} dan pola salah paham yang perlu dihindari.`
-                                      : `完全版で、${sh.viewer}ともっと仲良くなるコツと、避けたいすれ違いポイントの両方が読めます。`
-                                  }
-                                  locale={locale}
-                                />
-                              ) : (
+                              {(
                               <div className="flex flex-col gap-8">
                                 <div>
                               <div

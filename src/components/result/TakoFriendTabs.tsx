@@ -136,6 +136,8 @@ export function TakoFriendTabs({
       if (!targetId) return;
       const nextIdx = tabs.findIndex((tab) => tab.perceptionId === targetId);
       if (nextIdx < 0) return;
+      // 鍵つきの友達はパネルを持たない (押すと宝箱が開く)。リンクで指定されても切り替えない。
+      if (tabs[nextIdx]?.locked) return;
       autoRotateRef.current = false;
       setAutoRotate(false);
       setInviteOpen(false);
