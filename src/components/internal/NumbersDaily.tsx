@@ -25,7 +25,6 @@ import {
   type NumbersDayBlock,
   type NumbersPayload,
   type NumbersAiCostsDaily,
-  type NumbersServerCostsDaily,
 } from "@/lib/internal-numbers";
 
 import {
@@ -465,10 +464,6 @@ export function NumbersDaily() {
               data={data.ad_accounts ?? null}
               days={data.days.map((entry) => entry.day)}
               today={data.today}
-            />
-            <ServerCostsTable
-              data={data.server_costs ?? null}
-              days={data.days.map((entry) => entry.day)}
             />
             <AiCostsTable
               data={data.ai_costs ?? null}
@@ -1082,7 +1077,7 @@ function DailyTable({
     <Section
       title="日別実績"
       plain
-      hint="日付を押すと、その日の詳しい数字に移ります。広告費の「推定」は、配信計画の金額で補った分を含む日です。サーバー費はVercelの請求額を円に直した実額で、利益から引いています。実額は2日ほど遅れて入るので、それまでは診断1件あたりの単価で出した「概算」です。AI費も利益から引いています。印が無い日はClaude Consoleの費用を円に直した実額、「計算」はAIの利用の記録に単価を掛けた金額（終わった日の分が翌朝に入ります）、「概算」は購入1件あたりの単価で出した金額です"
+      hint="日付を押すと、その日の詳しい数字に移ります。広告費の「推定」は、配信計画の金額で補った分を含む日です。サーバー費はVercelの請求額を円に直した実額で、利益から引いています。1ドル160円で換算し、Vercelの1日（日本時間17時始まり）を時間の比で日本時間の1日に分け直しています。同じチームのほかのプロジェクトとプランの定額も含み、Supabaseなどは入りません。実額は2日ほど遅れて入るので、それまでは診断1件あたりの単価で出した「概算」です。AI費も利益から引いています。印が無い日はClaude Consoleの費用を円に直した実額、「計算」はAIの利用の記録に単価を掛けた金額（終わった日の分が翌朝に入ります）、「概算」は購入1件あたりの単価で出した金額です"
     >
       <div className="overflow-x-auto">
         <table className="w-full min-w-max border-separate border-spacing-0 text-base">
@@ -1261,7 +1256,7 @@ function DailyTable({
   );
 }
 
-/* ------------------------------------------- 日付 × 内訳の表 (広告費・サーバー費) */
+/* ------------------------------------------- 日付 × 内訳の表 (広告費・AI費) */
 
 interface BreakdownColumn {
   key: string;
@@ -1437,41 +1432,6 @@ function AdAccountsTable({
       format={signedYen}
       failedText="アカウント別の広告費を取得できませんでした。"
       emptyText="この月のXの実績は、まだありません"
-    />
-  );
-}
-
-/** サーバー費の実額 (Vercel の請求額を円に直したもの) を、日付 × プロジェクトで並べる。 */
-function ServerCostsTable({
-  data,
-  days,
-}: {
-  /** null は、読めなかった。 */
-  data: NumbersServerCostsDaily | null;
-  days: string[];
-}) {
-  return (
-    <BreakdownTable
-      title="サーバー費（プロジェクト別）"
-      hint={`日別実績の「サーバー費」の内訳です。Vercelの請求額（ドル）を、1ドル${data?.usd_jpy ?? SERVER_COST_USD_JPY}円で円に直しています。Vercelの1日は日本時間の17時に始まるので、時間の比で日本時間の1日に分け直しています。毎朝4:50に取り込み、前後の分がそろった日（おおむね2日前まで）だけ出ます。Supabaseなど、Vercel以外の費用は入りません`}
-      columns={
-        data
-          ? data.projects.map((project) => ({
-              key: project.key,
-              label: project.name,
-              total: project.total,
-            }))
-          : null
-      }
-      rows={(data?.days ?? []).map((entry) => ({
-        day: entry.day,
-        total: entry.total,
-        values: entry.cost,
-      }))}
-      days={days}
-      format={signedYen}
-      failedText="サーバー費の実額を取得できませんでした。"
-      emptyText="この月のサーバー費の実額は、まだ取り込まれていません"
     />
   );
 }
