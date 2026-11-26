@@ -73,6 +73,7 @@ export function TakoFriendTabs({
   invitePanel,
   unlockCta,
   demoHref,
+  lockedTabAlwaysOpensPaywall = false,
   locale = "ja",
 }: {
   /** 友達タブ (panels と同順)。キャラアイコン + 名前で表示する。 */
@@ -85,6 +86,11 @@ export function TakoFriendTabs({
   unlockCta?: ReactNode;
   /** 友達0人の招待カードで「友達から見たあなた」から開く見本ページ。省略時はリンクにしない。 */
   demoHref?: string;
+  /**
+   * true のとき、鍵つきの友達タブは押すたびに課金の表示 (宝箱) を開く。false は同じタブでは初回だけ。
+   * 日本語の友達診断ページで指定する (2026-11-26 本人指示: 2回目に押しても何も起きないより、毎回入口を出す)。
+   */
+  lockedTabAlwaysOpensPaywall?: boolean;
   locale?: AppResultLocale;
 }) {
   const isKo = locale === "ko";
@@ -186,6 +192,12 @@ export function TakoFriendTabs({
       // トグルし、課金モーダルは同じタブでは初回タップのみ開く (2回目以降は
       // コメントを読む操作にモーダルを被せない。購入導線は下部カード等にある)。
       // source は歴史的に「友達エントリのタップ」を表す friend_list を継続使用。
+      if (lockedTabAlwaysOpensPaywall) {
+        // 毎回開く形: コメントは閉じずに出したままにする (宝箱を閉じたあとに読める)。
+        openMessage(i);
+        scrollToPaywall("friend_list", undefined, { friendName: tabs[i]?.viewer });
+        return;
+      }
       if (msgOpenIdx === i) setMsgOpenIdx(null);
       else openMessage(i);
       if (!paywallShownRef.current.has(i)) {

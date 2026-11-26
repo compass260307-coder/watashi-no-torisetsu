@@ -764,6 +764,7 @@ export async function TakoResultPage({
                   ヒーロー/①理解度/本文/②ギャップ/③恋愛傾向 をその友達のスコアで描画。 */}
               <TakoFriendTabs
                 key="sheets"
+                lockedTabAlwaysOpensPaywall={takoTreasure}
                 tabs={friendSheets.map((sh, i) => ({
                   perceptionId: sh.key,
                   name: sh.tabName,
