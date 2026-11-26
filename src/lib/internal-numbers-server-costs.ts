@@ -46,7 +46,7 @@ export async function readServerCostsDaily(
 ): Promise<NumbersServerCostsDaily | null> {
   const { data, error } = await supabaseAdmin
     .from("server_cost_daily")
-    .select("day, project, billed_usd, updated_at")
+    .select("day, project, billed_usd")
     .eq("provider", "vercel")
     // 月の最初の日には、前の日に始まった課金期間の分も要る。
     .gte("day", shiftDay(from, -1))
@@ -65,15 +65,6 @@ export async function readServerCostsDaily(
   // 課金期間の開始日 → プロジェクト → 円。
   const billed = new Map<string, Map<string, number>>();
   for (const row of data) {
-    // 取り込んだ時点でまだ終わっていなかった課金期間は使わない。料金の入口は進行中の
-    // 期間も途中までの金額で返すので、そのまま使うと少ない金額を実額として出してしまう
-    // (2026-11-26 に本番で確認)。課金期間は翌日の 08:00 UTC に終わる。
-    if (
-      Date.parse(row.updated_at) <
-      Date.parse(`${shiftDay(row.day, 1)}T08:00:00Z`)
-    ) {
-      continue;
-    }
     const projects = billed.get(row.day) ?? new Map<string, number>();
     projects.set(
       row.project,
