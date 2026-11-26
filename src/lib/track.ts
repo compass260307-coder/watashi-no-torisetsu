@@ -203,6 +203,41 @@ function sendToLegacyApi(row: EventRow) {
   }).catch(() => {});
 }
 
+/**
+ * 1件だけ、Vercel の API (/api/event) 経由で記録する。
+ *
+ * ふだんの track() は Supabase の受け口 (ingest_client_events) へまとめて送るが、そちらは
+ * イベント名を DB 側の許可リストで絞っていて、リストに無い名前が1件でも混ざると同じまとまりの
+ * 記録がすべて捨てられる。DB を変えずに新しい名前を足したいとき (件数の少ない記録に限る) に、
+ * ほかの記録と混ぜずにこの経路で送る。名前は /api/event の CLIENT_EVENT_NAMES に足しておく。
+ */
+export function trackViaApi(
+  eventName: string,
+  metadata: Record<string, string | number | boolean | null> = {},
+) {
+  try {
+    if (typeof window === "undefined" || isPreviewMode()) return;
+    const pathname = window.location.pathname;
+    const locale = pathname.startsWith("/ko")
+      ? "ko"
+      : pathname.startsWith("/en")
+        ? "en"
+        : pathname.startsWith("/id")
+          ? "id"
+          : "ja";
+    sendToLegacyApi({
+      event_name: eventName,
+      session_id: getSessionId(),
+      invite_code: null,
+      owner_token: null,
+      locale,
+      metadata: { ...metadata, locale },
+    });
+  } catch {
+    // tracking never blocks UX
+  }
+}
+
 function flush() {
   if (flushTimer) {
     clearTimeout(flushTimer);

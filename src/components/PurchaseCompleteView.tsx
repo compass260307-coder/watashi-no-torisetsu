@@ -6,6 +6,7 @@
 
 import Link from "next/link";
 import { LoginCard } from "@/components/LoginCard";
+import { ErrorScreenBeacon } from "@/components/ErrorScreenBeacon";
 import { PurchaseUnverifiedRecovery } from "@/components/PurchaseUnverifiedRecovery";
 import EnSiteHeader from "@/components/en/EnSiteHeader";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
@@ -39,6 +40,7 @@ export function PurchaseUnverifiedView({
     return (
       <div className="flex min-h-dvh flex-col bg-[#F1F1F7] text-[#2E2E5C]">
         <TopHeader locale={locale} />
+        <ErrorScreenBeacon kind="purchase_unverified" />
         <main className="flex flex-1 flex-col items-center justify-center px-5 py-14 text-center">
           <h1 className="text-[22px] font-black">We could not verify this purchase</h1>
           <p className="mt-3 max-w-[420px] text-[13px] font-bold leading-[1.8] text-[#8A8AA3]">
@@ -62,6 +64,7 @@ export function PurchaseUnverifiedView({
   return (
     <>
       <TopHeader locale={locale} />
+        <ErrorScreenBeacon kind="purchase_unverified" />
       <PurchaseUnverifiedRecovery />
       <TopFooter locale={locale} />
     </>

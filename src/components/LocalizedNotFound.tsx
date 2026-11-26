@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import recoveryImage from "../../public/types/penguin-recovery.webp";
 import { usePathname } from "next/navigation";
 import { NotFoundScreenJa } from "@/components/ErrorScreens";
+import { reportErrorScreen } from "@/lib/error-screen-tracking";
 
 const COPY = {
   ja: {
@@ -47,6 +48,23 @@ export function LocalizedNotFound() {
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
+
+  // 404 が出た回数の記録 (全言語)。結果ページの URL で来た人は別の種類として数える。
+  const reported = useRef(false);
+  useEffect(() => {
+    if (reported.current) return; // 1回の表示で1件だけ
+    reported.current = true;
+    let hasResult = false;
+    try {
+      hasResult = Boolean(localStorage.getItem("torisetsu_owner_token"));
+    } catch {
+      // 保存領域が使えない環境
+    }
+    const isResultPath = /^\/(?:(?:ko|en|id)\/)?(?:me|tako)\/[^/]+/.test(window.location.pathname);
+    reportErrorScreen(isResultPath ? "result_not_found" : "not_found", {
+      has_result: hasResult,
+    });
+  }, []);
 
   // 日本語は専用の画面 (行き先を3つ並べる)。ほかの言語は今までの画面。
   if (locale === "ja") return <NotFoundScreenJa pathname={pathname} />;
