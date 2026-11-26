@@ -551,6 +551,16 @@ export async function TakoResultPage({
   // 2人目以降のシートだけ完全版ゲート (シート別の sheetLocked をパネル内で使う)。
   const takoLocked = !takoUnlocked;
 
+  // 日本語は、課金の入口を宝箱にする (2026-11-26)。上部バーは「特典を受け取る」になり、
+  // 上部バー・鍵つきの友達タブから宝箱が開く。ページ末尾の課金カードは従来のまま。
+  // 背景: 上部バーの「結果をアップグレード」が、課金後の自己診断結果ページの同じ言葉（追加商品）と重なっていた。
+  //   鍵つきの友達タブを押した回数のうち購入ボタンまで進むのは 3.9% だった（上部バーは 20%。11/19〜11/26）。
+  // 前後比較の基準（11/19〜11/25診断）: 鍵の対象→購入 5.9%、課金表示を開いた人→決済画面 15%。
+  const takoTreasure = locale === "ja";
+  // 見本表示だけ: &layout=spill / &layout=stack で、宝箱の特典の見せ方（A/B）を指定できる。
+  const previewTreasureLayout =
+    previewMode && (sp.layout === "spill" || sp.layout === "stack") ? sp.layout : undefined;
+
   // 決済着地の Meta Purchase 計測 (/me と同じ: 支払済み Session の購入者 = 本人のみ)。
   const paidCheckoutSession = await paidCheckoutSessionPromise;
   const paidAccessProduct =
@@ -616,6 +626,10 @@ export async function TakoResultPage({
           imageAlt={promoAlt}
           group={promoGroup}
           locale={locale}
+          takoTreasure={takoTreasure}
+          // 見本表示の宝箱は、見積もり・計測・決済を動かさない。ほかの言語のカードの見本は今までどおり。
+          previewMode={previewMode && takoTreasure}
+          treasurePreviewLayout={previewTreasureLayout}
         />
       </>
     );
@@ -653,7 +667,12 @@ export async function TakoResultPage({
           (1人目無料モデルでは友達1人ならロック対象が無い)。 */}
       <MeStickyHeader
         showUnlockCta={takoLocked && data.friends.length > 1}
-        unlockCtaLabel={isId ? "Tingkatkan hasil" : isKo ? "결과 업그레이드" : "結果をアップグレード"}
+        // 日本語の「結果をアップグレード」は、課金後の自己診断結果ページの同じ言葉（追加商品）と重なるため、
+        // 「特典を受け取る」にして、押すと宝箱が開く (2026-11-26)。
+        unlockCtaLabel={
+          isId ? "Tingkatkan hasil" : isKo ? "결과 업그레이드" : takoTreasure ? "特典を受け取る" : "結果をアップグレード"
+        }
+        unlockCtaIcon={takoTreasure ? "gift" : "upgrade"}
         // 回答0人では固定バーを出さず、本文の招待タブと空状態CTAに集約する。
         // 1人以上では従来どおり「さらに友達に診断してもらう」招待バーを表示する。
         shareUrl={
@@ -748,6 +767,7 @@ export async function TakoResultPage({
                 tabs={friendSheets.map((sh, i) => ({
                   perceptionId: sh.key,
                   name: sh.tabName,
+                  viewer: sh.viewer,
                   // 2人目以降 (未購入) も顔アバター・メッセージ吹き出しは見せて
                   // 「読みたい欲」を起こす。タップで課金モーダルが開く (locked)。
                   // シート本文は panels 側で全ロックのまま (実データは渡らない)。

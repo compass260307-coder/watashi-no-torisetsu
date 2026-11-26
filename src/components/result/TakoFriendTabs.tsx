@@ -40,6 +40,8 @@ export type FriendTab = {
   perceptionId?: string;
   /** 友達の表示名。 */
   name: string;
+  /** 本文での呼び名 (例「ゆかさん」)。鍵つきタブから宝箱を開くとき、先頭の特典の説明に使う。 */
+  viewer?: string;
   /** その友達から見えたキャラの顔画像 (無ければ頭文字にフォールバック)。 */
   imageSrc: string | null;
   /** 友達からのひとことメッセージ (全文)。無ければ空/undefined で吹き出しなし。 */
@@ -188,7 +190,7 @@ export function TakoFriendTabs({
       else openMessage(i);
       if (!paywallShownRef.current.has(i)) {
         paywallShownRef.current.add(i);
-        scrollToPaywall("friend_list");
+        scrollToPaywall("friend_list", undefined, { friendName: tabs[i]?.viewer });
       }
       return;
     }
