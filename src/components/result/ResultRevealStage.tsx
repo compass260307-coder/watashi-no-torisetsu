@@ -280,7 +280,7 @@ function glowSprite(): HTMLCanvasElement {
   return c;
 }
 
-class Confetti {
+export class Confetti {
   private ctx: CanvasRenderingContext2D | null;
   private pieces: Piece[] = [];
   private raf = 0;

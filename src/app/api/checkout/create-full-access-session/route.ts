@@ -86,7 +86,6 @@ import {
 } from "@/lib/paywall-source";
 import { normalizeCheckoutAttemptId } from "@/lib/checkout-measurement";
 import { signCheckoutCancellation } from "@/lib/checkout-cancel-signature";
-import { purchaseReadySuccessPath } from "@/lib/purchase-ready";
 import {
   fullAccessMarketForRequest,
   resolveFullAccessBuyer,
@@ -1037,18 +1036,18 @@ export async function POST(request: NextRequest) {
           : returnTo === "tako"
             ? `${localePrefix}/tako/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`
             : `${localePrefix}/me/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`;
-  // 日本語の完全版を /me 以外のページから買った人にも、購入直後の準備画面を出す (2026-11-26 本人指示)。
-  // いったん /purchase-ready に戻し、準備画面のあとで元の戻り先へ送る (src/lib/purchase-ready.ts)。
-  // /me に戻る購入は、結果ページが準備画面を直接出すので中継しない。
-  const purchaseReadyPath =
+  // 日本語の完全版は、どのページから買っても自己診断結果ページ (/me) に戻す (2026-11-26 本人指示)。
+  // 準備画面 → 解放の発表 → 自己診断結果への着地、をひと続きで見せるため (PurchaseLoadingScreen)。
+  // キャンセルしたときは、今までどおり購入前にいたページへ戻す (下の cancelPath)。
+  const purchaseLandingPath =
     checkoutLocale === "ja" &&
     product === "full_access" &&
     !lineUpgradeCheckout &&
     returnTo !== "me"
-      ? purchaseReadySuccessPath(successPath)
+      ? `/me/${ownerToken}?paid=1&session_id={CHECKOUT_SESSION_ID}`
       : null;
   const successUrl = ownerToken
-    ? `${checkoutBaseUrl}${purchaseReadyPath ?? successPath}`
+    ? `${checkoutBaseUrl}${purchaseLandingPath ?? successPath}`
     : `${checkoutBaseUrl}${localePrefix}/purchase-complete?session_id={CHECKOUT_SESSION_ID}`;
   // キャンセルは購入前にいたページへ戻す。/aisho はゲスト (owner_token なし) でも
   // /aisho に戻す (従来はトップに落ちて迷子になっていた)。
