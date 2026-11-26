@@ -111,6 +111,7 @@ export function PurchaseLoadingScreen({
   waitingForAccess,
   durationMs = PURCHASE_LOADING_MS,
   preview = false,
+  redirectTo,
 }: {
   ownerToken: string;
   self: PurchaseLoadingSelf;
@@ -119,6 +120,9 @@ export function PurchaseLoadingScreen({
   durationMs?: number;
   // dev のプレビュー: 反映の確かめも URL の書き換えもせず、時間がたったら最初から流し直す。
   preview?: boolean;
+  // /me 以外へ戻る購入の中継ページ (/purchase-ready) 用: 時間がたったらこの戻り先へ送る。
+  // 反映待ちは戻り先のページが扱うので、ここでは確かめない。
+  redirectTo?: string;
 }) {
   const [phase, setPhase] = useState<"loading" | "waiting" | "done">("loading");
   const unlockedRef = useRef(!waitingForAccess);
@@ -141,7 +145,7 @@ export function PurchaseLoadingScreen({
 
   // まだ反映されていなければ、裏で反映を確かめる。
   useEffect(() => {
-    if (preview || !waitingForAccess) return;
+    if (preview || redirectTo || !waitingForAccess) return;
     let pollDelay = INITIAL_POLL_INTERVAL_MS;
     return startVisiblePolling(async (signal) => {
       try {
@@ -159,12 +163,17 @@ export function PurchaseLoadingScreen({
       pollDelay = Math.min(Math.round(pollDelay * POLL_BACKOFF_FACTOR), MAX_POLL_INTERVAL_MS);
       return nextDelay;
     }, FIRST_DELAY_MS);
-  }, [ownerToken, preview, waitingForAccess]);
+  }, [ownerToken, preview, redirectTo, waitingForAccess]);
 
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (preview) {
         window.location.reload();
+        return;
+      }
+      if (redirectTo) {
+        // 準備画面は出したまま、元の戻り先へ送る (履歴には中継ページを残さない)。
+        window.location.replace(redirectTo);
         return;
       }
       if (!waitingForAccess) {
@@ -186,7 +195,7 @@ export function PurchaseLoadingScreen({
       setPhase("waiting");
     }, durationMs);
     return () => clearTimeout(timeout);
-  }, [durationMs, ownerToken, preview, waitingForAccess]);
+  }, [durationMs, ownerToken, preview, redirectTo, waitingForAccess]);
 
   if (phase === "done") return null;
   if (phase === "waiting") {
