@@ -6,6 +6,7 @@
 
 import Link from "next/link";
 import { LoginCard } from "@/components/LoginCard";
+import { PurchaseUnverifiedRecovery } from "@/components/PurchaseUnverifiedRecovery";
 import EnSiteHeader from "@/components/en/EnSiteHeader";
 import KoTopHeader from "@/components/ko/top/KoTopHeader";
 import TopFooter from "@/components/top/TopFooter";
@@ -34,36 +35,36 @@ export function PurchaseUnverifiedView({
 }: {
   locale: "ja" | "en";
 }) {
-  const isEnglish = locale === "en";
-  const localePrefix = isEnglish ? "/en" : "";
+  if (locale === "en") {
+    return (
+      <div className="flex min-h-dvh flex-col bg-[#F1F1F7] text-[#2E2E5C]">
+        <TopHeader locale={locale} />
+        <main className="flex flex-1 flex-col items-center justify-center px-5 py-14 text-center">
+          <h1 className="text-[22px] font-black">We could not verify this purchase</h1>
+          <p className="mt-3 max-w-[420px] text-[13px] font-bold leading-[1.8] text-[#8A8AA3]">
+            Open the return link from the Stripe checkout confirmation.
+            <br />
+            If payment completed, also check the email address used at checkout.
+          </p>
+          <Link
+            href="/en"
+            className="mt-6 text-[12px] text-[#2E2E5C]/50 underline underline-offset-2"
+          >
+            Back to home
+          </Link>
+        </main>
+        <TopFooter locale={locale} />
+      </div>
+    );
+  }
 
+  // 日本語は専用の画面 (手順の表 + その場でログイン)。
   return (
-    <div className="flex min-h-dvh flex-col bg-[#F1F1F7] text-[#2E2E5C]">
+    <>
       <TopHeader locale={locale} />
-      <main className="flex flex-1 flex-col items-center justify-center px-5 py-14 text-center">
-        <h1 className="text-[22px] font-black">
-          {isEnglish
-            ? "We could not verify this purchase"
-            : "決済情報を確認できませんでした"}
-        </h1>
-        <p className="mt-3 max-w-[420px] text-[13px] font-bold leading-[1.8] text-[#8A8AA3]">
-          {isEnglish
-            ? "Open the return link from the Stripe checkout confirmation."
-            : "Stripeの決済完了画面から戻ったURLをそのまま開いてください。"}
-          <br />
-          {isEnglish
-            ? "If payment completed, also check the email address used at checkout."
-            : "決済済みの場合は、購入時のメールアドレスもご確認ください。"}
-        </p>
-        <Link
-          href={localePrefix || "/"}
-          className="mt-6 text-[12px] text-[#2E2E5C]/50 underline underline-offset-2"
-        >
-          {isEnglish ? "Back to home" : "トップに戻る"}
-        </Link>
-      </main>
+      <PurchaseUnverifiedRecovery />
       <TopFooter locale={locale} />
-    </div>
+    </>
   );
 }
 
