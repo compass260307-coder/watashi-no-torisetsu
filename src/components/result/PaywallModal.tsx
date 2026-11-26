@@ -24,6 +24,7 @@ import { paywallCardMode, type PaywallCardMode } from "@/lib/feature-flags";
 import { jaFullAccessOfferForQuote, type JaFullAccessPriceArm } from "@/lib/full-access-pricing";
 import { useFullAccessQuote } from "@/lib/use-full-access-quote";
 import { FullAccessTreasure } from "./FullAccessTreasure";
+import { fullAccessTreasureLayoutFor, type FullAccessTreasureLayout } from "@/lib/full-access-treasure-layout";
 import { preloadTreasureScene } from "@/components/result-upgrade/ResultUpgradeTreasure";
 import { PAYWALL_OPEN_EVENT } from "@/lib/scroll-to-paywall";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
@@ -68,6 +69,7 @@ export function PaywallOverlay({
   scrollLocked = false,
   treasureEntry = false,
   treasurePreviewArm,
+  treasurePreviewLayout,
   ...cardProps
 }: PaywallModalProps & {
   onClose: () => void;
@@ -75,9 +77,14 @@ export function PaywallOverlay({
   scrollLocked?: boolean;
   /** ローカルのプレビュー専用: 価格テストのどちらの群の値札を宝箱に出すか。 */
   treasurePreviewArm?: JaFullAccessPriceArm;
+  /** ローカルのプレビュー専用: 宝箱の特典の見せ方を指定する（未指定なら本番と同じく owner_token で決まる）。 */
+  treasurePreviewLayout?: FullAccessTreasureLayout;
 }) {
   const presentation = useFullAccessTreasurePresentation(cardProps, ctaSource, treasureEntry);
-  if (presentation.mode === "pending") {
+  // 宝箱の特典の見せ方（A/B）。owner_token から決まるまでの一瞬は、暗い背景だけを出す。
+  const assignedLayout = useFullAccessTreasureLayout(cardProps.ownerToken);
+  const treasureLayout = treasurePreviewLayout ?? assignedLayout;
+  if (presentation.mode === "pending" || (presentation.mode === "treasure" && treasureLayout === null)) {
     return createPortal(
       <div
         aria-hidden="true"
@@ -97,6 +104,7 @@ export function PaywallOverlay({
         variant={cardProps.variant}
         previewMode={cardProps.previewMode}
         previewArm={treasurePreviewArm}
+        layout={treasureLayout ?? "stack"}
         priceState={presentation.priceState}
         onClose={onClose}
       />
@@ -110,6 +118,21 @@ export function PaywallOverlay({
       onClose={onClose}
     />
   );
+}
+
+/** 宝箱の特典の見せ方（A/B の群）。owner_token から計算し終えるまでは null。 */
+function useFullAccessTreasureLayout(ownerToken: string | undefined): FullAccessTreasureLayout | null {
+  const [layout, setLayout] = useState<FullAccessTreasureLayout | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    void fullAccessTreasureLayoutFor(ownerToken).then((value) => {
+      if (!cancelled) setLayout(value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ownerToken]);
+  return layout;
 }
 
 // 日本語Webの完全版（日本円の見積もり。¥499 / 価格テストの¥699）で、対象の導線から開いたときだけ、課金カードの代わりに宝箱の演出を出す。

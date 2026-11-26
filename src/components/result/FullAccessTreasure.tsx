@@ -11,6 +11,10 @@ import {
   jaFullAccessOfferForQuote,
   type JaFullAccessPriceArm,
 } from "@/lib/full-access-pricing";
+import {
+  FULL_ACCESS_TREASURE_LAYOUT_TEST_VERSION,
+  type FullAccessTreasureLayout,
+} from "@/lib/full-access-treasure-layout";
 import { normalizePaywallSource } from "@/lib/paywall-source";
 import { DIAGNOSIS_COUNT_SNAPSHOT } from "@/lib/proof-stats";
 import { track } from "@/lib/track";
@@ -53,6 +57,8 @@ type FullAccessBenefitKey = "sections" | "book" | "chat" | "fortune" | "aisho" |
 const FULL_ACCESS_BENEFITS: readonly (Omit<TreasureBenefit, "label"> & { key: FullAccessBenefitKey })[] = [
   {
     key: "sections",
+    short: "診断結果\nぜんぶ",
+    shortBody: "ロック中の9セクションを、すべて読めます",
     title: "自己診断結果のすべてを解放",
     body: "恋愛・キャリアの深掘りから、周りから見た印象まで、ロック中の9セクションをすべて読めます",
     // 星の錠前が外れて、見出しつきのページ（恋愛・仕事・人間関係・注意点・もしも）が飛び出す絵。全員に同じ絵を出す。
@@ -60,6 +66,7 @@ const FULL_ACCESS_BENEFITS: readonly (Omit<TreasureBenefit, "label"> & { key: Fu
   },
   {
     key: "book",
+    short: "専用の\n電子書籍",
     title: "16ページ以上の専用電子書籍",
     body: "あなたの性格や特徴を一冊に。保存・印刷して、いつでも読み返せます",
     // 表紙「ワタシのトリセツ」と中の見開き、「16ページ以上」の札。
@@ -67,6 +74,7 @@ const FULL_ACCESS_BENEFITS: readonly (Omit<TreasureBenefit, "label"> & { key: Fu
   },
   {
     key: "chat",
+    short: "Aliceと\nチャット",
     title: "専属占い師Aliceとのチャット",
     body: "あなたの性格や星を理解したAliceが、恋愛・仕事・人間関係の悩みに答えます",
     // Aliceと、相談と返事のやりとりが映ったスマホ。
@@ -74,6 +82,7 @@ const FULL_ACCESS_BENEFITS: readonly (Omit<TreasureBenefit, "label"> & { key: Fu
   },
   {
     key: "fortune",
+    short: "Aliceの\n占い",
     title: "Aliceの占いをすべて解放",
     body: "西洋占星術の「運命の設計図」と、恋愛・仕事・人間関係を占うタロット",
     // 「運命の設計図」の星図と、タロット3枚（恋愛・仕事・友人）。
@@ -81,6 +90,7 @@ const FULL_ACCESS_BENEFITS: readonly (Omit<TreasureBenefit, "label"> & { key: Fu
   },
   {
     key: "aisho",
+    short: "相性診断",
     title: "相性診断をすべて解放",
     body: "恋愛・友情・仕事での相性から、すれ違いやすいポイントまで読み解けます",
     // 2体のキャラクターと「相性 86%」、4場面（恋愛・友情・仕事・すれ違い）の札。
@@ -88,6 +98,7 @@ const FULL_ACCESS_BENEFITS: readonly (Omit<TreasureBenefit, "label"> & { key: Fu
   },
   {
     key: "friends",
+    short: "友達診断の\n結果",
     title: "2人目以降の友達診断結果",
     body: "友達から見たキャラ・性格のギャップ・恋愛傾向まで、友達ごとの結果をすべて読めます",
     // 友達ごとの結果カード3枚（「友達から見たあなた」「理解度 89%」）。
@@ -95,6 +106,7 @@ const FULL_ACCESS_BENEFITS: readonly (Omit<TreasureBenefit, "label"> & { key: Fu
   },
   {
     key: "report",
+    short: "分析\nレポート",
     title: "みんなから見た分析レポート",
     body: "友達の回答をまとめた他己分析PDF。回答が増えるたびに何度でも更新できます",
     // 「みんなから見たあなた」のグラフのページ（自分と友達の比較）。
@@ -140,12 +152,15 @@ function fullAccessBenefits(ctaSource: string | undefined): TreasureBenefit[] {
   return [sectionBody ? { ...hero, body: sectionBody } : hero, ...rest].map((benefit, index) => ({
     label: `特典${BENEFIT_NUMBERS[index]}`,
     title: benefit.title,
+    short: benefit.short,
+    // 押した鍵に合わせた説明があるときは、一覧でもそれを出す。
+    shortBody: sectionBody && index === 0 ? undefined : benefit.shortBody,
     body: benefit.body,
     image: benefit.image,
   }));
 }
 
-function fullAccessOffer(ctaSource: string | undefined): TreasureOffer {
+function fullAccessOffer(ctaSource: string | undefined, layout: FullAccessTreasureLayout): TreasureOffer {
   return {
     dialogLabel: "Aliceからのプレゼント",
     lead: ["診断してくれた", "あなたへのプレゼント"],
@@ -154,7 +169,7 @@ function fullAccessOffer(ctaSource: string | undefined): TreasureOffer {
     offerSummary: (priceJpy, count) =>
       `クーポンを使うと、完全版が ${priceJpy.toLocaleString("ja-JP")}円。次の${count}つがすべて解放されます。`,
     benefits: fullAccessBenefits(ctaSource),
-    benefitStyle: "stack",
+    benefitStyle: layout,
     // 先頭はその人が開けようとしたもの。勝手に次へ回さず、本人が指で送る。
     autoRotate: false,
     priceLayout: "row",
@@ -176,6 +191,8 @@ type Props = {
   previewMode?: boolean;
   /** プレビュー用: 価格テストのどちらの群の値札を見せるか（未指定は従来の¥499）。 */
   previewArm?: JaFullAccessPriceArm;
+  /** 特典の見せ方（A/B の群。lib/full-access-treasure-layout.ts）。未指定は従来の stack。 */
+  layout?: FullAccessTreasureLayout;
   priceState?: FullAccessQuoteState;
   /**
    * 閉じたとき。宝箱を開けずに「閉じる」を押したときも、値札と特典を見たあと「あとで決める」を
@@ -192,6 +209,7 @@ export function FullAccessTreasure({
   variant,
   previewMode = false,
   previewArm = "control",
+  layout = "stack",
   priceState,
   onClose,
 }: Props) {
@@ -201,7 +219,7 @@ export function FullAccessTreasure({
     (previewMode ? null : jaFullAccessOfferForQuote(priceState?.quote)) ?? jaFullAccessOfferForArm(previewArm));
   // 同じタブで受け取り済みなら、宝箱を開け直させずに値札と特典から見せる。
   const [startAt] = useState<"chest" | "offer">(() => (fullAccessCouponReceived() ? "offer" : "chest"));
-  const [offer] = useState(() => fullAccessOffer(ctaSource));
+  const [offer] = useState(() => fullAccessOffer(ctaSource, layout));
   const shownAt = useRef<number | null>(null);
   const offerShownAt = useRef<number | null>(null);
   const stage = useRef<TreasureStage>(startAt === "offer" ? "offer" : "chest");
@@ -233,6 +251,8 @@ export function FullAccessTreasure({
         placement: "treasure",
         surface: surface ?? "self",
         source: normalizePaywallSource(ctaSource),
+        treasure_layout: layout,
+        treasure_layout_test: FULL_ACCESS_TREASURE_LAYOUT_TEST_VERSION,
         step,
         start: startAt,
         displayed_price_minor: priceOffer.saleAmount,
@@ -277,6 +297,8 @@ export function FullAccessTreasure({
         placement: "modal",
         surface: surface ?? "self",
         presentation: startAt === "offer" ? "treasure_offer" : "treasure",
+        treasure_layout: layout,
+        treasure_layout_test: FULL_ACCESS_TREASURE_LAYOUT_TEST_VERSION,
         displayed_price_minor: priceOffer.saleAmount,
       },
     });
@@ -285,7 +307,7 @@ export function FullAccessTreasure({
     } catch {
       /* noop */
     }
-  }, [ownerToken, previewMode, priceOffer, startAt, surface, variant]);
+  }, [layout, ownerToken, previewMode, priceOffer, startAt, surface, variant]);
 
   return (
     <ResultUpgradeTreasure
