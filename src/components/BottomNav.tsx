@@ -134,7 +134,7 @@ function UsersIcon() {
 const AISHO_HEART_PATH =
   "M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z";
 
-// 性格タイプ (4マスのグリッド)。未課金の人の下部ナビ用 (日本語のみ)。
+// 性格タイプ (4マスのグリッド)。下部ナビ用 (日本語のみ。未課金・課金後とも3番目)。
 function TypesIcon() {
   return (
     <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -767,7 +767,7 @@ export function BottomNav() {
             // Alice。占星術は Alice ページ上部の切り替え (FortuneSwitcher) から選ぶので、
             // 占星術を見ている間も Alice を選択中にする (2026-11-19 指示)。
             // タロットも専用タブをやめて Alice にまとめ、タロットを見ている間も Alice を選択中にする
-            // (2026-11-25 指示。課金後は 自己診断・友達診断・Alice・相性診断 の4タブ)。
+            // (2026-11-25 指示。11/26 から課金後は 自己診断・友達診断・性格タイプ・Alice・相性診断 の5タブ)。
             // 未課金は従来どおり鍵を出し、タップで課金カードを開く。
             {
               key: "astrologer",
@@ -820,7 +820,7 @@ export function BottomNav() {
   );
 
   // 未課金の人 (日本語) には、鍵付きの Alice・タロットの代わりに
-  // 性格タイプ・完全版を出す (2026-11-25 指示)。課金後は 自己診断・友達診断・Alice・相性診断。
+  // 性格タイプ・完全版を出す (2026-11-25 指示)。
   // 4番目に鍵付きの相性診断を戻し、完全版は右端にした (2026-11-26 指示。相性診断は完全版と同じ薄いグレーで、押すと宝箱を開く)。
   // 権限の確認中は、大多数を占める未課金の並びにしておく (鍵を一瞬見せない)。
   // 開発時だけ: 課金済みの確認用アカウントでも未課金の並びを見られるようにする。
@@ -845,35 +845,37 @@ export function BottomNav() {
     (!hasPaidAccess || devForceUnpaid) &&
     !isPaidNavigationPreview &&
     !isCoursePaywallPreview;
-  const navItems: typeof items = useMemo(
-    () =>
-      showUnpaidTabs
-        ? [
-            ...items.slice(0, 2),
-            {
-              key: "types",
-              label: navCopy.types ?? "性格タイプ",
-              href: "/types",
-              active:
-                pathname.startsWith("/types") ||
-                pathname.startsWith("/preview/"),
-              Icon: TypesIcon,
-            },
-            // 確認用に未課金の並びを出している課金済みアカウントでも、鍵付きで見せる。
-            ...items
-              .filter((it) => it.key === "aisho")
-              .map((it) => ({ ...it, locked: true })),
-            {
-              key: "full",
-              label: navCopy.full ?? "完全版",
-              href: torisetsuUrl,
-              active: false,
-              Icon: TreasureIcon,
-            },
-          ]
-        : items,
-    [items, navCopy, pathname, showUnpaidTabs, torisetsuUrl],
-  );
+  // 課金後 (日本語) も、未課金と同じ3番目に性格タイプを出して5タブにする
+  // (2026-11-26 指示。自己診断・友達診断・性格タイプ・Alice・相性診断)。
+  const navItems: typeof items = useMemo(() => {
+    if (locale !== "ja") return items;
+    const typesItem = {
+      key: "types",
+      label: navCopy.types ?? "性格タイプ",
+      href: "/types",
+      active:
+        pathname.startsWith("/types") || pathname.startsWith("/preview/"),
+      Icon: TypesIcon,
+    };
+    if (!showUnpaidTabs) {
+      return [...items.slice(0, 2), typesItem, ...items.slice(2)];
+    }
+    return [
+      ...items.slice(0, 2),
+      typesItem,
+      // 確認用に未課金の並びを出している課金済みアカウントでも、鍵付きで見せる。
+      ...items
+        .filter((it) => it.key === "aisho")
+        .map((it) => ({ ...it, locked: true })),
+      {
+        key: "full",
+        label: navCopy.full ?? "完全版",
+        href: torisetsuUrl,
+        active: false,
+        Icon: TreasureIcon,
+      },
+    ];
+  }, [items, locale, navCopy, pathname, showUnpaidTabs, torisetsuUrl]);
 
   // フロー系ページに加え、自己診断が完了していない間はナビを描画しない。
   // 診断案内 / 課金カード。ナビを描画しない状態 (未診断など) でも、
