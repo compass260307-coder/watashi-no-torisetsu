@@ -83,7 +83,7 @@ export default function TopHeader({
   // (BottomNav と同じ判断。未診断側は hydration 後にロックが現れる)。
   const [hasToken, setHasToken] = useState(true);
   const [takoLockOpen, setTakoLockOpen] = useState(false);
-  const [coursePaywall, setCoursePaywall] = useState<"hoshiyomi" | "tarot" | null>(null);
+  const [coursePaywall, setCoursePaywall] = useState<"hoshiyomi" | "tarot" | "aisho" | null>(null);
   // PaywallOverlay は onClose が変わるたびに effect を張り直し、そのたびに
   // 開く前のフォーカス先へ focus() し直す。毎レンダー新しい関数を渡すと
   // 開いている間もフォーカスが動くため、同じ関数を渡す。
@@ -156,7 +156,7 @@ export default function TopHeader({
     if (preloadPurchaseOnIntent && PurchaseOverlay === PaywallOverlay) void preloadPaywall(locale).catch(() => {});
   };
   const purchaseIntent = { onPointerEnter: warmPurchase, onFocus: warmPurchase, onTouchStart: warmPurchase };
-  const openCoursePaywall = (course: "astrologer" | "tarot") => {
+  const openCoursePaywall = (course: "astrologer" | "tarot" | "aisho") => {
     const target = course === "astrologer" ? "hoshiyomi" : course;
     const source = `nav_locked_${target}`;
     track("paywall_scroll_clicked", {
@@ -172,10 +172,24 @@ export default function TopHeader({
     setCoursePaywall(target);
   };
 
+  // 相性診断は、診断済みなら未課金でも鍵付きで出す (Alice・タロットと同じ。2026-11-26 指示)。
+  // 押すと課金カード (未課金は宝箱) を開く。未診断の人には従来どおり出さない。
+  // 下部ナビの相性診断タブと同じく、購入済みと確認できたらリンクにする。
+  const aishoUnlocked =
+    hasAishoNavigationAccess || resolvedCourseAccess?.paid === true;
+  const isAishoItem = (item: { href: string }) => item.href.includes("/aisho");
+  const lockedCourseOf = (item: (typeof content.nav)[number]) =>
+    item.course
+      ? resolvedCourseAccess?.[item.course]
+        ? null
+        : item.course
+      : isAishoItem(item) && !aishoUnlocked
+        ? ("aisho" as const)
+        : null;
+
   const nav = content.nav
     .filter(
-      (item) =>
-        !item.href.includes("/aisho") || hasAishoNavigationAccess,
+      (item) => !isAishoItem(item) || aishoUnlocked || Boolean(ownerToken),
     )
     .map((n) =>
       n.tako && ownerToken
@@ -302,7 +316,7 @@ export default function TopHeader({
                 {n.label}
                 <MenuLockIcon />
               </button>
-            ) : n.course && !resolvedCourseAccess?.[n.course] ? (
+            ) : lockedCourseOf(n) ? (
               <button
                 key={n.href}
                 type="button"
@@ -310,7 +324,10 @@ export default function TopHeader({
                   uiText("（ロック中）")
                 }`}
                 {...purchaseIntent}
-                onClick={() => n.course && openCoursePaywall(n.course)}
+                onClick={() => {
+                  const target = lockedCourseOf(n);
+                  if (target) openCoursePaywall(target);
+                }}
                 className={`${navLinkClass} flex items-center gap-1`}
                 style={{ color: "#9BA3B4" }}
               >
@@ -486,7 +503,7 @@ export default function TopHeader({
                   {n.label}
                   <MenuLockIcon />
                 </button>
-              ) : n.course && !resolvedCourseAccess?.[n.course] ? (
+              ) : lockedCourseOf(n) ? (
                 <button
                   key={n.href}
                   type="button"
@@ -497,7 +514,8 @@ export default function TopHeader({
                   {...purchaseIntent}
                   onClick={() => {
                     setOpen(false);
-                    if (n.course) openCoursePaywall(n.course);
+                    const target = lockedCourseOf(n);
+                    if (target) openCoursePaywall(target);
                   }}
                   className="flex w-full items-center gap-1.5 py-3.5 text-left text-[19px] font-bold"
                   style={{ color: "#9BA3B4" }}
@@ -669,15 +687,15 @@ export default function TopHeader({
         <PurchaseOverlay
           ownerToken={ownerToken ?? undefined}
           locale={locale}
-          returnTo={coursePaywall === "tarot" ? "me" : "hoshiyomi"}
+          returnTo={coursePaywall === "tarot" ? "me" : coursePaywall}
           ctaSource={`nav_locked_${coursePaywall}`}
-          // 未課金の人が鍵付きの Alice・タロットを押したときは宝箱にする (2026-11-20 指示)。
+          // 未課金の人が鍵付きの Alice・相性診断・タロットを押したときは宝箱にする (2026-11-20 指示)。
           // 友達診断ページ上で押したときも同じく宝箱にする (2026-11-25 指示)。
           treasureEntry={resolvedCourseAccess?.paid === false}
-          products={coursePaywall === "tarot" ? ["full_access"] : ["full_access", "premium_bundle"]}
+          products={coursePaywall === "hoshiyomi" ? ["full_access", "premium_bundle"] : ["full_access"]}
           defaultProduct="full_access"
           heading={
-            isKo || coursePaywall === "tarot"
+            isKo || coursePaywall !== "hoshiyomi"
               ? undefined
               : uiText("Aliceを試す・本格相談を選ぶ")
           }

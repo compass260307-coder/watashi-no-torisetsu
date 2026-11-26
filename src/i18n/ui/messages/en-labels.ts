@@ -5,7 +5,8 @@ const labels: Record<string, Record<string, string>> = {
     "Aliceを試す・本格相談を選ぶ": "Try Alice or unlock the complete experience"
   },
   "top.TopFooter": {
-    "（ロック中）": " (Locked)"
+    "（ロック中）": " (Locked)",
+    "Aliceを試す・本格相談を選ぶ": "Try Alice or unlock the complete experience"
   },
   "result.FullAccessPromoCard": {
     "自己診断と友達診断の専用電子書籍": "A dedicated ebook for your personality and friend results",
