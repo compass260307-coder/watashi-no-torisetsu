@@ -67,6 +67,17 @@ interface MeStickyHeaderProps {
   unlockCtaLabel?: string;
   /** unlockCtaLabel のアイコン。"gift" はプレゼントの箱 (/tako の「特典を受け取る」)。未指定は上向き矢印。 */
   unlockCtaIcon?: "upgrade" | "gift";
+  /**
+   * invite モードの「友達を招待」ボタンの文言差し替え。指定時は紫で塗った目立つボタンにする
+   * (/tako の未購入・回答1人: 「2人目を招待」。2人目を集めてもらうため・2026-11-26)。
+   */
+  invitePillLabel?: string;
+  /**
+   * true のとき、「友達を招待」ボタンの左にプレゼントの丸ボタンを出し、押すと宝箱 (課金の表示) を開く。
+   * /tako の未購入・回答1人で使う (この状態には課金の入口が無かった・2026-11-26)。
+   * ページ側に PaywallModal を置いておくこと。
+   */
+  invitePillGift?: boolean;
   /** 共有 URL。character=/share/[inviteCode]、invite=/friend/[inviteCode]。 */
   shareUrl?: string;
   /** 友達診断への招待 URL。指定時は共有ポップアップに2つ目の選択肢を表示する。 */
@@ -234,6 +245,8 @@ export function MeStickyHeader({
   showUnlockCta,
   unlockCtaLabel,
   unlockCtaIcon = "upgrade",
+  invitePillLabel,
+  invitePillGift = false,
   shareUrl,
   friendShareUrl,
   friendDiagnosisHref,
@@ -854,13 +867,46 @@ export function MeStickyHeader({
                   他のピル (レポート/解除CTA) が出る画面では出さない (そちらは丸ボタンから開く)。
                   2026-11-25: 紫で塗ったピル「友達に診断してもらう」+ 丸ボタンの2つから、
                   白地・枠線のこのボタン1つに変更 (見本ページの上部バーと同じ見た目)。 */}
+              {showInvitePill && invitePillGift && (
+                <button
+                  type="button"
+                  aria-haspopup="dialog"
+                  aria-label="特典を受け取る"
+                  onClick={() => scrollToPaywall("tako_gift_icon", paywallTargetId)}
+                  className={circleButtonClass}
+                  style={circleButtonStyle}
+                >
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <rect x="3" y="8" width="18" height="4" rx="1" />
+                    <path d="M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8" />
+                    <path d="M12 8v13" />
+                    <path d="M12 8c-1.2-3-3-4.5-4.6-4.5A2.2 2.2 0 0 0 7.5 8" />
+                    <path d="M12 8c1.2-3 3-4.5 4.6-4.5A2.2 2.2 0 0 1 16.5 8" />
+                  </svg>
+                </button>
+              )}
+
               {showInvitePill && (
                 <button
                   type="button"
                   aria-haspopup="dialog"
                   onClick={openInviteUi}
-                  className={INVITE_PILL_CLASS}
-                  style={circleButtonStyle}
+                  className={
+                    invitePillLabel
+                      ? "inline-flex min-h-10 shrink items-center justify-center gap-1.5 whitespace-nowrap rounded-full bg-[#5B5BEF] px-5 py-1.5 text-center text-[13px] font-black leading-[1.15] text-white shadow-[0_2px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] active:scale-[0.99] sm:min-h-11 sm:px-6 sm:text-[14px]"
+                      : INVITE_PILL_CLASS
+                  }
+                  style={invitePillLabel ? primaryButtonStyle : circleButtonStyle}
                 >
                   <svg
                     width="18"
@@ -878,7 +924,8 @@ export function MeStickyHeader({
                     <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                   </svg>
-                  {isEn ? "Invite a friend" : isId ? "Undang teman" : isKo ? "친구 초대" : "友達を招待"}
+                  {invitePillLabel ??
+                    (isEn ? "Invite a friend" : isId ? "Undang teman" : isKo ? "친구 초대" : "友達を招待")}
                 </button>
               )}
 
