@@ -13,6 +13,7 @@ import type { ResolvedPartTwo } from "@/lib/part-two-resolve";
 import type { SelfSection } from "@/lib/self-result-content";
 import type { ThirtyTwoTypeId } from "@/lib/thirty-two-types";
 import type { BigFiveDimension } from "@/lib/types";
+import { selfTraitPercent } from "@/lib/trait-display-percent";
 
 type Scores = Partial<Record<BigFiveDimension, number>>;
 type HighLow = "H" | "L";
@@ -62,7 +63,7 @@ function high(scores: Scores, dim: BigFiveDimension) {
 }
 
 function percent(scores: Scores, dim: BigFiveDimension) {
-  return Math.max(0, Math.min(100, Math.round((scores[dim] ?? 5) * 10)));
+  return selfTraitPercent(scores, dim);
 }
 
 function description(scores: Scores, dim: BigFiveDimension) {

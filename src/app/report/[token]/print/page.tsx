@@ -37,6 +37,7 @@ import { ReportPrintButton } from "@/components/report/ReportPrintButton";
 import { ReportCover } from "@/components/report/ReportCover";
 import { versionCharacterAssetPath } from "@/lib/character-image";
 import styles from "./page.module.css";
+import { selfTraitPercent } from "@/lib/trait-display-percent";
 
 export async function generateMetadata({
   searchParams,
@@ -540,7 +541,7 @@ export default async function ReportPage({ params, searchParams }: PageProps) {
                 <ScoreRow
                   key={meta.key}
                   meta={meta}
-                  value={scores[meta.key]}
+                  percent={selfTraitPercent(scores, meta.key)}
                   locale={isKo ? "ko" : isId ? "id" : "ja"}
                 />
               ))}
@@ -793,18 +794,16 @@ function CoverOcean({
 
 function ScoreRow({
   meta,
-  value,
+  percent,
   locale,
 }: {
   meta: ScoreMeta;
-  value: number | undefined;
+  /** 表示用の % (0-100)。結果ページのバーと同じ数字 (selfTraitPercent)。 */
+  percent: number;
   locale: "ja" | "ko" | "id";
 }) {
-  const normalized = Math.max(
-    0,
-    Math.min(10, typeof value === "number" ? value : 5),
-  );
-  const leaning = normalized >= 5 ? meta.high : meta.low;
+  const normalized = percent / 10;
+  const leaning = percent >= 50 ? meta.high : meta.low;
 
   return (
     <div className={styles.scoreRow}>
@@ -815,7 +814,7 @@ function ScoreRow({
         </div>
       </div>
       <div className={styles.scoreTrack} aria-hidden="true">
-        <span style={{ width: `${normalized * 10}%` }} />
+        <span style={{ width: `${percent}%` }} />
       </div>
       <p>
         {locale === "ja"

@@ -1456,6 +1456,7 @@ async function MeResultPageContent({
                 <div className="mb-14 mt-4">
                   <BigFiveDivergingBars
                     scores={stored}
+                    facetWeighted
                     title={
                       isEnglish
                         ? "Your personality across five dimensions"

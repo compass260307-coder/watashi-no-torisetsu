@@ -28,6 +28,7 @@ import { careerRelationsItemsFor } from "./career-relations-items-32";
 import { loveEndureItemsFor } from "./love-endure-items-32";
 import { lovePayoffItemsFor } from "./love-payoff-items-32";
 import type { ResultItem } from "./result-items";
+import { selfTraitPercent } from "@/lib/trait-display-percent";
 
 export type DeepDiveTabKey = "love" | "career" | "growth" | "aisho";
 
@@ -342,11 +343,6 @@ function buildCareerBlocks(
   ];
 }
 
-function toPercent(score: number | undefined): number {
-  const s = typeof score === "number" ? score : 5;
-  return Math.max(0, Math.min(100, Math.round(s * 10)));
-}
-
 /**
  * 深掘り3タブを解決する。hasFullAccess=false のとき、キャリア/成長は body=null・
  * locked=true で返す (本文を一切解決しない)。恋愛は常に本文を返す。
@@ -360,11 +356,11 @@ export function resolveDeepDiveSections(
 
   const dims: BigFiveDimension[] = ["E", "A", "O", "C", "N"];
   const pct: Record<BigFiveDimension, number> = {
-    E: toPercent(scores.E),
-    A: toPercent(scores.A),
-    O: toPercent(scores.O),
-    C: toPercent(scores.C),
-    N: toPercent(scores.N),
+    E: selfTraitPercent(scores, "E"),
+    A: selfTraitPercent(scores, "A"),
+    O: selfTraitPercent(scores, "O"),
+    C: selfTraitPercent(scores, "C"),
+    N: selfTraitPercent(scores, "N"),
   };
   const topDim = dims.reduce((a, b) => (pct[b] > pct[a] ? b : a));
   const bottomDim = dims.reduce((a, b) => (pct[b] < pct[a] ? b : a));
