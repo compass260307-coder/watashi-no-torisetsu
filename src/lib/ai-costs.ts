@@ -5,6 +5,12 @@ import "server-only";
 // 日本時間の日 × 機能で足す。提供元は 'anthropic'、project の列に機能の名前を入れる。
 // 請求額そのものを取り込むわけではない (請求の正本は Claude Console)。
 import { estimateAnthropicCostUsd } from "./ai-usage.mjs";
+import {
+  AnthropicCostError,
+  anthropicAdminKey,
+  fetchAnthropicCost,
+  type AnthropicCost,
+} from "./anthropic-cost";
 import { supabaseAdmin } from "./supabase-server";
 
 const DAY_MS = 86_400_000;
@@ -230,6 +236,155 @@ export async function syncAiCosts(options: {
         effective: row.cost,
         billed: row.cost,
         charges: row.calls,
+      })),
+    });
+    if (error) {
+      report.errors.push(`save: ${error.code}`);
+      return report;
+    }
+    report.saved = Number(data ?? 0);
+  }
+  report.ok = true;
+  return report;
+}
+
+/* ------------------------------------------------ Claude Console の費用 (実額) */
+
+/** Claude Console の費用を保存するときの提供元の名前 (project の列はモデル名)。 */
+export const AI_CONSOLE_PROVIDER = "anthropic_console";
+
+export interface AiConsoleCostReport {
+  ok: boolean;
+  dryRun: boolean;
+  provider: typeof AI_CONSOLE_PROVIDER;
+  window: AiCostWindow;
+  /** Console に利用が入り切っている最後の日 (日本時間)。ここまでを保存する。無ければ null。 */
+  completeThrough: string | null;
+  /** 日ごとの合計 (米ドル)。入り切っている日だけ。 */
+  days: { day: string; cost: number }[];
+  /** モデルごとの合計 (米ドル)。金額の大きい順。 */
+  models: { model: string; cost: number }[];
+  total: { cost: number; rows: number; invalid: number };
+  saved: number | null;
+  errors: string[];
+}
+
+/**
+ * Claude Console の費用 (割引後・クレジット適用前、米ドル) を、日本時間の日 × モデルで保存する。
+ * 1 時間ごとの金額を日本時間の 1 日に足すので、日の区切りのずれは無い。Console の数字は
+ * 数時間〜1 日遅れて入るため、入り切っている日 (data_refreshed_at より前に終わった日) だけを
+ * 保存する。金額は月が終わって 7 日ほどまで直ることがあるので、毎回直近の数日を取り直す。
+ * dryRun なら取るだけで保存しない。
+ */
+export async function syncAiConsoleCosts(options: {
+  days?: number;
+  dryRun?: boolean;
+  range?: AiCostWindow;
+}): Promise<AiConsoleCostReport> {
+  const dryRun = options.dryRun ?? false;
+  const window = options.range ?? aiCostWindow(options.days ?? 10);
+  const report: AiConsoleCostReport = {
+    ok: false,
+    dryRun,
+    provider: AI_CONSOLE_PROVIDER,
+    window,
+    completeThrough: null,
+    days: [],
+    models: [],
+    total: { cost: 0, rows: 0, invalid: 0 },
+    saved: null,
+    errors: [],
+  };
+  const key = anthropicAdminKey();
+  if (!key) {
+    report.errors.push("missing_credentials");
+    return report;
+  }
+
+  let cost: AnthropicCost;
+  try {
+    cost = await fetchAnthropicCost(
+      key,
+      jstDayStart(window.fromDay),
+      jstDayStart(window.toDay) + DAY_MS,
+    );
+  } catch (error) {
+    report.errors.push(
+      error instanceof AnthropicCostError
+        ? `fetch: ${error.status} ${error.detail}`.slice(0, 300)
+        : `fetch: ${error instanceof Error ? error.message.slice(0, 200) : "unknown"}`,
+    );
+    return report;
+  }
+  report.total.rows = cost.rows;
+  report.total.invalid = cost.invalid;
+
+  const otherCurrency = cost.currencies.filter((c) => c !== "USD");
+  if (otherCurrency.length > 0) {
+    report.errors.push(`currency_not_usd: ${otherCurrency.join(",")}`);
+    return report;
+  }
+  // 読めない行があったら保存しない (少ない金額で上書きしないため)。
+  if (cost.invalid > 0) {
+    report.errors.push(`invalid_rows_not_saved: ${cost.invalid}`);
+    return report;
+  }
+  if (cost.refreshedAtMs === null) {
+    report.errors.push("no_data_yet_not_saved");
+    return report;
+  }
+  // 入り切っている最後の日: その日の終わり (翌日の 0 時) が、data_refreshed_at 以前。
+  const lastComplete = jstDay(jstDayStart(jstDay(cost.refreshedAtMs)) - DAY_MS);
+  const through = lastComplete < window.toDay ? lastComplete : window.toDay;
+  if (through < window.fromDay) {
+    report.errors.push("no_complete_day_not_saved");
+    return report;
+  }
+  report.completeThrough = through;
+
+  const cells = new Map<string, number>();
+  for (const hour of cost.hours) {
+    const day = jstDay(hour.startMs);
+    if (day < window.fromDay || day > through) continue;
+    const cellKey = `${day}\n${hour.model}`;
+    cells.set(cellKey, (cells.get(cellKey) ?? 0) + hour.usd);
+  }
+  const rows = [...cells.entries()].map(([cellKey, usd]) => {
+    const [day, model] = cellKey.split("\n");
+    return { day, model, cost: round6(usd) };
+  });
+  const byDay = new Map<string, number>();
+  const byModel = new Map<string, number>();
+  for (const row of rows) {
+    byDay.set(row.day, (byDay.get(row.day) ?? 0) + row.cost);
+    byModel.set(row.model, (byModel.get(row.model) ?? 0) + row.cost);
+    report.total.cost += row.cost;
+  }
+  report.days = [...byDay.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([day, value]) => ({ day, cost: round6(value) }));
+  report.models = [...byModel.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([model, value]) => ({ model, cost: round6(value) }));
+  report.total.cost = round6(report.total.cost);
+
+  // 1 件も無ければ保存しない。読み取りの不具合で、入っている金額を消さないため。
+  if (rows.length === 0) {
+    report.errors.push("no_cost_not_saved");
+    return report;
+  }
+
+  if (!dryRun) {
+    const { data, error } = await supabaseAdmin.rpc("server_cost_replace", {
+      p_provider: AI_CONSOLE_PROVIDER,
+      p_from: window.fromDay,
+      p_to: through,
+      p_rows: rows.map((row) => ({
+        day: row.day,
+        project: row.model,
+        effective: row.cost,
+        billed: row.cost,
+        charges: 0,
       })),
     });
     if (error) {

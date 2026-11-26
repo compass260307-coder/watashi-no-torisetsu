@@ -7,6 +7,9 @@ import {
 } from "./internal-numbers";
 import { supabaseAdmin } from "./supabase-server";
 
+/** Claude Console の費用を保存するときの提供元の名前 (src/lib/ai-costs.ts と同じ)。 */
+const AI_CONSOLE_PROVIDER = "anthropic_console";
+
 /** 月の合計に占める割合がこれより小さいプロジェクトは、「そのほか」にまとめる。 */
 const MINOR_SHARE = 0.01;
 const OTHERS = "そのほか";
@@ -167,8 +170,8 @@ export async function readAiCostsDaily(
 ): Promise<NumbersAiCostsDaily | null> {
   const { data, error } = await supabaseAdmin
     .from("server_cost_daily")
-    .select("day, project, billed_usd")
-    .eq("provider", "anthropic")
+    .select("day, provider, project, billed_usd")
+    .in("provider", ["anthropic", AI_CONSOLE_PROVIDER])
     .gte("day", from)
     .lte("day", to)
     .order("day")
@@ -183,8 +186,14 @@ export async function readAiCostsDaily(
   }
   const totals = new Map<string, number>();
   const byDay = new Map<string, Record<string, number>>();
+  // Claude Console の費用 (実額)。日ごとの合計だけ使う。
+  const consoleDays = new Map<string, number>();
   for (const row of data) {
     const amount = Number(row.billed_usd) * SERVER_COST_USD_JPY;
+    if (row.provider === AI_CONSOLE_PROVIDER) {
+      consoleDays.set(row.day, (consoleDays.get(row.day) ?? 0) + amount);
+      continue;
+    }
     totals.set(row.project, (totals.get(row.project) ?? 0) + amount);
     const day = byDay.get(row.day) ?? {};
     day[row.project] = (day[row.project] ?? 0) + amount;
@@ -205,6 +214,10 @@ export async function readAiCostsDaily(
       day,
       total: Object.values(cost).reduce((sum, value) => sum + value, 0),
       cost,
+    })),
+    console_days: [...consoleDays.entries()].map(([day, total]) => ({
+      day,
+      total,
     })),
   };
 }

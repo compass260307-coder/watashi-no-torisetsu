@@ -639,6 +639,11 @@ export interface NumbersAiCostsDaily {
   /** その月に利用がある機能。月の合計が大きい順。 */
   features: { key: string; name: string; total: number }[];
   days: { day: string; total: number; cost: Record<string, number> }[];
+  /**
+   * Claude Console の費用 (実額、円)。取り込みが済んだ日だけ。鍵を入れていない間は空。
+   * ある日は、利用の記録から出した金額よりこちらを使う。
+   */
+  console_days: { day: string; total: number }[];
 }
 
 export interface NumbersDailyPayload {
@@ -683,6 +688,8 @@ export interface NumbersDailyRow {
   ai: number | null;
   /** AI費が概算か (実額がまだ保存されていない日)。 */
   aiEstimated: boolean;
+  /** AI費が、利用の記録に単価を掛けた金額か (Claude Console の実額がまだ無い日)。 */
+  aiFromUsage: boolean;
   economics: NumbersEconomics | null;
 }
 
@@ -716,6 +723,8 @@ export function buildDailyRow(
   serverActual: number | null = null,
   /** AI費の実額 (円)。まだ無い日は null。 */
   aiActual: number | null = null,
+  /** aiActual が、利用の記録に単価を掛けた金額か (Claude Console の実額ではない)。 */
+  aiFromUsage = false,
 ): NumbersDailyRow {
   // jsonb の numeric は文字列で届くことがあるので、数に直してから使う。
   const actual = cost ? Number(cost.actual) : 0;
@@ -743,6 +752,7 @@ export function buildDailyRow(
       aiActual ??
       (amounts && settings ? aiCostEstimate(amounts, settings) : null),
     aiEstimated: aiActual === null,
+    aiFromUsage: aiActual !== null && aiFromUsage,
     economics:
       amounts && total !== null && settings
         ? economics(amounts, total, settings, serverActual, aiActual)

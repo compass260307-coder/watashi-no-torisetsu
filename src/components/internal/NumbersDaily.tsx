@@ -288,9 +288,16 @@ export function NumbersDaily() {
     const serverActual = new Map(
       (data.server_costs?.days ?? []).map((entry) => [entry.day, entry.total]),
     );
-    // AI費 (円)。終わった日で、保存が済んだ日だけ入っている。
-    const aiActual = new Map(
+    // AI費 (円)。終わった日で、保存が済んだ日だけ入っている。Claude Console の実額が
+    // ある日はそれを、無い日は利用の記録に単価を掛けた金額を使う。
+    const aiFromUsage = new Map(
       (data.ai_costs?.days ?? []).map((entry) => [entry.day, entry.total]),
+    );
+    const aiFromConsole = new Map(
+      (data.ai_costs?.console_days ?? []).map((entry) => [
+        entry.day,
+        entry.total,
+      ]),
     );
     return data.days.map((entry) => {
       if (entry.day === data.today) {
@@ -319,7 +326,8 @@ export function NumbersDaily() {
         entry.cost,
         data.settings,
         serverActual.get(entry.day) ?? null,
-        aiActual.get(entry.day) ?? null,
+        aiFromConsole.get(entry.day) ?? aiFromUsage.get(entry.day) ?? null,
+        !aiFromConsole.has(entry.day),
       );
     });
   }, [data, todayPayload, filled]);
@@ -1074,7 +1082,7 @@ function DailyTable({
     <Section
       title="日別実績"
       plain
-      hint="日付を押すと、その日の詳しい数字に移ります。広告費の「推定」は、配信計画の金額で補った分を含む日です。サーバー費はVercelの請求額を円に直した実額で、利益から引いています。実額は2日ほど遅れて入るので、それまでは診断1件あたりの単価で出した「概算」です。AI費は、AIの利用の記録に単価を掛けて円に直した金額で、これも利益から引いています。終わった日の分が翌朝に入り、それまでは購入1件あたりの単価で出した「概算」です"
+      hint="日付を押すと、その日の詳しい数字に移ります。広告費の「推定」は、配信計画の金額で補った分を含む日です。サーバー費はVercelの請求額を円に直した実額で、利益から引いています。実額は2日ほど遅れて入るので、それまでは診断1件あたりの単価で出した「概算」です。AI費も利益から引いています。印が無い日はClaude Consoleの費用を円に直した実額、「計算」はAIの利用の記録に単価を掛けた金額（終わった日の分が翌朝に入ります）、「概算」は購入1件あたりの単価で出した金額です"
     >
       <div className="overflow-x-auto">
         <table className="w-full min-w-max border-separate border-spacing-0 text-base">
@@ -1199,9 +1207,9 @@ function DailyTable({
                       <span className="text-[var(--nb-text-3)]">–</span>
                     ) : (
                       <>
-                        {row.aiEstimated && (
+                        {(row.aiEstimated || row.aiFromUsage) && (
                           <span className="mr-2 text-[13px] text-[var(--nb-text-3)]">
-                            概算
+                            {row.aiEstimated ? "概算" : "計算"}
                           </span>
                         )}
                         {signedYen(row.ai)}
@@ -1480,7 +1488,7 @@ function AiCostsTable({
   return (
     <BreakdownTable
       title="AI費（機能別）"
-      hint={`日別実績の「AI費」の内訳です。AIを1回呼ぶごとに残している利用量（トークン数）に、Anthropicの単価を掛けた金額を、1ドル${data?.usd_jpy ?? SERVER_COST_USD_JPY}円で円に直しています。毎朝4:50に、終わった日の分を保存します。請求書そのものの金額ではありません。専用キャラの絵の生成（Vercel経由）は入りません`}
+      hint={`AI費の機能ごとの内訳です。AIを1回呼ぶごとに残している利用量（トークン数）に、Anthropicの単価を掛けた金額を、1ドル${data?.usd_jpy ?? SERVER_COST_USD_JPY}円で円に直しています。毎朝4:50に、終わった日の分を保存します。機能ごとに分けられるのはこの金額だけなので、日別実績の「AI費」（Claude Consoleの実額がある日）とは少しずれます。専用キャラの絵の生成（Vercel経由）は入りません`}
       columns={
         data
           ? data.features.map((feature) => ({
