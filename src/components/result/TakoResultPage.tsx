@@ -615,6 +615,9 @@ export async function TakoResultPage({
             // 日本語は、価格を出さずに宝箱を開くカードにする (2026-11-26)。
             opensTreasure={takoTreasure}
             previewMode={previewMode && takoTreasure}
+            // 自己診断結果ページ末尾のカードと同じ並び: 手に入るもの → ボタン (2026-11-26 本人指示)。
+            benefitsBeforePrice={takoTreasure}
+            noShadow={takoTreasure}
           />
         </div>
         <PaywallModal
