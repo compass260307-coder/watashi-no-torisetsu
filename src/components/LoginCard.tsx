@@ -92,9 +92,15 @@ export function LoginCard({
   onClose,
   locale = "ja",
   notice,
+  heading,
+  description,
 }: {
   onClose?: () => void;
   notice?: string;
+  /** 置く画面に合わせて見出しを差し替える (未指定は言語ごとの既定の文言)。 */
+  heading?: string;
+  /** 置く画面に合わせて説明文を差し替える。改行は "\n"。 */
+  description?: string;
   locale?: LoginLocale;
 }) {
   const emailId = useId();
@@ -203,13 +209,13 @@ export function LoginCard({
             className="pr-7 text-[22px] font-bold leading-[1.5] tracking-tight sm:text-[28px]"
             style={{ color: NAVY }}
           >
-            {copy.heading}
+            {heading ?? copy.heading}
           </h2>
           <p
             className="mt-2 text-[14px] leading-[1.9] sm:text-[15px]"
             style={{ color: `${NAVY}99` }}
           >
-            {copy.description.split("\n").map((line, index) => (
+            {(description ?? copy.description).split("\n").map((line, index) => (
               <span key={line}>
                 {index > 0 && <br />}
                 {line}
