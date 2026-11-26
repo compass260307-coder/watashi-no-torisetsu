@@ -22,6 +22,8 @@ export const TAKO_PAYWALL_SOURCES = new Set([
   "tako_sheet_lock",
   "tako_unlocked",
   "tako_promo_card",
+  // 未購入・回答1人の上部バーのプレゼントの丸ボタン → 宝箱 (2026-11-26)
+  "tako_gift_icon",
 ]);
 
 const PAYWALL_SOURCES = new Set([

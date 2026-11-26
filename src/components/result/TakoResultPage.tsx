@@ -39,6 +39,7 @@ import { TakoViewTracker } from "@/components/result/TakoViewTracker";
 import { JohariWindow } from "@/components/result/JohariWindow";
 import { FullAccessPromoCard } from "@/components/result/FullAccessPromoCard";
 import { PaywallModal } from "@/components/result/PaywallModal";
+import { TakoSecondFriendInvite } from "@/components/result/TakoSecondFriendInvite";
 import { PaidUnlockWatcher } from "@/components/result/PaidUnlockWatcher";
 import { MetaPurchaseDataLayer } from "@/components/MetaPurchaseDataLayer";
 import {
@@ -578,7 +579,10 @@ export async function TakoResultPage({
   // 未購入で「2人目以降の結果あり」のときに使う課金カード。
   // 回答1人の無料体験中は表示しない。回答0人でも表示しない
   // (2026-11-25: 0人の画面のカードからの購入はごくわずかだったため外した)。
-  const takoPromo = !takoLocked || data.friends.length <= 1 ? null : (() => {
+  // 日本語の回答1人は、カードは出さず、上部バーのプレゼントの丸ボタンから宝箱を開けるようにモーダルだけ置く
+  // (2026-11-26)。
+  const takoGiftOnly = takoLocked && takoTreasure && data.friends.length === 1;
+  const takoPromo = !takoLocked || (data.friends.length <= 1 && !takoGiftOnly) ? null : (() => {
     const promoType = data.friendCharacter?.type32 ?? data.ownerType32;
     const promoGroup = promoType ? thirtyTwoGroup(promoType) : "unknown";
     const promoAlt =
@@ -598,6 +602,7 @@ export async function TakoResultPage({
 
     return (
       <>
+        {takoGiftOnly ? null : (
         <div id="tako-promo" className="scroll-mt-16">
           <FullAccessPromoCard
             surface="tako"
@@ -619,6 +624,7 @@ export async function TakoResultPage({
             noShadow={takoTreasure}
           />
         </div>
+        )}
         <PaywallModal
           surface="tako"
           ownerToken={token}
@@ -678,6 +684,11 @@ export async function TakoResultPage({
           isId ? "Tingkatkan hasil" : isKo ? "결과 업그레이드" : takoTreasure ? "特典を受け取る" : "結果をアップグレード"
         }
         unlockCtaIcon={takoTreasure ? "gift" : "upgrade"}
+        // 未購入で回答が1人のとき (このボタンが出るのはこの状態だけ)、日本語は「2人目を招待」にして目立たせる。
+        invitePillLabel={
+          locale === "ja" && takoLocked && data.friends.length === 1 ? "2人目を招待" : undefined
+        }
+        invitePillGift={takoGiftOnly}
         // 回答0人では固定バーを出さず、本文の招待タブと空状態CTAに集約する。
         // 1人以上では従来どおり「さらに友達に診断してもらう」招待バーを表示する。
         shareUrl={
@@ -1329,6 +1340,17 @@ export async function TakoResultPage({
                   );
                 })}
               />
+
+            {/* 日本語・未購入・回答1人: 1人目の結果を読み終えた場所に、2人目に診断してもらう案内を置く
+                (2026-11-26)。見本表示 (demoMode) では見本用の招待リンクが出てしまうため出さない。 */}
+            {takoGiftOnly && !demoMode && friendSheets[0] && (
+              <TakoSecondFriendInvite
+                viewer={friendSheets[0].viewer}
+                inviteUrl={inviteUrl}
+                ownerToken={token}
+                inviteCode={data.inviteCode}
+              />
+            )}
 
             {/* 友達からの回答 (一覧) セクションは 2026-07-20 指示で削除。
                 友達ごとの結果は上部のタブで見る。 */}
