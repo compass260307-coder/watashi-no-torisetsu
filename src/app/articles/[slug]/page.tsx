@@ -4,6 +4,7 @@ import { GLOBAL_SITE_NAME } from "@/lib/locale-seo";
 // /preview/[typeId] と同じくビルド時に静的生成し、未知 slug は即 404。
 // デザインは /about の読み物スタイル (白基調・ネイビー・左寄せ章立て) に合わせる。
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import TopHeader from "@/components/top/TopHeader";
@@ -19,6 +20,18 @@ const FONT_STACK =
 
 const NAVY = "#2E2E5C";
 const SORA = "#5B5BEF";
+
+// 目次を出す節の数の下限。短い記事 (3〜5節) には出さない。
+const TOC_MIN_SECTIONS = 8;
+
+function sectionId(index: number) {
+  return `section-${index + 1}`;
+}
+
+// 「2.1 下位構造から分かること」のように「数字.数字」で始まる見出しは小節として扱う。
+function isSubsection(heading: string) {
+  return /^\d+\.\d+\s/.test(heading);
+}
 
 interface ArticlePageProps {
   params: Promise<{ slug: string }>;
@@ -185,6 +198,29 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             detail
           />
 
+          {article.abstract && (
+            <section
+              aria-label="要旨"
+              className="mt-8 rounded-2xl border-2 px-5 py-5 md:px-7 md:py-6"
+              style={{ borderColor: "#E3E6F5" }}
+            >
+              <h2
+                className="text-[13px] font-bold tracking-[0.2em]"
+                style={{ color: SORA }}
+              >
+                要旨
+              </h2>
+              <div
+                className="mt-3 flex flex-col gap-3 text-[14px] leading-[1.9]"
+                style={{ color: `${NAVY}CC` }}
+              >
+                {article.abstract.map((p) => (
+                  <p key={p}>{p}</p>
+                ))}
+              </div>
+            </section>
+          )}
+
           <div
             className="mt-8 flex flex-col gap-4 text-[15px] leading-[2]"
             style={{ color: `${NAVY}CC` }}
@@ -194,10 +230,73 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             ))}
           </div>
 
-          {article.sections.map((section) => (
-            <section key={section.heading} className="mt-14">
+          {/* 目次: 節の多い長い記事だけ出す。小節 (「2.1 ...」) は一段下げる */}
+          {article.sections.length >= TOC_MIN_SECTIONS && (
+            <nav
+              aria-label="目次"
+              className="mt-10 border-y-2 py-5"
+              style={{ borderColor: "#E3E6F5" }}
+            >
               <h2
-                className="text-[20px] font-bold leading-snug md:text-[24px]"
+                className="text-[13px] font-bold tracking-[0.2em]"
+                style={{ color: SORA }}
+              >
+                目次
+              </h2>
+              <ol className="mt-3 flex flex-col gap-1.5 text-[14px] leading-[1.7]">
+                {article.sections.map((section, index) => (
+                  <li
+                    key={section.heading}
+                    className={isSubsection(section.heading) ? "pl-5" : ""}
+                  >
+                    <a
+                      href={`#${sectionId(index)}`}
+                      className="hover:underline"
+                      style={{ color: `${NAVY}CC` }}
+                    >
+                      {section.heading}
+                    </a>
+                  </li>
+                ))}
+                {article.references && (
+                  <li>
+                    <a
+                      href="#references"
+                      className="hover:underline"
+                      style={{ color: `${NAVY}CC` }}
+                    >
+                      文献
+                    </a>
+                  </li>
+                )}
+              </ol>
+            </nav>
+          )}
+
+          {article.sections.map((section, index) => (
+            <section
+              key={section.heading}
+              id={sectionId(index)}
+              className={`scroll-mt-20 ${
+                isSubsection(section.heading) ? "mt-10" : "mt-14"
+              }`}
+            >
+              {section.scene && (
+                <Image
+                  src={section.scene.src}
+                  alt={section.scene.alt}
+                  width={section.scene.width}
+                  height={section.scene.height}
+                  sizes="(min-width: 544px) 480px, calc(100vw - 64px)"
+                  className="mx-auto mb-8 block h-auto w-full max-w-[480px]"
+                />
+              )}
+              <h2
+                className={
+                  isSubsection(section.heading)
+                    ? "text-[17px] font-bold leading-snug md:text-[19px]"
+                    : "text-[20px] font-bold leading-snug md:text-[24px]"
+                }
                 style={{ color: NAVY }}
               >
                 {section.heading}
@@ -236,6 +335,27 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
               )}
             </section>
           ))}
+
+          {article.references && (
+            <section id="references" className="mt-14 scroll-mt-20">
+              <h2
+                className="text-[20px] font-bold leading-snug md:text-[24px]"
+                style={{ color: NAVY }}
+              >
+                文献
+              </h2>
+              <ul
+                className="mt-5 flex flex-col gap-3 text-[13px] leading-[1.8]"
+                style={{ color: `${NAVY}B3` }}
+              >
+                {article.references.map((reference) => (
+                  <li key={reference} className="break-words pl-5 -indent-5">
+                    {reference}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </article>
 
         {/* CTA: /about と同じ sora-cta ピル */}
