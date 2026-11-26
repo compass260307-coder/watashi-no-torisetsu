@@ -46,7 +46,11 @@ const ANTHROPIC_USD_PER_MTOK = {
 
 /** anthropicUsage() の結果から概算費用 (USD) を出す。単価の分からないモデルは null。 */
 export function estimateAnthropicCostUsd(model, usage) {
-  const rates = ANTHROPIC_USD_PER_MTOK[String(model ?? "")];
+  const id = String(model ?? "");
+  // 日付つきの名前 (claude-haiku-4-5-20251001 など) は、日付を外した名前の単価を使う。
+  const rates =
+    ANTHROPIC_USD_PER_MTOK[id] ??
+    ANTHROPIC_USD_PER_MTOK[id.replace(/-\d{8}$/, "")];
   if (!rates || usage?.inputTokens == null || usage?.outputTokens == null) {
     return null;
   }
@@ -110,7 +114,9 @@ export async function recordAiUsage(supabaseAdmin, input) {
         : null,
     error_code: errorCode(input.error),
     metadata:
-      input.metadata && typeof input.metadata === "object" ? input.metadata : {},
+      input.metadata && typeof input.metadata === "object"
+        ? input.metadata
+        : {},
   };
 
   try {

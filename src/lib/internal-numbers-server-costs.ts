@@ -2,9 +2,13 @@ import "server-only";
 
 import {
   SERVER_COST_USD_JPY,
+  type NumbersAiCostsDaily,
   type NumbersServerCostsDaily,
 } from "./internal-numbers";
 import { supabaseAdmin } from "./supabase-server";
+
+/** Claude Console の費用を保存するときの提供元の名前 (src/lib/ai-costs.ts と同じ)。 */
+const AI_CONSOLE_PROVIDER = "anthropic_console";
 
 /** 月の合計に占める割合がこれより小さいプロジェクトは、「そのほか」にまとめる。 */
 const MINOR_SHARE = 0.01;
@@ -140,5 +144,80 @@ export async function readServerCostsDaily(
         total,
       })),
     days,
+  };
+}
+
+/** AI費の機能の、画面での名前。ここに無い機能は、記録の名前のまま出す。 */
+const AI_FEATURE_LABELS: Record<string, string> = {
+  unmei_reading: "運命の設計図",
+  unmei_reading_repair: "運命の設計図（直し）",
+  hoshiyomi_chat: "星読みチャット",
+  result_upgrade_copy: "鑑定書の文章",
+  result_upgrade_reaction: "相づち",
+  line_alice_chat: "LINEのAlice",
+  line_daily_fortune: "LINEの毎日の占い",
+  line_theme_fortune: "LINEのテーマ占い",
+};
+
+/**
+ * 保存してある AI費 (利用の記録 × 単価、米ドル) を、日本時間の日 × 機能の円で返す。
+ * 月の推移の「日別実績」の AI費と、「AI費（機能別）」の表に使う。読めなかったときは null。
+ * 日は保存したときから日本時間なので、分け直しはしない。
+ */
+export async function readAiCostsDaily(
+  from: string,
+  to: string,
+): Promise<NumbersAiCostsDaily | null> {
+  const { data, error } = await supabaseAdmin
+    .from("server_cost_daily")
+    .select("day, provider, project, billed_usd")
+    .in("provider", ["anthropic", AI_CONSOLE_PROVIDER])
+    .gte("day", from)
+    .lte("day", to)
+    .order("day")
+    .order("project")
+    .limit(1000);
+  if (error) {
+    console.error("[internal-numbers] ai costs read failed", {
+      code: error.code,
+      message: error.message,
+    });
+    return null;
+  }
+  const totals = new Map<string, number>();
+  const byDay = new Map<string, Record<string, number>>();
+  // Claude Console の費用 (実額)。日ごとの合計だけ使う。
+  const consoleDays = new Map<string, number>();
+  for (const row of data) {
+    const amount = Number(row.billed_usd) * SERVER_COST_USD_JPY;
+    if (row.provider === AI_CONSOLE_PROVIDER) {
+      consoleDays.set(row.day, (consoleDays.get(row.day) ?? 0) + amount);
+      continue;
+    }
+    totals.set(row.project, (totals.get(row.project) ?? 0) + amount);
+    const day = byDay.get(row.day) ?? {};
+    day[row.project] = (day[row.project] ?? 0) + amount;
+    byDay.set(row.day, day);
+  }
+  return {
+    currency: "JPY",
+    usd_jpy: SERVER_COST_USD_JPY,
+    // 月の合計が大きい順。
+    features: [...totals.entries()]
+      .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+      .map(([key, total]) => ({
+        key,
+        name: AI_FEATURE_LABELS[key] ?? key,
+        total,
+      })),
+    days: [...byDay.entries()].map(([day, cost]) => ({
+      day,
+      total: Object.values(cost).reduce((sum, value) => sum + value, 0),
+      cost,
+    })),
+    console_days: [...consoleDays.entries()].map(([day, total]) => ({
+      day,
+      total,
+    })),
   };
 }
