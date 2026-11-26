@@ -1,6 +1,6 @@
 "use client";
 
-// 完全版 (日本語 Web) を買った直後の「完全版の準備画面」。設定と A/B は src/lib/purchase-loading.ts。
+// 完全版 (日本語 Web) を買った直後の「完全版の準備画面」。出す条件は MeResultPage.tsx (日本語の本人の full_access 購入なら全員)。
 //
 // - 自己診断の解析待ち画面 (DiagnosisAnalyzingLoader) を金色の豪華版 (theme="premium") で使い、
 //   20秒 (1枚5秒) のあいだ、「結果をアップグレードできる」(1枚) とそのやり方 (3枚) を流す。
