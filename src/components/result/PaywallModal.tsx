@@ -58,6 +58,8 @@ interface PaywallModalProps {
    * 自己診断結果ページのモーダルと、下部ナビ・ハンバーガーメニューのロック(Alice・相性・タロット)で使う。
    */
   treasureEntry?: boolean;
+  /** 友達診断ページの上部バー・鍵つきの友達タブから開いたときも宝箱にする（日本語の友達診断ページで指定）。 */
+  takoTreasure?: boolean;
 }
 
 // オーバーレイ本体 (制御コンポーネント)。マウント中は常に表示。
@@ -66,6 +68,7 @@ interface PaywallModalProps {
 export function PaywallOverlay({
   onClose,
   ctaSource,
+  friendName,
   scrollLocked = false,
   treasureEntry = false,
   treasurePreviewArm,
@@ -74,6 +77,8 @@ export function PaywallOverlay({
 }: PaywallModalProps & {
   onClose: () => void;
   ctaSource?: string;
+  /** 鍵つきの友達タブから開いたとき、その友達の呼び名。宝箱の先頭の特典の説明に使う。 */
+  friendName?: string;
   scrollLocked?: boolean;
   /** ローカルのプレビュー専用: 価格テストのどちらの群の値札を宝箱に出すか。 */
   treasurePreviewArm?: JaFullAccessPriceArm;
@@ -105,6 +110,7 @@ export function PaywallOverlay({
         previewMode={cardProps.previewMode}
         previewArm={treasurePreviewArm}
         layout={treasureLayout ?? "stack"}
+        friendName={friendName}
         priceState={presentation.priceState}
         onClose={onClose}
       />
@@ -157,6 +163,9 @@ const TREASURE_CTA_SOURCES: ReadonlySet<string> = new Set([
 ]);
 // 自己診断結果ページ（surface が tako 以外）のときだけ宝箱にする導線。
 const TREASURE_SELF_ONLY_CTA_SOURCES: ReadonlySet<string> = new Set(["sticky_bar"]);
+// 友達診断ページで宝箱にする導線（takoTreasure を指定したページだけ）。
+// ページ末尾の課金カード（tako_promo_card）は従来のまま。
+const TREASURE_TAKO_CTA_SOURCES: ReadonlySet<string> = new Set(["sticky_bar", "friend_list"]);
 // 見積もりが返るまでは暗い背景だけを出し、返らなければ従来のカードにする。
 // 一度決めた表示は、見積もりがあとから届いても切り替えない。
 const TREASURE_QUOTE_WAIT_MS = 2500;
@@ -168,13 +177,21 @@ function useFullAccessTreasurePresentation(
 ) {
   const locale = cardProps.locale ?? "ja";
   const previewMode = cardProps.previewMode ?? false;
+  const takoTreasureSource =
+    cardProps.surface === "tako" &&
+    Boolean(cardProps.takoTreasure) &&
+    ctaSource !== undefined &&
+    TREASURE_TAKO_CTA_SOURCES.has(ctaSource);
   const treasureSource =
+    takoTreasureSource ||
     (treasureEntry && cardProps.surface !== "tako") ||
     (ctaSource !== undefined &&
     (TREASURE_CTA_SOURCES.has(ctaSource) ||
       (TREASURE_SELF_ONLY_CTA_SOURCES.has(ctaSource) && cardProps.surface !== "tako")));
+  // 見本表示では導線を問わず宝箱にする。友達診断ページの見本だけは、本番と同じ条件で決める。
+  const previewTreasure = previewMode && (cardProps.surface !== "tako" || takoTreasureSource);
   const eligible =
-    (previewMode || treasureSource) &&
+    (previewTreasure || treasureSource) &&
     locale === "ja" &&
     !cardProps.legacyPlanStyle &&
     cardProps.variant !== "aisho" &&
@@ -361,18 +378,25 @@ function PaywallCardOverlay({
   );
 }
 
-export function PaywallModal(props: PaywallModalProps) {
+export function PaywallModal(
+  props: PaywallModalProps & {
+    /** 見本表示専用: 宝箱の特典の見せ方を指定する（未指定なら本番と同じく owner_token で決まる）。 */
+    treasurePreviewLayout?: FullAccessTreasureLayout;
+  },
+) {
   // open は必ずクライアントの CustomEvent (ユーザークリック) 経由でのみ true になる。
   const [open, setOpen] = useState(false);
   const [source, setSource] = useState<string | null>(null);
+  const [friendName, setFriendName] = useState<string | null>(null);
 
   // 開く要求 (scrollToPaywall からの CustomEvent) を拾う。preventDefault で
   // 呼び出し側のスクロールフォールバックを止める。
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
-      const detail = (e as CustomEvent<{ source?: unknown }>).detail;
+      const detail = (e as CustomEvent<{ source?: unknown; friendName?: unknown }>).detail;
       setSource(typeof detail?.source === "string" ? detail.source : null);
+      setFriendName(typeof detail?.friendName === "string" ? detail.friendName : null);
       setOpen(true);
     };
     window.addEventListener(PAYWALL_OPEN_EVENT, handler);
@@ -383,8 +407,7 @@ export function PaywallModal(props: PaywallModalProps) {
   // 最初の場面の絵を読み込んでおく。押してから読み込むと、宝箱が出るまで間が空く。
   // 通信量を節約する設定の人には先読みしない。
   const warmsTreasure =
-    Boolean(props.treasureEntry) &&
-    props.surface !== "tako" &&
+    (props.surface === "tako" ? Boolean(props.takoTreasure) : Boolean(props.treasureEntry)) &&
     (props.locale ?? "ja") === "ja" &&
     !props.previewMode &&
     !props.legacyPlanStyle &&
@@ -415,6 +438,7 @@ export function PaywallModal(props: PaywallModalProps) {
     <PaywallOverlay
       {...props}
       ctaSource={source ?? undefined}
+      friendName={friendName ?? undefined}
       onClose={() => setOpen(false)}
     />
   );

@@ -65,6 +65,8 @@ interface MeStickyHeaderProps {
   /** 解除CTAの文言差し替え (/tako は「結果をアップグレード」・2026-08-26)。
       指定時はアイコンも錠前から上向き矢印 (アップグレード) に切り替える。 */
   unlockCtaLabel?: string;
+  /** unlockCtaLabel のアイコン。"gift" はプレゼントの箱 (/tako の「特典を受け取る」)。未指定は上向き矢印。 */
+  unlockCtaIcon?: "upgrade" | "gift";
   /** 共有 URL。character=/share/[inviteCode]、invite=/friend/[inviteCode]。 */
   shareUrl?: string;
   /** 友達診断への招待 URL。指定時は共有ポップアップに2つ目の選択肢を表示する。 */
@@ -231,6 +233,7 @@ export function MeStickyHeader({
   children,
   showUnlockCta,
   unlockCtaLabel,
+  unlockCtaIcon = "upgrade",
   shareUrl,
   friendShareUrl,
   friendDiagnosisHref,
@@ -1026,10 +1029,35 @@ export function MeStickyHeader({
                     (isEn ? "Unlock all results" : isId ? "Buka semua hasil" : isKo ? "모든 결과 잠금 해제" : "すべての結果のロックを解除")
                   }
                   onClick={() => scrollToPaywall("sticky_bar", paywallTargetId)}
-                  className="relative inline-flex min-h-10 w-[190px] min-w-[150px] shrink items-center justify-center rounded-full bg-[#5B5BEF] px-4 py-1.5 text-center text-[12px] font-black leading-[1.15] text-white shadow-[0_2px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] active:scale-[0.99] sm:min-h-11 sm:w-[248px] sm:min-w-[220px] sm:px-5 sm:text-[13px]"
+                  // 「特典を受け取る」は文字が短いので、幅を決め打ちにせず中身に合わせ、アイコンを文字のすぐ横に置く
+                  // (幅 190px のままだと、左端のアイコンと文字の間が空いて間延びして見えた・2026-11-26)。
+                  className={`relative inline-flex min-h-10 shrink items-center justify-center rounded-full bg-[#5B5BEF] py-1.5 text-center font-black leading-[1.15] text-white shadow-[0_2px_0_#3d3dc4] transition-all hover:translate-y-0.5 hover:shadow-[0_1px_0_#3d3dc4] active:scale-[0.99] sm:min-h-11 ${
+                    unlockCtaLabel && unlockCtaIcon === "gift"
+                      ? "gap-1.5 whitespace-nowrap px-5 text-[13px] sm:px-6 sm:text-[14px]"
+                      : "w-[190px] min-w-[150px] px-4 text-[12px] sm:w-[248px] sm:min-w-[220px] sm:px-5 sm:text-[13px]"
+                  }`}
                   style={primaryButtonStyle}
                 >
-                  {unlockCtaLabel ? (
+                  {unlockCtaLabel && unlockCtaIcon === "gift" ? (
+                    <svg
+                      width="17"
+                      height="17"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                      className="shrink-0"
+                    >
+                      <rect x="3" y="8" width="18" height="4" rx="1" />
+                      <path d="M5 12v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-8" />
+                      <path d="M12 8v13" />
+                      <path d="M12 8c-1.2-3-3-4.5-4.6-4.5A2.2 2.2 0 0 0 7.5 8" />
+                      <path d="M12 8c1.2-3 3-4.5 4.6-4.5A2.2 2.2 0 0 1 16.5 8" />
+                    </svg>
+                  ) : unlockCtaLabel ? (
                     <svg
                       width="15"
                       height="15"

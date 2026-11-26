@@ -144,12 +144,27 @@ const BENEFIT_NUMBERS = ["①", "②", "③", "④", "⑤", "⑥", "⑦"] as con
  * 導線が分からないとき・ページ全体の解除（上部バー、ページ末尾のカード）のときは「自己診断結果のすべてを解放」を先頭にする。
  * 「特典①〜⑦」の番号は、並べ替えたあとの順に振る。
  */
-function fullAccessBenefits(ctaSource: string | undefined): TreasureBenefit[] {
-  const heroKey: FullAccessBenefitKey = (ctaSource && NAV_HERO_KEYS[ctaSource]) || "sections";
-  const sectionBody = ctaSource ? SECTION_HERO_BODIES[ctaSource] : undefined;
+function fullAccessBenefits(
+  ctaSource: string | undefined,
+  surface: "self" | "tako" | undefined,
+  friendName: string | undefined,
+): TreasureBenefit[] {
+  // 友達診断ページの鍵（上部バー・鍵つきの友達タブ）から来た人には、友達の結果を先頭に、
+  // 友達の回答をまとめたレポートを2番目にする。下部ナビの鍵から来た人は、従来どおり押した機能が先頭。
+  const takoHero = surface === "tako" && !(ctaSource && NAV_HERO_KEYS[ctaSource]);
+  const heroKey: FullAccessBenefitKey = takoHero ? "friends" : (ctaSource && NAV_HERO_KEYS[ctaSource]) || "sections";
+  // 鍵つきの友達タブから来た人には、押した友達の名前で説明する。
+  const sectionBody = takoHero
+    ? friendName
+      ? `${friendName}から見たあなたも、ぜんぶ読めます`
+      : undefined
+    : ctaSource
+      ? SECTION_HERO_BODIES[ctaSource]
+      : undefined;
   const hero = FULL_ACCESS_BENEFITS.find((benefit) => benefit.key === heroKey) ?? FULL_ACCESS_BENEFITS[0];
-  const rest = FULL_ACCESS_BENEFITS.filter((benefit) => benefit !== hero);
-  return [sectionBody ? { ...hero, body: sectionBody } : hero, ...rest].map((benefit, index) => ({
+  const second = takoHero ? FULL_ACCESS_BENEFITS.find((benefit) => benefit.key === "report") : undefined;
+  const rest = FULL_ACCESS_BENEFITS.filter((benefit) => benefit !== hero && benefit !== second);
+  return [sectionBody ? { ...hero, body: sectionBody } : hero, ...(second ? [second] : []), ...rest].map((benefit, index) => ({
     label: `特典${BENEFIT_NUMBERS[index]}`,
     title: benefit.title,
     short: benefit.short,
@@ -160,7 +175,12 @@ function fullAccessBenefits(ctaSource: string | undefined): TreasureBenefit[] {
   }));
 }
 
-function fullAccessOffer(ctaSource: string | undefined, layout: FullAccessTreasureLayout): TreasureOffer {
+function fullAccessOffer(
+  ctaSource: string | undefined,
+  layout: FullAccessTreasureLayout,
+  surface: "self" | "tako" | undefined,
+  friendName: string | undefined,
+): TreasureOffer {
   return {
     dialogLabel: "Aliceからのプレゼント",
     lead: ["診断してくれた", "あなたへのプレゼント"],
@@ -168,7 +188,7 @@ function fullAccessOffer(ctaSource: string | undefined, layout: FullAccessTreasu
     couponLabel: (couponJpy) => `リリース記念 ¥${couponJpy.toLocaleString("ja-JP")} OFFクーポン（完全版に使えます）`,
     offerSummary: (priceJpy, count) =>
       `クーポンを使うと、完全版が ${priceJpy.toLocaleString("ja-JP")}円。次の${count}つがすべて解放されます。`,
-    benefits: fullAccessBenefits(ctaSource),
+    benefits: fullAccessBenefits(ctaSource, surface, friendName),
     benefitStyle: layout,
     // 先頭はその人が開けようとしたもの。勝手に次へ回さず、本人が指で送る。
     autoRotate: false,
@@ -193,6 +213,8 @@ type Props = {
   previewArm?: JaFullAccessPriceArm;
   /** 特典の見せ方（A/B の群。lib/full-access-treasure-layout.ts）。未指定は従来の stack。 */
   layout?: FullAccessTreasureLayout;
+  /** 鍵つきの友達タブから開いたとき、その友達の呼び名（例「ゆかさん」）。先頭の特典の説明に使う。 */
+  friendName?: string;
   priceState?: FullAccessQuoteState;
   /**
    * 閉じたとき。宝箱を開けずに「閉じる」を押したときも、値札と特典を見たあと「あとで決める」を
@@ -210,6 +232,7 @@ export function FullAccessTreasure({
   previewMode = false,
   previewArm = "control",
   layout = "stack",
+  friendName,
   priceState,
   onClose,
 }: Props) {
@@ -219,7 +242,7 @@ export function FullAccessTreasure({
     (previewMode ? null : jaFullAccessOfferForQuote(priceState?.quote)) ?? jaFullAccessOfferForArm(previewArm));
   // 同じタブで受け取り済みなら、宝箱を開け直させずに値札と特典から見せる。
   const [startAt] = useState<"chest" | "offer">(() => (fullAccessCouponReceived() ? "offer" : "chest"));
-  const [offer] = useState(() => fullAccessOffer(ctaSource, layout));
+  const [offer] = useState(() => fullAccessOffer(ctaSource, layout, surface, friendName));
   const shownAt = useRef<number | null>(null);
   const offerShownAt = useRef<number | null>(null);
   const stage = useRef<TreasureStage>(startAt === "offer" ? "offer" : "chest");

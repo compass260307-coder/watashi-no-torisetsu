@@ -120,6 +120,8 @@ export const PAYWALL_OPEN_EVENT = "torisetsu:open-paywall";
 export function scrollToPaywall(
   source: string = "unknown",
   targetId: string = PAYWALL_ID,
+  // 鍵つきの友達タブから開くとき、その友達の呼び名（例「ゆかさん」）。宝箱の先頭の特典の説明に使う。
+  options: { friendName?: string } = {},
 ): void {
   if (typeof document === "undefined") return;
   const normalizedSource = normalizePaywallSource(source);
@@ -137,7 +139,10 @@ export function scrollToPaywall(
   // モーダルを開く要求を発火。PaywallModal が拾った場合は preventDefault され、
   // dispatchEvent が false を返すためスクロールのフォールバックへ進まない。
   const openEvent = new CustomEvent(PAYWALL_OPEN_EVENT, {
-    detail: { source: normalizedSource },
+    detail: {
+      source: normalizedSource,
+      ...(options.friendName ? { friendName: options.friendName } : {}),
+    },
     cancelable: true,
   });
   const notHandled = window.dispatchEvent(openEvent);
