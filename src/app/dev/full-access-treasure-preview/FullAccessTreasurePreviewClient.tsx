@@ -23,6 +23,9 @@ export function FullAccessTreasurePreviewClient() {
   // 価格テスト（2026-11-22〜）のどちらの群の値札を見るか。
   const [arm, setArm] = useState<"control" | "test" | "test899">("control");
   const [entry, setEntry] = useState<string>(ENTRIES[0][0]);
+  // 特典の見せ方。spill は新しい見せ方（値札のあと宝箱から7つが飛び出す）、stack は従来。
+  // auto は本番と同じく owner_token から決める（このページの owner_token は "preview" で固定）。
+  const [layout, setLayout] = useState<"spill" | "stack" | "auto">("spill");
   function openOverlay(resetCoupon: boolean) {
     if (resetCoupon) {
       try {
@@ -49,6 +52,21 @@ export function FullAccessTreasurePreviewClient() {
               onClick={() => setArm(value)}
               className={`flex-1 rounded-full border-2 border-[#2E2E5C] px-3 py-2 text-[12px] font-black ${
                 arm === value ? "bg-[#2E2E5C] text-white" : "text-[#2E2E5C]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2" role="group" aria-label="特典の見せ方">
+          {([["spill", "新: 7つが飛び出す"], ["stack", "従来"], ["auto", "A/Bの割り当て"]] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={layout === value}
+              onClick={() => setLayout(value)}
+              className={`flex-1 rounded-full border-2 border-[#9A6A24] px-3 py-2 text-[12px] font-black ${
+                layout === value ? "bg-[#9A6A24] text-white" : "text-[#9A6A24]"
               }`}
             >
               {label}
@@ -93,6 +111,7 @@ export function FullAccessTreasurePreviewClient() {
           previewMode
           ctaSource={entry}
           treasurePreviewArm={arm}
+          treasurePreviewLayout={layout === "auto" ? undefined : layout}
           onClose={() => setOpen(false)}
         />
       )}

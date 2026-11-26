@@ -2,7 +2,7 @@
 
 import { isMotionReduced } from "@/lib/a11y-style";
 import Image, { getImageProps } from "next/image";
-import { useEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import styles from "./ResultUpgradeTreasure.module.css";
 
@@ -20,6 +20,16 @@ const STRIKE_AT = 820;
 const COUNT_AT = 1320;
 const COUNT_MS = 1050;
 const OFFER_AFTER_LAND_MS = 650;
+// spill では、下がった値段を値札の上でしっかり見せてから、数字を上へ移す。
+const SPILL_OFFER_AFTER_LAND_MS = 1500;
+// 特典が飛び出す演出の時刻（値札と購入ボタンの画面になってからのミリ秒）。値札が上へ移るのを待って、
+// 先頭（その人が開けようとしたもの）を少し長く見せてから、残りを続けて出す。
+const SPILL_FIRST_AT = 1050;
+const SPILL_HERO_HOLD_MS = 600;
+const SPILL_GAP_MS = 280;
+function spillAt(index: number): number {
+  return SPILL_FIRST_AT + (index === 0 ? 0 : SPILL_HERO_HOLD_MS + (index - 1) * SPILL_GAP_MS);
+}
 
 // 羊毛フェルトの絵。閉じた宝箱と開いた宝箱は、同じ位置・同じ大きさに重なるよう切り出してある。
 const CHEST_CLOSED_SRC = "/result-upgrade/treasure-closed.webp";
@@ -41,7 +51,11 @@ const BENEFIT_BEFORE_SRC = "/characters/cut/rabbit_N.webp";
 export type TreasureBenefit = {
   label: string;
   title: string;
+  /** 小さく並べるときの短い名前（benefitStyle: "spill" の一覧）。省略時は title。 */
+  short?: string;
   body: string;
+  /** 一覧の先頭の横長カードに出す短い説明（benefitStyle: "spill"）。省略時は body。 */
+  shortBody?: string;
   image: string;
   /** 元のうさぎ → 変身後の絵を並べる（結果アップグレードの専用キャラクター）。 */
   beforeAfter?: boolean;
@@ -61,9 +75,10 @@ export type TreasureOffer = {
   benefits: readonly TreasureBenefit[];
   /**
    * deck: 回るカード（既定） /
-   * stack: 先頭の特典（その人が開けようとしたもの）を1枚だけ先に見せ、そこへ残りが加わって合計額を出してから、回るカードへ。
+   * stack: 先頭の特典（その人が開けようとしたもの）を1枚だけ先に見せ、そこへ残りが加わって合計額を出してから、回るカードへ。 /
+   * spill: クーポンで値段が下がったあと、宝箱から特典が1つずつ飛び出して値札の下の一覧に並ぶ。押すと1枚ずつ大きく見られる。
    */
-  benefitStyle?: "deck" | "stack";
+  benefitStyle?: "deck" | "stack" | "spill";
   /** false にすると、特典カードを自動では回さない（指で動かす・タップで次へ、だけにする）。既定は true。 */
   autoRotate?: boolean;
   /**
@@ -282,6 +297,62 @@ export function ResultUpgradeTreasure({
   const [shownPrice, setShownPrice] = useState(startAt === "offer" ? priceJpy : listPriceJpy);
   const onOfferShownRef = useRef(onOfferShown);
   const offerShown = phase === "offer";
+  const spillStyle = offer.benefitStyle === "spill";
+  const benefitCount = offer.benefits.length;
+  // 一覧に並んだ特典の数（spill）。
+  const [spilled, setSpilled] = useState(startAt === "offer" ? benefitCount : 0);
+  // 一覧から押して大きく見ている特典（何番目か）。見ていないときは null。
+  const [detail, setDetail] = useState<number | null>(null);
+  // 値下げが終わったら、値札の上の支払額の数字がそのまま値札を離れ、金色に変わりながら上の定位置へ移る。
+  // 値札の数字がいた場所と大きさを測り、そこから動かし始める（画面の大きさによって位置が違うため）。
+  const tagPriceRef = useRef<HTMLDivElement>(null);
+  const headPriceRef = useRef<HTMLSpanElement>(null);
+  useLayoutEffect(() => {
+    if (!spillStyle || !offerShown || startAt === "offer" || reducedMotion) return;
+    const from = tagPriceRef.current?.getBoundingClientRect();
+    const target = headPriceRef.current;
+    if (!from || !target || from.height === 0) return;
+    const to = target.getBoundingClientRect();
+    if (to.height === 0) return;
+    const dx = from.left + from.width / 2 - (to.left + to.width / 2);
+    const dy = from.top + from.height / 2 - (to.top + to.height / 2);
+    const scale = from.height / to.height;
+    const gold = window.getComputedStyle(target).filter;
+    const animation = target.animate(
+      [
+        {
+          transform: `translate(${dx}px, ${dy}px) scale(${scale})`,
+          filter: "invert(0) sepia(0) saturate(1) hue-rotate(0deg) brightness(1) drop-shadow(0 3px 10px rgba(255, 196, 90, 0))",
+          offset: 0,
+        },
+        {
+          transform: `translate(${dx * 0.75}px, ${dy * 0.82}px) scale(${scale * 1.08})`,
+          filter: gold,
+          offset: 0.3,
+        },
+        { transform: "translate(0, 0) scale(1)", filter: gold, offset: 1 },
+      ],
+      { duration: 950, easing: "cubic-bezier(0.3, 0, 0.2, 1)", fill: "backwards" },
+    );
+    return () => animation.cancel();
+  }, [spillStyle, offerShown, startAt, reducedMotion]);
+
+  // 値札と購入ボタンの画面になったら、宝箱から特典を1つずつ出して並べる。
+  useEffect(() => {
+    if (!spillStyle || !offerShown || startAt === "offer") return;
+    if (reducedMotion) {
+      const timer = window.setTimeout(() => setSpilled(benefitCount), 0);
+      return () => window.clearTimeout(timer);
+    }
+    const pending: number[] = [];
+    for (let i = 0; i < benefitCount; i++) {
+      pending.push(window.setTimeout(() => {
+        setSpilled((value) => Math.max(value, i + 1));
+        try { navigator.vibrate?.(i === 0 ? 14 : 8); } catch { /* optional */ }
+      }, spillAt(i)));
+    }
+    return () => pending.forEach((timer) => window.clearTimeout(timer));
+  }, [spillStyle, offerShown, startAt, reducedMotion, benefitCount]);
 
   useEffect(() => {
     onOfferShownRef.current = onOfferShown;
@@ -373,7 +444,7 @@ export function ResultUpgradeTreasure({
       frame.current = null;
       setPriceStep("landed");
       vibrate([20, 50, 36]);
-      later(() => setPhase("offer"), OFFER_AFTER_LAND_MS);
+      later(() => setPhase("offer"), spillStyle ? SPILL_OFFER_AFTER_LAND_MS : OFFER_AFTER_LAND_MS);
     };
     frame.current = window.requestAnimationFrame(tick);
   }
@@ -414,6 +485,9 @@ export function ResultUpgradeTreasure({
   const struck = priceStep === "strike" || priceStep === "counting" || priceStep === "landed";
   const counting = priceStep === "counting" || priceStep === "landed";
   const landed = priceStep === "landed";
+  const offerPhase = phase === "offer" || phase === "closing";
+  // 特典が宝箱から出ている間は、宝箱とAliceを見せたままにする。
+  const spilling = spillStyle && offerPhase && spilled < benefitCount;
   const chestMotion =
     phase === "intro" ? styles.dropIn
       : phase === "idle" ? styles.idle
@@ -482,6 +556,13 @@ export function ResultUpgradeTreasure({
       )}
       <div className={`${styles.flash} ${opened && !reducedMotion ? styles.flashOn : ""}`} aria-hidden="true" />
 
+      {/* 特典が並び終わったら、背景と宝箱を暗く沈めて、値札・一覧・購入ボタンだけを残す。 */}
+      {spillStyle && (
+        <>
+          <div className={`${styles.spillShadeTop} ${offerPhase ? styles.spillScrimOn : ""}`} aria-hidden="true" />
+          <div className={`${styles.spillScrim} ${offerPhase && !spilling ? styles.spillScrimOn : ""}`} aria-hidden="true" />
+        </>
+      )}
       <div className={`${styles.heading} ${opened ? styles.headingOut : ""}`}>
         <p className={styles.title}>PRESENT</p>
         <p className={styles.lead}>
@@ -489,7 +570,7 @@ export function ResultUpgradeTreasure({
         </p>
       </div>
 
-      <div className={`${styles.stage} ${phase === "offer" || phase === "closing" ? styles.chestDim : ""}`}>
+      <div className={`${styles.stage} ${offerPhase && !spilling ? (spillStyle ? styles.chestGone : styles.chestDim) : ""}`}>
         <div className={`${styles.glow} ${opened ? styles.glowOn : ""}`} aria-hidden="true" />
         <button
           type="button"
@@ -523,7 +604,7 @@ export function ResultUpgradeTreasure({
           </div>
         </button>
       </div>
-      <div key={landed ? "alice-landed" : "alice"} className={`${styles.alice} ${opened ? styles.aliceHop : ""}`} aria-hidden="true">
+      <div key={landed ? "alice-landed" : "alice"} className={`${styles.alice} ${opened ? styles.aliceHop : ""} ${spillStyle && offerPhase && !spilling ? styles.aliceAway : ""}`} aria-hidden="true">
         <Image src={ALICE_SRC} alt="" fill priority sizes={ALICE_SIZES} />
       </div>
       {phase === "open" && (
@@ -538,9 +619,30 @@ export function ResultUpgradeTreasure({
           <CouponTicket couponJpy={couponJpy} variant="reveal" src={offer.couponSrc} label={offer.couponLabel(couponJpy)} />
         </div>
       )}
+      {/* spill では、値下げが終わったら値札の絵は上へ移りながら消え、暗い背景に金の数字だけの値段に替わる。 */}
+      {spillStyle && offerPhase && (
+        <div className={`${styles.priceHead} ${startAt === "offer" || reducedMotion ? styles.priceHeadInstant : ""}`} aria-hidden="true">
+          <p className={styles.priceHeadTop}>
+            <span className={styles.priceHeadCoupon}>クーポンで ¥{couponJpy.toLocaleString("ja-JP")} OFF</span>
+            <s className={styles.priceHeadOld}>¥{listPriceJpy.toLocaleString("ja-JP")}</s>
+          </p>
+          <p className={styles.priceHeadMain}>
+            <span className={styles.priceHeadLead}>{benefitCount}つ全部で</span>
+            <span ref={headPriceRef} className={styles.priceHeadNow}>
+              <EmbroideredPrice value={priceJpy} />
+            </span>
+          </p>
+          <span className={styles.priceHeadRule}>
+            <i />
+            <FeltStar />
+            <i />
+          </span>
+        </div>
+      )}
+      <div className={spillStyle ? `${styles.tagWrap} ${offerPhase ? styles.tagWrapGone : ""}` : styles.tagWrapNone}>
       {pricing && (
         <div
-          className={`${styles.priceTag} ${offer.priceLayout === "row" ? styles.priceTagRow : ""} ${stuck && !reducedMotion ? styles.tagShake : ""} ${phase === "offer" || phase === "closing" ? styles.priceTagOffer : ""}`}
+          className={`${styles.priceTag} ${offer.priceLayout === "row" ? styles.priceTagRow : ""} ${stuck && !reducedMotion ? styles.tagShake : ""} ${offerPhase && !spillStyle ? styles.priceTagOffer : ""}`}
           role="img"
           aria-label={`通常価格 ${listPriceJpy.toLocaleString("ja-JP")}円が、クーポンで ${priceJpy.toLocaleString("ja-JP")}円`}
         >
@@ -552,7 +654,13 @@ export function ResultUpgradeTreasure({
             </div>
           </div>
           {counting && (
-            <div key={landed ? "landed" : "counting"} className={`${styles.newPrice} ${landed && !reducedMotion ? styles.newPriceLanded : ""}`}>
+            <div
+              key={landed ? "landed" : "counting"}
+              ref={tagPriceRef}
+              className={`${styles.newPrice} ${landed && !reducedMotion ? styles.newPriceLanded : ""}`}
+              // spill では、この数字が値札を離れて上へ移る（上の金の数字に引き継ぐ）ので、値札の側は消す。
+              style={spillStyle && offerPhase ? { visibility: "hidden" } : undefined}
+            >
               <EmbroideredPrice value={shownPrice} />
             </div>
           )}
@@ -601,6 +709,7 @@ export function ResultUpgradeTreasure({
           )}
         </div>
       )}
+      </div>
       {opened && !reducedMotion && SPARKLES.map((sparkle, index) => (
           <span
             key={index}
@@ -618,6 +727,15 @@ export function ResultUpgradeTreasure({
           </span>
         ))}
 
+      {spillStyle && offerPhase && (
+        <BenefitShelf
+          benefits={offer.benefits}
+          revealed={spilled}
+          instant={reducedMotion || startAt === "offer"}
+          hidden={detail !== null}
+          onPick={setDetail}
+        />
+      )}
       {phase === "open" ? (
         <>
           <div className={styles.revealTop} role="status" aria-live="polite">
@@ -638,7 +756,18 @@ export function ResultUpgradeTreasure({
           <p className={styles.srOnly} role="status" aria-live="polite">
             {offer.offerSummary(priceJpy, offer.benefits.length)}
           </p>
-          {offer.benefitStyle === "stack" ? (
+          {spillStyle ? (
+            detail !== null && (
+              <>
+                <BenefitDeck key={detail} reducedMotion={reducedMotion} benefits={offer.benefits} autoRotate={false} initialIndex={detail} />
+                <button type="button" className={styles.detailClose} aria-label="一覧にもどる" onClick={() => setDetail(null)}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </>
+            )
+          ) : offer.benefitStyle === "stack" ? (
             <BenefitStack
               benefits={offer.benefits}
               priceJpy={priceJpy}
@@ -867,6 +996,78 @@ function BenefitStack({
   );
 }
 
+// 一覧の各マスへ、宝箱（一覧の下・中央）から飛んでくるときの出発点。上の横長の1枚、中段の3つ、下段の3つの順。
+const SHELF_FROM = [
+  { fx: "0%", fy: "35vh", fr: "-8deg" },
+  { fx: "106%", fy: "20vh", fr: "-22deg" },
+  { fx: "0%", fy: "20vh", fr: "14deg" },
+  { fx: "-106%", fy: "20vh", fr: "22deg" },
+  { fx: "106%", fy: "6vh", fr: "-18deg" },
+  { fx: "0%", fy: "6vh", fr: "-12deg" },
+  { fx: "-106%", fy: "6vh", fr: "18deg" },
+] as const;
+
+/**
+ * 宝箱から飛び出した特典が、値札の下に並ぶ一覧（benefitStyle: "spill"）。
+ * 先頭（その人が開けようとしたもの）を横長の1枚で大きく、残りを3つずつ2段に並べる。押すと、その特典を大きく見られる。
+ */
+function BenefitShelf({
+  benefits,
+  revealed,
+  instant,
+  hidden,
+  onPick,
+}: {
+  benefits: readonly TreasureBenefit[];
+  revealed: number;
+  instant: boolean;
+  hidden: boolean;
+  onPick: (index: number) => void;
+}) {
+  return (
+    <div className={`${styles.shelf} ${hidden ? styles.shelfAway : ""}`} aria-hidden={hidden ? true : undefined}>
+      <div className={styles.shelfGrid}>
+        {benefits.map((benefit, i) => {
+          const from = SHELF_FROM[i % SHELF_FROM.length];
+          const shown = i < revealed;
+          return (
+            <button
+              key={benefit.label}
+              type="button"
+              className={`${styles.shelfTile} ${i === 0 ? styles.shelfHero : ""} ${shown ? (instant ? "" : styles.shelfIn) : styles.shelfWaiting}`}
+              style={{ "--fx": from.fx, "--fy": from.fy, "--fr": from.fr } as CSSProperties}
+              disabled={!shown || hidden}
+              aria-label={`${benefit.label} ${benefit.title}`}
+              onClick={() => onPick(i)}
+            >
+              <span className={styles.shelfArt} aria-hidden="true">
+                <Image src={benefit.image} alt="" fill sizes={BENEFIT_SIZES} style={{ objectFit: "contain" }} />
+              </span>
+              <span className={styles.shelfNumber} aria-hidden="true">{i + 1}</span>
+              {i === 0 ? (
+                <span className={styles.shelfHeroText}>
+                  <span className={styles.shelfHeroTitle}>{benefit.title}</span>
+                  <span className={styles.shelfHeroBody}>{benefit.shortBody ?? benefit.body}</span>
+                </span>
+              ) : (
+                <span className={styles.shelfName}>{benefit.short ?? benefit.title}</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      {revealed >= benefits.length && (
+        <p className={styles.shelfHint}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M9 11V5.5a1.5 1.5 0 013 0V10m0 0V8.5a1.5 1.5 0 013 0V11m0 0v-.5a1.5 1.5 0 013 0V15a6 6 0 01-6 6h-.6a6 6 0 01-4.6-2.2L5 15.5a1.5 1.5 0 012.3-1.9L9 15.2V11" />
+          </svg>
+          カードを押すと、くわしく見られます
+        </p>
+      )}
+    </div>
+  );
+}
+
 // 指でスライドを動かすときの設定。
 // これ以上横に動いたらスワイプとして扱う（それ未満はタップ）。
 const SWIPE_START_PX = 8;
@@ -904,14 +1105,17 @@ function BenefitDeck({
   inline = false,
   benefits = BENEFITS,
   autoRotate = true,
+  initialIndex = 0,
 }: {
   reducedMotion: boolean;
   inline?: boolean;
   benefits?: readonly TreasureBenefit[];
+  /** 最初に正面に出すカード（何番目か）。 */
+  initialIndex?: number;
   /** false のときは自動では回さない（指で動かす・タップで次へ、だけ）。 */
   autoRotate?: boolean;
 }) {
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(initialIndex);
   // 指で動かしている量（カード何枚ぶんか。正の値で次のカードが正面に来る）。動かしていないときは null。
   const [drag, setDrag] = useState<number | null>(null);
   const pointer = useRef<{ id: number; startX: number; width: number; swiping: boolean; moved: number } | null>(null);
