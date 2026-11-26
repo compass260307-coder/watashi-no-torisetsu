@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import recoveryImage from "../../public/types/penguin-recovery.webp";
 import { usePathname } from "next/navigation";
+import { NotFoundScreenJa } from "@/components/ErrorScreens";
 
 const COPY = {
   ja: {
@@ -46,6 +47,9 @@ export function LocalizedNotFound() {
   useEffect(() => {
     document.documentElement.lang = locale;
   }, [locale]);
+
+  // 日本語は専用の画面 (行き先を3つ並べる)。ほかの言語は今までの画面。
+  if (locale === "ja") return <NotFoundScreenJa />;
 
   return (
     <main
