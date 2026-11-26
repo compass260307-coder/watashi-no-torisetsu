@@ -456,7 +456,7 @@ export interface NumbersEconomics {
   fee: number;
   server: number;
   ai: number;
-  /** 純売上 − 決済手数料 − サーバー費の概算 − AI費の概算 − 広告費。 */
+  /** 純売上 − 決済手数料 − サーバー費 (実額、無ければ概算) − AI費の概算 − 広告費。 */
   profit: number;
   /** 広告費 ÷ 広告流入の診断数。 */
   cpaAd: number | null;
@@ -464,7 +464,10 @@ export interface NumbersEconomics {
   cpaAll: number | null;
 }
 
-/** 利益ダッシュボードの「参考利益」と同じ計算。 */
+/**
+ * 利益ダッシュボードの「参考利益」と同じ計算。serverActual (サーバー費の実額、円) を
+ * 渡すと、診断 1 件あたりの概算の代わりにそれを引く。
+ */
 export function economics(
   amounts: Pick<
     NumbersSubtotal,
@@ -476,9 +479,11 @@ export function economics(
   >,
   cost: number,
   settings: NumbersSettings,
+  serverActual: number | null = null,
 ): NumbersEconomics {
   const fee = amounts.net * settings.fee_rate;
-  const server = amounts.diagnoses * settings.server_cost_per_diagnosis;
+  const server =
+    serverActual ?? amounts.diagnoses * settings.server_cost_per_diagnosis;
   const ai =
     amounts.purchases_full * settings.ai_cost_per_purchase +
     amounts.purchases_upgrade * settings.ai_cost_per_upgrade;
@@ -595,14 +600,22 @@ export interface NumbersAdAccountsDaily {
 }
 
 /**
- * サーバー費の実額 (Vercel の請求額) を、日 × プロジェクトで並べたもの (月の推移の表)。
- * day は課金期間の開始日で、日本時間の 17 時が区切り。
+ * サーバー費の実額 (Vercel の請求額、米ドル) を円に直すときの為替 (1 ドルあたりの円)。
+ * 2026 年 11 月の相場 (158〜160 円) から決めた固定の値。相場が大きく動いたら直す。
+ */
+export const SERVER_COST_USD_JPY = 160;
+
+/**
+ * サーバー費の実額 (Vercel の請求額) を、日 × プロジェクトで並べたもの (月の推移)。
+ * 金額は円 (固定の為替で換算)。day は日本時間の日で、17 時区切りの課金期間を時間の比で分け直してある。
  */
 export interface NumbersServerCostsDaily {
-  currency: "USD";
+  currency: "JPY";
+  /** 換算に使った為替 (1 ドルあたりの円)。 */
+  usd_jpy: number;
   /** その月に料金があるプロジェクト。月の合計が大きい順 (小さいものは「そのほか」にまとめる)。 */
   projects: { key: string; name: string; total: number }[];
-  /** 料金がある日だけ。cost は「プロジェクトの key → その日の金額」。 */
+  /** 実額がそろった日だけ。cost は「プロジェクトの key → その日の金額」。 */
   days: { day: string; total: number; cost: Record<string, number> }[];
 }
 
@@ -638,6 +651,10 @@ export interface NumbersDailyRow {
   cost: number | null;
   /** 広告費のうち、配信計画からの推定の分。 */
   costPlan: number;
+  /** サーバー費 (円)。実額があれば実額、無ければ診断 1 件あたりの概算。単価も無ければ null。 */
+  server: number | null;
+  /** サーバー費が概算か (実額がまだ取り込まれていない日)。 */
+  serverEstimated: boolean;
   economics: NumbersEconomics | null;
 }
 
@@ -667,6 +684,8 @@ export function buildDailyRow(
   cohort: NumbersDayBlock["cohort"] | null,
   cost: NumbersDailyCost | null,
   settings: NumbersSettings | null,
+  /** サーバー費の実額 (円)。まだ無い日は null。 */
+  serverActual: number | null = null,
 ): NumbersDailyRow {
   // jsonb の numeric は文字列で届くことがあるので、数に直してから使う。
   const actual = cost ? Number(cost.actual) : 0;
@@ -684,9 +703,15 @@ export function buildDailyRow(
     shareRate: cohort ? ratio(cohort.sharers, cohort.diagnosers) : null,
     cost: total,
     costPlan: plan,
+    server:
+      serverActual ??
+      (amounts && settings
+        ? amounts.diagnoses * settings.server_cost_per_diagnosis
+        : null),
+    serverEstimated: serverActual === null,
     economics:
       amounts && total !== null && settings
-        ? economics(amounts, total, settings)
+        ? economics(amounts, total, settings, serverActual)
         : null,
   };
 }
