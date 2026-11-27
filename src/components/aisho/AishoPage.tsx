@@ -38,6 +38,9 @@ import type { SceneKey } from "@/lib/aisho-scene-copy";
 import { scrollToPaywall } from "@/lib/scroll-to-paywall";
 import { useAishoEntryAccess } from "@/lib/use-aisho-navigation-access";
 import characterImages from "@/generated/character-images.json";
+import { DiagnosisAnalyzingLoader } from "@/components/DiagnosisAnalyzingLoader";
+import { AishoAnalyzingVisual } from "@/components/aisho/AishoAnalyzingVisual";
+import analyzingStyles from "@/components/aisho/AishoAnalyzingVisual.module.css";
 import EnSiteFooter from "@/components/en/EnSiteFooter";
 import EnSiteHeader from "@/components/en/EnSiteHeader";
 import TopHeader from "@/components/top/TopHeader";
@@ -1129,6 +1132,49 @@ function TypeGrid({
   );
 }
 
+// ---- 診断中の画面 ----------------------------------------------------------
+// 長さは8秒。メッセージは2秒ずつ4つ。
+const ANALYZING_MS = 8000;
+// 終わったあと、診断中の画面が透けて結果が見えてくるまでの長さ。
+const ANALYZING_FADE_MS = 900;
+const ANALYZING_MESSAGE_DURATIONS_MS = [2000, 2000, 2000];
+// チェックリストの代わりに、絵の中の「5つの視点」が順に付いていく。
+const NO_STEPS: string[] = [];
+const ANALYZING_COPY: Record<AppResultLocale, { messages: string[] }> = {
+  ja: {
+    messages: [
+      "ふたりのタイプを読み込んでいます...",
+      "思いやり・情緒・価値観を照らし合わせ中...",
+      "生活リズム・社交バランスを分析...",
+      "ふたりの相性をまとめています...",
+    ],
+  },
+  ko: {
+    messages: [
+      "두 사람의 유형을 불러오고 있어요...",
+      "배려・정서・가치관을 비교하고 있어요...",
+      "생활 리듬・사교 균형을 분석하고 있어요...",
+      "두 사람의 궁합을 정리하고 있어요...",
+    ],
+  },
+  en: {
+    messages: [
+      "Loading both types...",
+      "Comparing consideration, emotions, and values...",
+      "Analyzing daily rhythm and social balance...",
+      "Putting your compatibility together...",
+    ],
+  },
+  id: {
+    messages: [
+      "Memuat kedua tipe...",
+      "Membandingkan kepedulian, emosi, dan nilai...",
+      "Menganalisis ritme harian dan keseimbangan sosial...",
+      "Merangkum kecocokan kalian...",
+    ],
+  },
+};
+
 // ---- 本体 -----------------------------------------------------------------
 
 function AishoInner({ locale }: { locale: AppResultLocale }) {
@@ -1190,15 +1236,36 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
     return isValid(a) && isValid(b) && a !== b;
   });
   // 選択操作で2枠そろった直後の「診断中...」演出 (直リンクでは出さない)。
-  const [analyzing, setAnalyzing] = useState(false);
+  // ローカル確認用 (?preview=1 のときだけ): &analyzing=hold で診断中の画面を出したままにする。
+  // &analyzing=1 は本番と同じ長さで再生して結果へ進む。
+  const analyzingPreview = previewMode ? searchParams.get("analyzing") : null;
+  const holdAnalyzing = analyzingPreview === "hold";
+  const [analyzing, setAnalyzing] = useState(
+    () => analyzingPreview === "hold" || analyzingPreview === "1",
+  );
+  const [leaving, setLeaving] = useState(false);
   useEffect(() => {
-    if (!analyzing) return;
+    if (!analyzing || holdAnalyzing) return;
+    const t = setTimeout(() => setLeaving(true), ANALYZING_MS);
+    return () => clearTimeout(t);
+  }, [analyzing, holdAnalyzing]);
+  // 診断中の画面が終わったら、すぐ消さずにゆっくり透けさせて、下の結果をだんだん見せる。
+  // 結果は「診断する」を押した時点で裏に出して読み込んでおく (startAnalyzing)。
+  useEffect(() => {
+    if (!leaving) return;
     const t = setTimeout(() => {
       setAnalyzing(false);
-      setRevealed(true);
-    }, 4000);
+      setLeaving(false);
+    }, ANALYZING_FADE_MS);
     return () => clearTimeout(t);
-  }, [analyzing]);
+  }, [leaving]);
+  // 結果を「だんだん出す」動きを付けるか。診断中の画面を通ったときだけ (直リンクでは付けない)。
+  const [resultEnter, setResultEnter] = useState(() => analyzingPreview === "1");
+  const startAnalyzing = useCallback(() => {
+    setAnalyzing(true);
+    setRevealed(true);
+    setResultEnter(true);
+  }, []);
 
   const bothFilled = slotA !== null && slotB !== null;
   const resultShown = bothFilled && revealed;
@@ -1245,6 +1312,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
     syncUrl(null, slotB);
     setRevealed(false);
     setAnalyzing(false);
+    setResultEnter(false);
   }, [slotB, syncUrl]);
 
   const clearB = useCallback(() => {
@@ -1252,6 +1320,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
     syncUrl(slotA, null);
     setRevealed(false);
     setAnalyzing(false);
+    setResultEnter(false);
   }, [slotA, syncUrl]);
 
   // 結果が現れたらそこへスクロール（「相性を見る」tap・直リンク両対応）
@@ -1264,73 +1333,62 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
   // 送り出す直前は、相性の画面や課金カードを一瞬でも見せない。
   if (leavingForFunnel) return <main className="min-h-screen bg-white" aria-busy="true" />;
 
+  // ===== 診断中の画面 =====
+  // 自己診断の解析待ち画面 (DiagnosisAnalyzingLoader) と同じ部品を、ピンクで使う。
+  // マスコットの代わりに、選んだ2キャラとハートを出す。
+  const analyzingOverlay =
+    analyzing && slotA && slotB ? (
+      <div
+        className="fixed inset-0 z-[60] overflow-y-auto transition-opacity ease-out"
+        style={{
+          opacity: leaving ? 0 : 1,
+          transitionDuration: `${ANALYZING_FADE_MS}ms`,
+          pointerEvents: leaving ? "none" : undefined,
+        }}
+        role="status"
+        aria-live="polite"
+      >
+        <DiagnosisAnalyzingLoader
+          theme="aisho"
+          messages={ANALYZING_COPY[locale].messages}
+          messageDurationsMs={ANALYZING_MESSAGE_DURATIONS_MS}
+          steps={NO_STEPS}
+          totalMs={ANALYZING_MS}
+          visual={
+            <AishoAnalyzingVisual
+              a={{ src: heroImagePath(slotA), name: typeEssence(slotA, locale) }}
+              b={{ src: heroImagePath(slotB), name: typeEssence(slotB, locale) }}
+              axes={AXIS_META_VIEW.map((axis) => ({ label: axis.label[locale], color: axis.color }))}
+              totalMs={ANALYZING_MS}
+            />
+          }
+        />
+      </div>
+    ) : null;
+
   return (
     <>
+    {analyzingOverlay}
     {isKorean ? <KoTopHeader /> : isEnglish ? <EnSiteHeader /> : <TopHeader locale={isIndonesian ? "id" : "ja"} />}
     <main className="min-h-screen overflow-x-clip bg-white">
       {/* コンテンツ幅は自己診断結果 (/me) と同じ max-w-[1080px] に揃える。
           結果表示中は /me 同様ヒーロー帯をヘッダー直下から始めるため上余白なし */}
       <div
         className={`max-w-[1080px] mx-auto px-4 md:px-8 ${
-          resultShown || analyzing ? "" : "pt-6 md:pt-10"
+          resultShown ? "" : "pt-6 md:pt-10"
         }`}
       >
-        {analyzing && slotA && slotB ? (
-          /* ===== 診断中演出 (約1.6秒): 2キャラ対面 + 鼓動するハート ===== */
-          /* ヘッダー(約72px)を除いた高さいっぱいで縦中央に。SP はキャラ幅を
-             抑えて2体+ハートが横に収まるようにする (見切れ防止)。 */
-          <div className="flex min-h-[calc(100dvh-72px)] flex-col items-center justify-center">
-            <div className="flex w-full items-center justify-center gap-3 md:gap-12">
-              <SmoothImage
-                src={heroImagePath(slotA)}
-                alt={typeEssence(slotA, locale)}
-                width={360}
-                height={360}
-                sizes="(min-width: 706px) 240px, 34vw"
-                className="w-[34vw] max-w-[240px] object-contain"
-              />
-              <span
-                className="animate-pulse shrink-0"
-                style={{ color: NAVY }}
-                aria-hidden="true"
-              >
-                <svg
-                  viewBox="0 0 24 24"
-                  className="h-9 w-9 md:h-[52px] md:w-[52px]"
-                  fill="currentColor"
-                >
-                  <path d="M20.8 8.6c0 4.4-7.2 9.4-8.8 10.4-1.6-1-8.8-6-8.8-10.4a4.8 4.8 0 0 1 8.8-2.7 4.8 4.8 0 0 1 8.8 2.7z" />
-                </svg>
-              </span>
-              <SmoothImage
-                src={heroImagePath(slotB)}
-                alt={typeEssence(slotB, locale)}
-                width={360}
-                height={360}
-                sizes="(min-width: 706px) 240px, 34vw"
-                className="w-[34vw] max-w-[240px] object-contain"
-              />
-            </div>
-            <p
-              className="mt-10 text-[19px] md:text-[22px] font-black"
-              style={{ color: NAVY }}
-              role="status"
-            >
-              {isKorean
-                ? "두 사람의 궁합을 분석하고 있어요…"
-                : isEnglish
-                  ? "Reading this pair’s compatibility…"
-                  : isIndonesian
-                    ? "Membaca kecocokan pasangan ini…"
-                    : "ふたりの相性を診断中..."}
-            </p>
-          </div>
-        ) : resultShown ? (
+        {resultShown ? (
           /* ===== 結果モード (一覧は畳む) ===== */
           <>
             {/* scroll-mt は sticky ヘッダー (72px) の高さぶん確保する。
                 足りないとヒーロー上部のラベルがヘッダーの裏に隠れる */}
-            <div ref={resultRef} className="scroll-mt-[72px]">
+            <div
+              ref={resultRef}
+              className={`scroll-mt-[72px] ${
+                resultEnter && !(analyzing && !leaving) ? analyzingStyles.resultEnter : ""
+              } ${analyzing && !leaving ? "invisible" : ""}`}
+            >
               <AishoResultGate
                 a={slotA}
                 b={slotB}
@@ -1427,7 +1485,7 @@ function AishoInner({ locale }: { locale: AppResultLocale }) {
             <div className="flex justify-center mt-6 md:mt-8">
               <button
                 type="button"
-                onClick={() => setAnalyzing(true)}
+                onClick={startAnalyzing}
                 disabled={!bothFilled}
                 className="rounded-full px-12 py-3 md:px-14 md:py-3.5 text-white font-black text-base md:text-lg shadow-sm transition-all disabled:cursor-not-allowed"
                 style={{

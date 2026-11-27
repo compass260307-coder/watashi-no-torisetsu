@@ -968,6 +968,192 @@
   width: 100%;
 }
 
+/* spill: 7つが並び終わった合図。ボタンが一度だけ小さく弾み、金色の輪が広がって、光の筋が左から右へ走る。
+   最後の特典が並んで光り終わるのを待ってから始める。 */
+.offerCtaShine {
+  position: relative;
+  animation: cta-nudge 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) 0.55s both;
+}
+
+.offerCtaShine::before,
+.offerCtaShine::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.offerCtaShine::before {
+  background: linear-gradient(105deg, rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0) 62%) no-repeat;
+  background-size: 260% 100%;
+  animation: cta-sweep 0.8s ease-out 0.7s both;
+}
+
+.offerCtaShine::after {
+  inset: -4px;
+  box-shadow: 0 0 0 3px rgba(255, 240, 184, 0.95), 0 0 30px 10px rgba(255, 214, 120, 0.8);
+  animation: cta-ring 0.7s ease-out 0.6s both;
+}
+
+@keyframes cta-nudge {
+  0% { transform: scale(1); }
+  45% { transform: scale(1.045); }
+  100% { transform: scale(1); }
+}
+
+@keyframes cta-sweep {
+  0% { opacity: 1; background-position: 130% 0; }
+  90% { opacity: 1; }
+  100% { opacity: 0; background-position: -30% 0; }
+}
+
+@keyframes cta-ring {
+  0% { opacity: 0.95; transform: scale(0.98); }
+  100% { opacity: 0; transform: scale(1.06, 1.22); }
+}
+
+/* ここから: 並び終わったあとも止まった画面にならないよう、続けて出す小さな動き（spill）。
+   ふだん（html に data-treasure-ambient が無いとき）は tour・float・twinkle の3つが動く（2026-11-27 本人が見比べて選択）。
+   確認ページでは html の data-treasure-ambient に書いた名前のものだけが動く（空白区切りで複数可。空なら動かない）。
+     tour    カードが1→7の順に光り、最後に購入ボタンに光の筋が走る。7秒で1周。
+     cta     購入ボタンの光の筋だけを4秒おきに繰り返す。
+     float   カードがふわふわ浮く。
+     twinkle 金の値段のまわりで星がまたたく。
+   この属性は確認ページ（/dev/full-access-treasure-preview）でだけ付く。 */
+.offerCta {
+  position: relative;
+}
+
+.offerCtaLight {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: linear-gradient(105deg, rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, 0.5) 50%, rgba(255, 255, 255, 0) 62%) no-repeat;
+  background-size: 260% 100%;
+  opacity: 0;
+  pointer-events: none;
+}
+
+:global(html[data-treasure-ambient~="cta"]) .offerCtaLight {
+  animation: cta-sweep-loop 4s ease-out 2.2s infinite;
+}
+
+@keyframes cta-sweep-loop {
+  0% { opacity: 1; background-position: 130% 0; }
+  18% { opacity: 1; }
+  20%, 100% { opacity: 0; background-position: -30% 0; }
+}
+
+/* tour の最後。カード7枚（0.6秒ずつ）が光り終わった直後に走る。 */
+:global(html:not([data-treasure-ambient])) .offerCtaLight,
+:global(html[data-treasure-ambient~="tour"]) .offerCtaLight {
+  animation: cta-sweep-tour 7s ease-out 4.3s infinite;
+}
+
+@keyframes cta-sweep-tour {
+  0% { opacity: 1; background-position: 130% 0; }
+  10% { opacity: 1; }
+  11.5%, 100% { opacity: 0; background-position: -30% 0; }
+}
+
+:global(html:not([data-treasure-ambient])) .shelfAmbient .shelfTile::after,
+:global(html[data-treasure-ambient~="tour"]) .shelfAmbient .shelfTile::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  box-shadow: 0 0 0 3px rgba(255, 240, 184, 0.9), 0 0 22px 7px rgba(255, 214, 120, 0.65);
+  opacity: 0;
+  pointer-events: none;
+  animation: shelf-tour 7s ease-out calc(var(--i) * 0.6s) infinite;
+}
+
+@keyframes shelf-tour {
+  0% { opacity: 0; transform: scale(0.98); }
+  2.5% { opacity: 0.9; transform: scale(1); }
+  10% { opacity: 0; transform: scale(1.04); }
+  100% { opacity: 0; transform: scale(1.04); }
+}
+
+:global(html:not([data-treasure-ambient])) .shelfAmbient .shelfTile,
+:global(html[data-treasure-ambient~="float"]) .shelfAmbient .shelfTile {
+  /* 並んだ位置（動きなし）から始めて、同じ位置へ戻る。始まる瞬間に位置が飛ばないよう、1枚ずつ遅らせて動かし始める。 */
+  animation: shelf-float 5.6s ease-in-out calc(var(--i) * 0.4s) infinite;
+}
+
+/* 浮いている間は transform を動きが使うので、押したときに縮む手ごたえは scale で出す（浮く動きと重ねて効く）。 */
+:global(html:not([data-treasure-ambient])) .shelfAmbient .shelfTile:not(:disabled),
+:global(html[data-treasure-ambient~="float"]) .shelfAmbient .shelfTile:not(:disabled) {
+  transition: transform 0.15s ease, scale 0.15s ease;
+}
+
+:global(html:not([data-treasure-ambient])) .shelfAmbient .shelfTile:not(:disabled):active,
+:global(html[data-treasure-ambient~="float"]) .shelfAmbient .shelfTile:not(:disabled):active {
+  scale: 0.96;
+}
+
+@keyframes shelf-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.priceTwinkles {
+  position: absolute;
+  inset: 0;
+  display: none;
+  pointer-events: none;
+}
+
+:global(html:not([data-treasure-ambient])) .priceTwinkles,
+:global(html[data-treasure-ambient~="twinkle"]) .priceTwinkles {
+  display: block;
+}
+
+.priceTwinkle {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: var(--size);
+  height: var(--size);
+  margin: calc(var(--size) / -2) 0 0 calc(var(--size) / -2);
+  opacity: 0;
+  filter: drop-shadow(0 0 6px rgba(255, 214, 120, 0.9));
+  animation: price-twinkle 2.8s ease-in-out var(--delay) infinite;
+}
+
+/* 金の数字のうしろで、やわらかい光がゆっくり強まったり弱まったりする。 */
+.priceGlow {
+  position: absolute;
+  left: 67%;
+  top: 54%;
+  z-index: -1;
+  width: 56%;
+  height: 86%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 214, 120, 0.55), rgba(255, 214, 120, 0.18) 55%, rgba(255, 214, 120, 0));
+  transform: translate(-50%, -50%);
+  animation: price-glow 2.8s ease-in-out infinite alternate;
+}
+
+@keyframes price-glow {
+  from { opacity: 0.25; transform: translate(-50%, -50%) scale(0.92); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1.08); }
+}
+
+.priceTwinkle svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes price-twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.3) rotate(-20deg); }
+  18% { opacity: 1; transform: scale(1) rotate(0deg); }
+  36% { opacity: 0; transform: scale(0.3) rotate(20deg); }
+}
+
 .offerLinks {
   display: flex;
   align-items: center;
@@ -2100,6 +2286,14 @@
   .shelfIn,
   .shelfIn::after,
   .shelfHint,
+  .offerCtaShine,
+  .offerCtaShine::before,
+  .offerCtaShine::after,
+  .offerCtaLight,
+  .shelfAmbient .shelfTile,
+  .shelfAmbient .shelfTile::after,
+  .priceTwinkle,
+  .priceGlow,
   .priceHeadTop,
   .priceHeadLead,
   .priceHeadRule,

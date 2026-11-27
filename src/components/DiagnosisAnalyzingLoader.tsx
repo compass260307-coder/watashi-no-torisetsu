@@ -24,6 +24,34 @@ const TRACK = "#E6E6FB"; // Sora ブルーの淡ティント (トラック / 空
 const GOLD = "#D9A43A";
 const GOLD_TRACK = "#F6E7C1";
 const GOLD_FILL = "linear-gradient(90deg, #E8B84A, #F6D57A, #E8B84A)";
+// 相性診断の診断中の画面 (theme="aisho") のピンク。結果ページのピンクの帯 (#FAD3E3) と同じ色味。
+const PINK = "#EC6C9C";
+const PINK_TRACK = "#FBDCE8";
+const PINK_FILL = "linear-gradient(90deg, #EC6C9C, #F7A3C2, #EC6C9C)";
+
+const THEMES = {
+  default: {
+    accent: SORA,
+    track: TRACK,
+    fill: SORA,
+    currentTint: "rgba(91,91,239,0.15)",
+    background: "#FCFCFC",
+  },
+  premium: {
+    accent: GOLD,
+    track: GOLD_TRACK,
+    fill: GOLD_FILL,
+    currentTint: "rgba(217,164,58,0.15)",
+    background: "radial-gradient(120% 70% at 50% 0%, #FFF1CC 0%, #FFF9EC 45%, #FFFDF8 100%)",
+  },
+  aisho: {
+    accent: PINK,
+    track: PINK_TRACK,
+    fill: PINK_FILL,
+    currentTint: "rgba(236,108,156,0.15)",
+    background: "linear-gradient(180deg, #FBDCE8 0%, #FDEDF3 55%, #FFF8FA 100%)",
+  },
+} as const;
 
 const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 function subscribeToReducedMotion(onChange: () => void) {
@@ -97,6 +125,7 @@ export function DiagnosisAnalyzingLoader({
   fontFamily = FONT_STACK,
   theme = "default",
   header,
+  visual,
 }: {
   messages?: string[];
   steps?: string[];
@@ -115,13 +144,14 @@ export function DiagnosisAnalyzingLoader({
   startDelayMs?: number;
   fontFamily?: string;
   // "premium": 完全版の購入後の準備画面。背景・進行バー・チェックを金色にする。
-  theme?: "default" | "premium";
+  // "aisho": 相性診断の診断中の画面。同じものをピンクにする。
+  theme?: "default" | "premium" | "aisho";
+  // 指定時はマスコットの代わりにこの絵を出す (相性診断の2キャラなど)。メッセージは出したまま。
+  visual?: React.ReactNode;
   // スライドの上に出す見出し (準備画面の「完全版を準備しています」など)。
   header?: React.ReactNode;
 } = {}) {
-  const premium = theme === "premium";
-  const accent = premium ? GOLD : SORA;
-  const track = premium ? GOLD_TRACK : TRACK;
+  const { accent, track, fill, currentTint, background } = THEMES[theme];
   const [messageIndex, setMessageIndex] = useState(0);
   const [completedSteps, setCompletedSteps] = useState(0);
   const [videoFailed, setVideoFailed] = useState(false);
@@ -189,15 +219,15 @@ export function DiagnosisAnalyzingLoader({
       className="flex min-h-screen flex-1 flex-col items-center justify-center overflow-x-hidden px-5 py-10"
       style={{
         fontFamily,
-        background: premium
-          ? "radial-gradient(120% 70% at 50% 0%, #FFF1CC 0%, #FFF9EC 45%, #FFFDF8 100%)"
-          : "#FCFCFC",
+        background,
       }}
     >
       {header}
       {/* 動画と poster の両方がアルファ付き。元の表示サイズと余白を維持する。 */}
       {slides ? (
         <AnalyzingSlideDeck slides={slides} index={slideIndex} label={slidesLabel} />
+      ) : visual ? (
+        visual
       ) : (
       <div className="-mb-4 h-72 overflow-hidden md:h-80" aria-hidden="true">
         {reducedMotion || videoFailed ? (
@@ -244,7 +274,7 @@ export function DiagnosisAnalyzingLoader({
         <div
           className="animate-progress-20s h-full rounded-full"
           style={{
-            background: premium ? GOLD_FILL : SORA,
+            background: fill,
             animationDuration: `${totalMs}ms`,
             animationDelay: `${startDelayMs}ms`,
             animationFillMode: "both",
@@ -286,7 +316,7 @@ export function DiagnosisAnalyzingLoader({
                   className="inline-flex h-5 w-5 shrink-0 animate-pulse rounded-full border-2"
                   style={{
                     borderColor: accent,
-                    backgroundColor: premium ? "rgba(217,164,58,0.15)" : "rgba(91,91,239,0.15)",
+                    backgroundColor: currentTint,
                   }}
                 />
               ) : (

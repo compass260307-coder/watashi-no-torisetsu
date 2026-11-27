@@ -33,6 +33,8 @@ const SPILL_OFFER_AFTER_LAND_MS = 1500;
 const SPILL_FIRST_AT = 1050;
 const SPILL_HERO_HOLD_MS = 600;
 const SPILL_GAP_MS = 280;
+// 最後の特典が並んでから、並び終わりの合図（購入ボタンの光）が済むまでの時間。このあと、続けて出す小さな動きを始める。
+const SPILL_SETTLE_MS = 1700;
 function spillAt(index: number): number {
   return SPILL_FIRST_AT + (index === 0 ? 0 : SPILL_HERO_HOLD_MS + (index - 1) * SPILL_GAP_MS);
 }
@@ -366,6 +368,15 @@ export function ResultUpgradeTreasure({
     return () => pending.forEach((timer) => window.clearTimeout(timer));
   }, [spillStyle, offerShown, startAt, reducedMotion, benefitCount]);
 
+  // 7つが並び終わり、最後の光も消えて落ち着いた状態。ここから、止まった画面にならないよう小さな動きを続ける
+  // （カードが順に光る・浮く・値段の星。確認ページでは html の data-treasure-ambient で出すものを選べる）。
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (!spillStyle || !offerShown || reducedMotion || spilled < benefitCount) return;
+    const timer = window.setTimeout(() => setSettled(true), startAt === "offer" ? 600 : SPILL_SETTLE_MS);
+    return () => window.clearTimeout(timer);
+  }, [spillStyle, offerShown, reducedMotion, spilled, benefitCount, startAt]);
+
   useEffect(() => {
     onOfferShownRef.current = onOfferShown;
   }, [onOfferShown]);
@@ -552,6 +563,9 @@ export function ResultUpgradeTreasure({
   const offerPhase = phase === "offer" || phase === "closing";
   // 特典が宝箱から出ている間は、宝箱とAliceを見せたままにする。
   const spilling = spillStyle && offerPhase && spilled < benefitCount;
+  // 7つが並び終わったら、購入ボタンを一度だけ光らせて、目をボタンへ送る（値札から始めるとき・動きを減らす設定では出さない）。
+  const ambient = spillStyle && offerPhase && settled && detail === null && phase !== "closing";
+  const ctaShine = spillStyle && offerPhase && spilled >= benefitCount && startAt !== "offer" && !reducedMotion;
   const chestMotion =
     phase === "intro" ? styles.dropIn
       : phase === "idle" ? styles.idle
@@ -702,6 +716,16 @@ export function ResultUpgradeTreasure({
             <FeltStar />
             <i />
           </span>
+          {ambient && (
+            <span className={styles.priceTwinkles}>
+              <span className={styles.priceGlow} />
+              {PRICE_TWINKLES.map((twinkle, i) => (
+                <span key={i} className={styles.priceTwinkle} style={twinkle as CSSProperties}>
+                  <FeltStar />
+                </span>
+              ))}
+            </span>
+          )}
         </div>
       )}
       <div className={spillStyle ? `${styles.tagWrap} ${offerPhase ? styles.tagWrapGone : ""}` : styles.tagWrapNone}>
@@ -798,6 +822,7 @@ export function ResultUpgradeTreasure({
           revealed={spilled}
           instant={reducedMotion || startAt === "offer"}
           hidden={detail !== null}
+          ambient={ambient}
           onPick={setDetail}
         />
       )}
@@ -844,7 +869,10 @@ export function ResultUpgradeTreasure({
             <BenefitDeck reducedMotion={reducedMotion} benefits={offer.benefits} autoRotate={offer.autoRotate ?? true} />
           )}
           <div className={styles.offerBottom}>
-            <div className={styles.offerCta}>{purchaseCta}</div>
+            <div className={`${styles.offerCta} ${ctaShine ? styles.offerCtaShine : ""}`}>
+              {purchaseCta}
+              {ambient && <span className={styles.offerCtaLight} aria-hidden="true" />}
+            </div>
             {backLabel ? (
               <div className={styles.offerNotes}>
                 <p className={styles.offerGuarantee}>買い切り・30日間の返金保証つき</p>
@@ -1072,6 +1100,19 @@ const SHELF_FROM = [
   { fx: "-106%", fy: "6vh", fr: "18deg" },
 ] as const;
 
+// 金の値段のまわりでまたたく星の位置（値段の見出しの枠に対する割合）と大きさ・ずらす時間。
+const PRICE_TWINKLES = [
+  { "--x": "8%", "--y": "34%", "--size": "13px", "--delay": "0s" },
+  { "--x": "93%", "--y": "22%", "--size": "16px", "--delay": "0.9s" },
+  { "--x": "30%", "--y": "92%", "--size": "10px", "--delay": "1.7s" },
+  { "--x": "99%", "--y": "78%", "--size": "12px", "--delay": "2.3s" },
+  { "--x": "60%", "--y": "4%", "--size": "10px", "--delay": "1.3s" },
+  { "--x": "87%", "--y": "97%", "--size": "11px", "--delay": "0.4s" },
+  { "--x": "1%", "--y": "68%", "--size": "9px", "--delay": "2s" },
+  { "--x": "82%", "--y": "6%", "--size": "9px", "--delay": "2.6s" },
+  { "--x": "20%", "--y": "12%", "--size": "11px", "--delay": "1.1s" },
+] as const;
+
 /**
  * 宝箱から飛び出した特典が、値札の下に並ぶ一覧（benefitStyle: "spill"）。
  * 先頭（その人が開けようとしたもの）を横長の1枚で大きく、残りを3つずつ2段に並べる。押すと、その特典を大きく見られる。
@@ -1081,16 +1122,19 @@ function BenefitShelf({
   revealed,
   instant,
   hidden,
+  ambient,
   onPick,
 }: {
   benefits: readonly TreasureBenefit[];
   revealed: number;
   instant: boolean;
   hidden: boolean;
+  /** 並び終わって落ち着いたあと。続けて出す小さな動き（順に光る・ふわふわ浮く）の対象にする。 */
+  ambient: boolean;
   onPick: (index: number) => void;
 }) {
   return (
-    <div className={`${styles.shelf} ${hidden ? styles.shelfAway : ""}`} aria-hidden={hidden ? true : undefined}>
+    <div className={`${styles.shelf} ${hidden ? styles.shelfAway : ""} ${ambient ? styles.shelfAmbient : ""}`} aria-hidden={hidden ? true : undefined}>
       <div className={styles.shelfGrid}>
         {benefits.map((benefit, i) => {
           const from = SHELF_FROM[i % SHELF_FROM.length];
@@ -1100,7 +1144,7 @@ function BenefitShelf({
               key={benefit.label}
               type="button"
               className={`${styles.shelfTile} ${i === 0 ? styles.shelfHero : ""} ${shown ? (instant ? "" : styles.shelfIn) : styles.shelfWaiting}`}
-              style={{ "--fx": from.fx, "--fy": from.fy, "--fr": from.fr } as CSSProperties}
+              style={{ "--fx": from.fx, "--fy": from.fy, "--fr": from.fr, "--i": i } as CSSProperties}
               disabled={!shown || hidden}
               aria-label={`${benefit.label} ${benefit.title}`}
               onClick={() => onPick(i)}
