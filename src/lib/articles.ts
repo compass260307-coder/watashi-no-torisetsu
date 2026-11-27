@@ -1,3 +1,16 @@
+import { article as sixteenTypesVsOcean } from "./article-content/sixteen-types-vs-ocean";
+import { article as kaihousei } from "./article-content/kaihousei";
+import { article as seijitsusei } from "./article-content/seijitsusei";
+import { article as kyouchousei } from "./article-content/kyouchousei";
+import { article as shinkeishoKeiko } from "./article-content/shinkeisho-keiko";
+import { article as torisetsuTsukurikata } from "./article-content/torisetsu-tsukurikata";
+import { article as johariNoMado } from "./article-content/johari-no-mado";
+import { article as seikakuAisho } from "./article-content/seikaku-aisho";
+import { article as takoBunseki } from "./article-content/tako-bunseki";
+import { article as oceanKekkaYomikata } from "./article-content/ocean-kekka-yomikata";
+import { article as jikoHyokaTashaHyoka } from "./article-content/jiko-hyoka-tasha-hyoka";
+import { article as tomodachiKotowarikata } from "./article-content/tomodachi-kotowarikata";
+
 // 記事 (/articles) の単一情報源。
 // UI (一覧・本文) と SEO (metadata / sitemap / Article JSON-LD) の両方がここから派生する。
 // 追加時はこの配列に足すだけで、一覧・詳細・sitemap に自動反映される。
@@ -614,6 +627,20 @@ export const ARTICLES: Article[] = [
       "Zelenski, J. M., Whelan, D. C., Nealis, L. J., Besner, C. M., Santoro, M. S., & Wynn, J. E. (2013). Personality and affective forecasting: Trait introverts underpredict the hedonic benefits of acting extraverted. Journal of Personality and Social Psychology, 104(6), 1092–1108.",
     ],
   },
+  // ここから下は 1 記事 1 ファイル (src/lib/article-content/)。長い記事を 1 つの
+  // ファイルに積むと編集しづらいため、2026-11-26 以降に書いた記事は分けて置く。
+  sixteenTypesVsOcean,
+  kaihousei,
+  seijitsusei,
+  kyouchousei,
+  shinkeishoKeiko,
+  torisetsuTsukurikata,
+  johariNoMado,
+  seikakuAisho,
+  takoBunseki,
+  oceanKekkaYomikata,
+  jikoHyokaTashaHyoka,
+  tomodachiKotowarikata,
 ];
 
 export function getArticle(slug: string): Article | undefined {
@@ -623,8 +650,20 @@ export function getArticle(slug: string): Article | undefined {
 // 記事間の内部リンク。各記事から関連の深い記事へ相互リンクする。編集時はここだけ直せばよい。
 // 存在しない slug は getRelatedArticles 側で安全に除外される。
 const RELATED_ARTICLES: Record<string, string[]> = {
-  "ocean-shindan": ["gaikousei"],
-  gaikousei: ["ocean-shindan"],
+  "ocean-shindan": ["sixteen-types-vs-ocean", "ocean-kekka-yomikata", "gaikousei"],
+  "sixteen-types-vs-ocean": ["ocean-shindan", "ocean-kekka-yomikata", "seikaku-aisho"],
+  "ocean-kekka-yomikata": ["ocean-shindan", "sixteen-types-vs-ocean", "jiko-hyoka-tasha-hyoka"],
+  gaikousei: ["ocean-shindan", "kyouchousei", "shinkeisho-keiko"],
+  kaihousei: ["ocean-shindan", "seijitsusei", "gaikousei"],
+  seijitsusei: ["ocean-shindan", "kaihousei", "shinkeisho-keiko"],
+  kyouchousei: ["ocean-shindan", "gaikousei", "tomodachi-kotowarikata"],
+  "shinkeisho-keiko": ["ocean-shindan", "kyouchousei", "seijitsusei"],
+  "johari-no-mado": ["tako-bunseki", "jiko-hyoka-tasha-hyoka", "torisetsu-tsukurikata"],
+  "tako-bunseki": ["johari-no-mado", "jiko-hyoka-tasha-hyoka", "torisetsu-tsukurikata"],
+  "jiko-hyoka-tasha-hyoka": ["tako-bunseki", "johari-no-mado", "ocean-kekka-yomikata"],
+  "torisetsu-tsukurikata": ["johari-no-mado", "tako-bunseki", "ocean-kekka-yomikata"],
+  "seikaku-aisho": ["kyouchousei", "sixteen-types-vs-ocean", "jiko-hyoka-tasha-hyoka"],
+  "tomodachi-kotowarikata": ["kyouchousei", "gaikousei", "seikaku-aisho"],
 };
 
 /** 指定記事に関連する記事を配列で返す (存在しない slug は除外)。 */

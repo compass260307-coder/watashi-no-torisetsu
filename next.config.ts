@@ -123,22 +123,6 @@ const nextConfig: NextConfig = {
       // 旧 /friend 入口 (現行は /tako)。config redirect はクエリを転送先へ引き継ぐため、
       // 広告・共有リンクの utm_* / ttclid を着地先の計測で捕捉できる。
       { source: "/friend", destination: "/tako", permanent: false },
-      // 旧形式の日本語記事 12 本を 2026-11-26 に取り下げた (論文形式に書き直すため)。
-      // 検索結果・被リンクからの訪問を 404 にしないよう、内容の近いページへ送る。
-      // 同じ slug で書き直す予定なので一時リダイレクト。書き直したらその行を消す。
-      { source: "/articles/seikaku-aisho", destination: "/aisho", permanent: false },
-      {
-        source:
-          "/articles/:slug(sixteen-types-vs-ocean|kaihousei|seijitsusei|kyouchousei|shinkeisho-keiko|ocean-kekka-yomikata)",
-        destination: "/articles/ocean-shindan",
-        permanent: false,
-      },
-      {
-        source:
-          "/articles/:slug(torisetsu-tsukurikata|johari-no-mado|tako-bunseki|jiko-hyoka-tasha-hyoka|tomodachi-kotowarikata)",
-        destination: "/articles",
-        permanent: false,
-      },
       { source: "/:locale(ko|en|id)/friend", destination: "/:locale/tako", permanent: false },
     ];
   },
