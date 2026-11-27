@@ -11,10 +11,11 @@ import {
   jaFullAccessOfferForQuote,
   type JaFullAccessPriceArm,
 } from "@/lib/full-access-pricing";
+import { FULL_ACCESS_TREASURE_LAYOUT, type FullAccessTreasureLayout } from "@/lib/full-access-treasure-layout";
 import {
-  FULL_ACCESS_TREASURE_LAYOUT_TEST_VERSION,
-  type FullAccessTreasureLayout,
-} from "@/lib/full-access-treasure-layout";
+  FULL_ACCESS_TREASURE_MOTION_TEST_VERSION,
+  type FullAccessTreasureMotion,
+} from "@/lib/full-access-treasure-motion";
 import { normalizePaywallSource } from "@/lib/paywall-source";
 import { DIAGNOSIS_COUNT_SNAPSHOT } from "@/lib/proof-stats";
 import { track } from "@/lib/track";
@@ -187,6 +188,7 @@ function fullAccessBenefits(
 function fullAccessOffer(
   ctaSource: string | undefined,
   layout: FullAccessTreasureLayout,
+  motion: FullAccessTreasureMotion,
   surface: "self" | "tako" | undefined,
   friendName: string | undefined,
 ): TreasureOffer {
@@ -199,6 +201,7 @@ function fullAccessOffer(
       `クーポンを使うと、完全版が ${priceJpy.toLocaleString("ja-JP")}円。次の${count}つがすべて解放されます。`,
     benefits: fullAccessBenefits(ctaSource, surface, friendName),
     benefitStyle: layout,
+    settledMotion: motion === "on",
     // 先頭はその人が開けようとしたもの。勝手に次へ回さず、本人が指で送る。
     autoRotate: false,
     priceLayout: "row",
@@ -220,8 +223,10 @@ type Props = {
   previewMode?: boolean;
   /** プレビュー用: 価格テストのどちらの群の値札を見せるか（未指定は従来の¥499）。 */
   previewArm?: JaFullAccessPriceArm;
-  /** 特典の見せ方（A/B の群。lib/full-access-treasure-layout.ts）。未指定は従来の stack。 */
+  /** 特典の見せ方（lib/full-access-treasure-layout.ts）。未指定は本番と同じ spill。stack は確認ページ用。 */
   layout?: FullAccessTreasureLayout;
+  /** 7つが並び終わったあとの動き（A/B の群。lib/full-access-treasure-motion.ts）。未指定は on。 */
+  motion?: FullAccessTreasureMotion;
   /** 鍵つきの友達タブから開いたとき、その友達の呼び名（例「ゆかさん」）。先頭の特典の説明に使う。 */
   friendName?: string;
   /** ページ末尾に置いた宝箱を押して開いたとき。閉じた宝箱で待たず、開くところから始める。 */
@@ -242,7 +247,8 @@ export function FullAccessTreasure({
   variant,
   previewMode = false,
   previewArm = "control",
-  layout = "stack",
+  layout = FULL_ACCESS_TREASURE_LAYOUT,
+  motion = "on",
   friendName,
   startOpening = false,
   priceState,
@@ -255,7 +261,7 @@ export function FullAccessTreasure({
   // 同じタブで受け取り済みなら、宝箱を開け直させずに値札と特典から見せる。
   const [startAt] = useState<"chest" | "opening" | "offer">(() =>
     (fullAccessCouponReceived() ? "offer" : startOpening ? "opening" : "chest"));
-  const [offer] = useState(() => fullAccessOffer(ctaSource, layout, surface, friendName));
+  const [offer] = useState(() => fullAccessOffer(ctaSource, layout, motion, surface, friendName));
   const shownAt = useRef<number | null>(null);
   const offerShownAt = useRef<number | null>(null);
   const stage = useRef<TreasureStage>(startAt === "offer" ? "offer" : "chest");
@@ -288,7 +294,8 @@ export function FullAccessTreasure({
         surface: surface ?? "self",
         source: normalizePaywallSource(ctaSource),
         treasure_layout: layout,
-        treasure_layout_test: FULL_ACCESS_TREASURE_LAYOUT_TEST_VERSION,
+        treasure_motion: motion,
+        treasure_motion_test: FULL_ACCESS_TREASURE_MOTION_TEST_VERSION,
         step,
         start: startAt,
         displayed_price_minor: priceOffer.saleAmount,
@@ -334,7 +341,8 @@ export function FullAccessTreasure({
         surface: surface ?? "self",
         presentation: startAt === "offer" ? "treasure_offer" : "treasure",
         treasure_layout: layout,
-        treasure_layout_test: FULL_ACCESS_TREASURE_LAYOUT_TEST_VERSION,
+        treasure_motion: motion,
+        treasure_motion_test: FULL_ACCESS_TREASURE_MOTION_TEST_VERSION,
         displayed_price_minor: priceOffer.saleAmount,
       },
     });
@@ -343,7 +351,7 @@ export function FullAccessTreasure({
     } catch {
       /* noop */
     }
-  }, [layout, ownerToken, previewMode, priceOffer, startAt, surface, variant]);
+  }, [layout, motion, ownerToken, previewMode, priceOffer, startAt, surface, variant]);
 
   return (
     <ResultUpgradeTreasure

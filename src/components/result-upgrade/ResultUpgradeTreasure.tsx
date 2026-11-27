@@ -87,6 +87,11 @@ export type TreasureOffer = {
    * spill: クーポンで値段が下がったあと、宝箱から特典が1つずつ飛び出して値札の下の一覧に並ぶ。押すと1枚ずつ大きく見られる。
    */
   benefitStyle?: "deck" | "stack" | "spill";
+  /**
+   * spill で7つが並び終わったあとの動き（購入ボタンが一度光る・カードが順に光る・浮く・値段の星）を出すか。
+   * false にすると、並んだらそのまま止まる。既定は true。
+   */
+  settledMotion?: boolean;
   /** false にすると、特典カードを自動では回さない（指で動かす・タップで次へ、だけにする）。既定は true。 */
   autoRotate?: boolean;
   /**
@@ -312,6 +317,7 @@ export function ResultUpgradeTreasure({
   const onOfferShownRef = useRef(onOfferShown);
   const offerShown = phase === "offer";
   const spillStyle = offer.benefitStyle === "spill";
+  const settledMotion = offer.settledMotion ?? true;
   const benefitCount = offer.benefits.length;
   // 一覧に並んだ特典の数（spill）。
   const [spilled, setSpilled] = useState(startAt === "offer" ? benefitCount : 0);
@@ -372,10 +378,10 @@ export function ResultUpgradeTreasure({
   // （カードが順に光る・浮く・値段の星。確認ページでは html の data-treasure-ambient で出すものを選べる）。
   const [settled, setSettled] = useState(false);
   useEffect(() => {
-    if (!spillStyle || !offerShown || reducedMotion || spilled < benefitCount) return;
+    if (!spillStyle || !settledMotion || !offerShown || reducedMotion || spilled < benefitCount) return;
     const timer = window.setTimeout(() => setSettled(true), startAt === "offer" ? 600 : SPILL_SETTLE_MS);
     return () => window.clearTimeout(timer);
-  }, [spillStyle, offerShown, reducedMotion, spilled, benefitCount, startAt]);
+  }, [spillStyle, settledMotion, offerShown, reducedMotion, spilled, benefitCount, startAt]);
 
   useEffect(() => {
     onOfferShownRef.current = onOfferShown;
@@ -565,7 +571,7 @@ export function ResultUpgradeTreasure({
   const spilling = spillStyle && offerPhase && spilled < benefitCount;
   // 7つが並び終わったら、購入ボタンを一度だけ光らせて、目をボタンへ送る（値札から始めるとき・動きを減らす設定では出さない）。
   const ambient = spillStyle && offerPhase && settled && detail === null && phase !== "closing";
-  const ctaShine = spillStyle && offerPhase && spilled >= benefitCount && startAt !== "offer" && !reducedMotion;
+  const ctaShine = spillStyle && settledMotion && offerPhase && spilled >= benefitCount && startAt !== "offer" && !reducedMotion;
   const chestMotion =
     phase === "intro" ? styles.dropIn
       : phase === "idle" ? styles.idle
