@@ -415,11 +415,11 @@ function matchLabel(v: number, locale: AppResultLocale): string {
 
 // 相性度(%)→ 総評リードの言い回し。「〇〇と〇〇の相性は{これ}」と続く。
 function percentLead(p: number, locale: AppResultLocale): string {
-  if (p >= 90) return aishoText(locale, "文句なしにいい", "의심할 여지 없이 좋아요", "exceptionally strong", "sangat kuat");
-  if (p >= 75) return aishoText(locale, "かなりいい", "꽤 좋아요", "very strong", "kuat");
-  if (p >= 60) return aishoText(locale, "なかなかいい", "제법 좋아요", "naturally compatible", "cocok secara alami");
-  if (p >= 45) return aishoText(locale, "歩み寄り次第でぐっと良くなる", "서로 맞춰 갈수록 훨씬 좋아져요", "stronger with mutual adjustment", "semakin kuat dengan penyesuaian bersama");
-  return aishoText(locale, "一筋縄ではいかないぶん、学びが大きい", "쉽지는 않지만 그만큼 배울 점이 많아요", "challenging, with plenty to learn", "menantang, tetapi memberi banyak pelajaran");
+  if (p >= 90) return aishoText(locale, "文句なしに良好です", "의심할 여지 없이 좋아요", "exceptionally strong", "sangat kuat");
+  if (p >= 75) return aishoText(locale, "かなり良好です", "꽤 좋아요", "very strong", "kuat");
+  if (p >= 60) return aishoText(locale, "なかなか良好です", "제법 좋아요", "naturally compatible", "cocok secara alami");
+  if (p >= 45) return aishoText(locale, "歩み寄り次第でぐっと良くなります", "서로 맞춰 갈수록 훨씬 좋아져요", "stronger with mutual adjustment", "semakin kuat dengan penyesuaian bersama");
+  return aishoText(locale, "一筋縄ではいかないぶん、学びが大きい関係です", "쉽지는 않지만 그만큼 배울 점이 많아요", "challenging, with plenty to learn", "menantang, tetapi memberi banyak pelajaran");
 }
 
 // ★PR4: SCENE_AXES / sceneVerdict はサーバ (/api/aisho/scenes) へ移設。
@@ -648,7 +648,7 @@ function CompatDetail({
             ? `‘${nameA}’ 유형과 ‘${nameB}’ 유형의 궁합은 ${percentLead(r.percent, locale)}. 궁합 점수는 ${r.percent}%예요. 한마디로 ‘${r.summary}’${r.summary.endsWith("사람") ? "이라고" : "라고"} 할 수 있어요. 숫자만이 아니라 두 사람의 관계에는 오래 이어질 만한 이유가 분명히 있어요.`
             : isIndonesian
               ? `Hubungan antara “${nameA}” dan “${nameB}” ${percentLead(r.percent, locale)}. Skor kecocokannya ${r.percent}%: ${r.summary.toLowerCase()}. Angka ini mencerminkan alasan nyata mengapa hubungan mereka dapat terus berkembang.`
-              : `「${nameA}」と「${nameB}」の相性は${percentLead(r.percent, locale)}。相性度は${r.percent}%、いわば${r.summary}と呼べるふたりだよ。数字だけじゃなく、ふたりの関係にはちゃんと長く続く理由があるみたい。`}
+              : `「${nameA}」と「${nameB}」の相性は、${percentLead(r.percent, locale)}。相性度は${r.percent}%で、ひとことで言うと「${r.summary}」です。この数字は、ふたりの性格を5つの視点で照らし合わせて出しています。`}
         </p>
         <p className={`${PROSE} mt-4`}>
           {isEnglish
@@ -657,7 +657,7 @@ function CompatDetail({
             ? "그래서 함께 있을 때 있는 그대로 편안하고, 억지로 맞추지 않아도 좋은 시간이 이어지기 쉬워요. 물론 오래 사이좋게 지내려면 작은 요령도 필요해요. 이제 배려, 정서, 가치관, 생활 리듬, 사교 균형의 다섯 관점에서 두 사람의 궁합을 조금 더 자세히 살펴볼게요."
             : isIndonesian
               ? "Bersama-sama, keduanya dapat merasa alami tanpa memaksa diri untuk selalu sama. Lima sudut pandang berikut menunjukkan sumber kenyamanan itu sekaligus bagian yang membutuhkan sedikit perhatian."
-              : "だからこそ、いっしょにいると自然体でいられて、無理に合わせようとしなくても心地いい時間が続きやすいはず。もちろん、ずっと仲よくいるためのちょっとしたコツもある。ここからは、思いやり・情緒・価値観・生活リズム・社交バランスの5つの視点で、ふたりの相性をもう少しくわしく見ていくよ。"}
+              : "似ているところは心地よさに、違うところは補い合いにつながります。どちらにも、長く仲よくいるためのコツがあります。ここからは、思いやり・情緒・価値観・生活リズム・社交バランスの5つの視点で、ふたりの相性をくわしく見ていきます。"}
         </p>
       </div>
 
@@ -670,7 +670,8 @@ function CompatDetail({
         <div className="space-y-6 rounded-2xl border border-[#E3E6F5] bg-white p-5 md:p-7">
           {AXIS_META_VIEW.map(({ key, label: labels, color }) => {
             const v = r.s[key];
-            const pct = Math.round(v * 100);
+            // グラフの数字は表示専用の値 (キリの良い数字ばかりにしない)。判定の言葉は元の点数で決める。
+            const pct = r.display[key];
             const label = labels[locale];
             const lab = matchLabel(v, locale);
             return (
@@ -738,7 +739,7 @@ function CompatDetail({
             ? `두 사람이 함께 있을 때 편안한 데에는 분명한 이유가 있어요. ${r.goods[0]}`
             : isIndonesian
               ? `Ada alasan yang jelas mengapa kalian dapat merasa nyaman bersama. ${r.goods[0]}`
-            : `このふたりがいっしょにいて心地いいのには、ちゃんと理由があるよ。${r.goods[0]}`}
+            : `ふたりがいっしょにいて心地いいのには、理由があります。${r.goods[0]}`}
         </p>
         <p className={`${PROSE} mt-3`}>{r.goods[1]}</p>
       </section>
@@ -882,7 +883,7 @@ function CompatDetail({
             ? `아무리 궁합이 좋아도 오래 편안하게 지내기 위한 요령은 있어요. 오히려 가까운 두 사람일수록 거리낌이 없어져 작은 엇갈림을 놓치기 쉬워요. ${r.caution}`
             : isIndonesian
               ? `Seberapa baik pun kecocokan kalian, tetap ada cara untuk menjaga hubungan agar nyaman dalam jangka panjang. Justru karena sudah dekat, kesalahpahaman kecil lebih mudah terlewat. ${r.caution}`
-            : `どんなに相性がよくても、長く心地よくいるためのコツはある。むしろ仲がいいふたりほど、遠慮がなくなって小さなすれ違いを見落としがちなんだよね。${r.caution}`}
+            : `どんなに相性がよくても、長く心地よくいるためのコツがあります。仲がいいふたりほど、遠慮がなくなって小さなすれ違いを見落とします。${r.caution}`}
         </p>
         <p className={`${PROSE} mt-3`}>
           {isEnglish
@@ -891,7 +892,7 @@ function CompatDetail({
             ? "중요한 건 참고 쌓아 두지 않는 거예요. 불편함이 작을 때 “나는 이렇게 느꼈어”라고 가볍게 말해 두면 크게 꼬이기 전에 자연스럽게 풀려요. 반대로 “말하지 않아도 알아줬으면 좋겠어”가 계속되면 아무리 좋은 궁합도 조금씩 어긋날 수 있어요. 이것만 기억해도 두 사람의 장점은 훨씬 자연스럽게 드러날 거예요."
             : isIndonesian
               ? "Yang penting adalah tidak menumpuk ketidaknyamanan. Saat masalah masih kecil, katakan dengan ringan, ‘Aku merasa seperti ini,’ agar kalian dapat meluruskannya sebelum membesar. Mengharapkan pasangan memahami tanpa diberi tahu perlahan dapat menciptakan jarak. Beberapa kata yang jujur biasanya cukup untuk menjaga hal baik yang sudah kalian miliki."
-            : "大事なのは、我慢して溜め込まないこと。違和感は小さいうちに「こう感じたんだよね」と軽く言葉にしておくと、大きくこじれる前に自然とほどけていく。逆に「言わなくても察してほしい」を続けると、どんなにいい相性でも少しずつずれていくから注意。ここさえ頭の片隅に置いておけば、ふたりの良さはもっと素直に出てくるはずだよ。"}
+            : "大事なのは、我慢して溜め込まないことです。違和感は小さいうちに「こう感じたんだよね」と軽く言葉にしてください。大きくこじれる前に、自然とほどけます。逆に「言わなくても察してほしい」を続けると、どんなにいい相性でも少しずつずれていきます。ここさえ頭の片隅に置いておけば、ふたりの良さはもっと素直に出てきます。"}
         </p>
       </section>
     </div>
@@ -948,10 +949,27 @@ function ResultBlock({
             PC: 左に大きな「二人の相性」テキスト / 右にランク画像の横並び。
             ランク画像が未配置のあいだは大きな文字バッジにフォールバックする。 */}
         <div className="relative mx-auto flex max-w-[1080px] flex-col items-center px-4 pt-8 pb-6 text-center md:flex-row md:justify-between md:gap-8 md:px-8 md:pt-12 md:pb-8 md:text-left">
-          <p className="text-[24px] font-black tracking-[0.22em] text-white md:text-[60px] md:leading-[1.2] md:tracking-[0.04em]">
-            {isKorean ? "두 사람의 궁합" : isEnglish ? "Your compatibility" : isIndonesian ? "Kecocokan kalian" : "ふたりの相性"}
-          </p>
-          <div className="mt-4 md:mt-0 md:shrink-0">
+          <div className="min-w-0">
+            <p className="text-[24px] font-black tracking-[0.22em] text-white md:text-[60px] md:leading-[1.2] md:tracking-[0.04em]">
+              {isKorean ? "두 사람의 궁합" : isEnglish ? "Your compatibility" : isIndonesian ? "Kecocokan kalian" : "ふたりの相性"}
+            </p>
+            {/* 誰と誰の結果か + 相性度 (1行)。見出しと同じ白文字 */}
+            <p
+              data-aisho-pair
+              className="mt-2 flex flex-wrap items-baseline justify-center gap-x-3 gap-y-1 text-[16px] font-black leading-tight text-white md:mt-4 md:justify-start md:text-[24px]"
+            >
+              <span>
+                {typeEssence(a, locale)}
+                <span className="mx-1.5 font-bold opacity-80">×</span>
+                {typeEssence(b, locale)}
+              </span>
+              <span>
+                {isKorean ? "궁합 점수 " : isEnglish ? "Match " : isIndonesian ? "Kecocokan " : "相性度"}
+                <span className="ml-0.5 text-[20px] md:text-[30px]">{r.percent}</span>%
+              </span>
+            </p>
+          </div>
+          <div data-aisho-rank className="mt-4 md:mt-0 md:shrink-0">
             {/* 透過 PNG (装飾) は dev のみ unoptimized で直接配信する
                 (dev の画像 optimizer がこの手の PNG で固まるため)。本番は最適化して転送量を抑える。 */}
             {rankImg ? (
