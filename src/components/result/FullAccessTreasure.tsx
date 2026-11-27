@@ -39,12 +39,21 @@ export function fullAccessCouponReceived(): boolean {
   }
 }
 
+const COUPON_RECEIVED_EVENT = "torisetsu:full-access-coupon-received";
+
+/** 受け取った瞬間に、ページ側の表示（ページ末尾の宝箱）を切り替えるための購読。 */
+export function subscribeFullAccessCouponReceived(onChange: () => void): () => void {
+  window.addEventListener(COUPON_RECEIVED_EVENT, onChange);
+  return () => window.removeEventListener(COUPON_RECEIVED_EVENT, onChange);
+}
+
 function saveCouponReceived() {
   try {
     window.sessionStorage.setItem(COUPON_RECEIVED_KEY, "1");
   } catch {
     /* 保存できなくても演出は続ける */
   }
+  window.dispatchEvent(new Event(COUPON_RECEIVED_EVENT));
 }
 
 // 課金カード（FULL_ACCESS_SELF_UNLOCKS）と同じ7つの解放内容。
@@ -215,6 +224,8 @@ type Props = {
   layout?: FullAccessTreasureLayout;
   /** 鍵つきの友達タブから開いたとき、その友達の呼び名（例「ゆかさん」）。先頭の特典の説明に使う。 */
   friendName?: string;
+  /** ページ末尾に置いた宝箱を押して開いたとき。閉じた宝箱で待たず、開くところから始める。 */
+  startOpening?: boolean;
   priceState?: FullAccessQuoteState;
   /**
    * 閉じたとき。宝箱を開けずに「閉じる」を押したときも、値札と特典を見たあと「あとで決める」を
@@ -233,6 +244,7 @@ export function FullAccessTreasure({
   previewArm = "control",
   layout = "stack",
   friendName,
+  startOpening = false,
   priceState,
   onClose,
 }: Props) {
@@ -241,7 +253,8 @@ export function FullAccessTreasure({
   const [priceOffer] = useState(() =>
     (previewMode ? null : jaFullAccessOfferForQuote(priceState?.quote)) ?? jaFullAccessOfferForArm(previewArm));
   // 同じタブで受け取り済みなら、宝箱を開け直させずに値札と特典から見せる。
-  const [startAt] = useState<"chest" | "offer">(() => (fullAccessCouponReceived() ? "offer" : "chest"));
+  const [startAt] = useState<"chest" | "opening" | "offer">(() =>
+    (fullAccessCouponReceived() ? "offer" : startOpening ? "opening" : "chest"));
   const [offer] = useState(() => fullAccessOffer(ctaSource, layout, surface, friendName));
   const shownAt = useRef<number | null>(null);
   const offerShownAt = useRef<number | null>(null);

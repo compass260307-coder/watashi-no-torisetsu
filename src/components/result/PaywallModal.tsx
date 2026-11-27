@@ -73,10 +73,13 @@ export function PaywallOverlay({
   treasureEntry = false,
   treasurePreviewArm,
   treasurePreviewLayout,
+  treasureStartOpening = false,
   ...cardProps
 }: PaywallModalProps & {
   onClose: () => void;
   ctaSource?: string;
+  /** ページ末尾に置いた宝箱を押して開いたとき。宝箱の演出を、開くところから始める。 */
+  treasureStartOpening?: boolean;
   /** 鍵つきの友達タブから開いたとき、その友達の呼び名。宝箱の先頭の特典の説明に使う。 */
   friendName?: string;
   scrollLocked?: boolean;
@@ -111,6 +114,7 @@ export function PaywallOverlay({
         previewArm={treasurePreviewArm}
         layout={treasureLayout ?? "stack"}
         friendName={friendName}
+        startOpening={treasureStartOpening}
         priceState={presentation.priceState}
         onClose={onClose}
       />
@@ -394,15 +398,17 @@ export function PaywallModal(
   const [open, setOpen] = useState(false);
   const [source, setSource] = useState<string | null>(null);
   const [friendName, setFriendName] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
 
   // 開く要求 (scrollToPaywall からの CustomEvent) を拾う。preventDefault で
   // 呼び出し側のスクロールフォールバックを止める。
   useEffect(() => {
     const handler = (e: Event) => {
       e.preventDefault();
-      const detail = (e as CustomEvent<{ source?: unknown; friendName?: unknown }>).detail;
+      const detail = (e as CustomEvent<{ source?: unknown; friendName?: unknown; opening?: unknown }>).detail;
       setSource(typeof detail?.source === "string" ? detail.source : null);
       setFriendName(typeof detail?.friendName === "string" ? detail.friendName : null);
+      setOpening(detail?.opening === true);
       setOpen(true);
     };
     window.addEventListener(PAYWALL_OPEN_EVENT, handler);
@@ -445,6 +451,7 @@ export function PaywallModal(
       {...props}
       ctaSource={source ?? undefined}
       friendName={friendName ?? undefined}
+      treasureStartOpening={opening}
       onClose={() => setOpen(false)}
     />
   );

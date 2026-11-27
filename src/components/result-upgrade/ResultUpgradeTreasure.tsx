@@ -13,6 +13,12 @@ type PriceStep = "tag" | "sticker" | "strike" | "counting" | "landed";
 
 const INTRO_MS = 950;
 const CHARGE_MS = 800;
+// ページの宝箱（小窓）から全画面へ広がる時間。
+const CARD_EXPAND_MS = 520;
+// ページの宝箱から開いたとき、押してから宝箱が開くまでの時間。全画面に広がって「プレゼント」の見出しを
+// 見せ、震えがだんだん強まってから開く。押してすぐクーポンが出ると、開ける楽しみの前に
+// 「課金の話か」と受け取られるため、ためを長くとる（2026-11-27 本人指摘）。
+const CARD_OPEN_MS = 2100;
 const CLOSE_MS = 320;
 // 値下げ演出の時刻（受け取るを押してからのミリ秒）。
 const STICKER_AT = 520;
@@ -258,8 +264,11 @@ type Props = {
   onDismiss: () => void;
   /** 商品ごとの文言・絵。省略時は結果アップグレード。 */
   offer?: TreasureOffer;
-  /** "offer": クーポンを受け取り済みの人に、値札と特典から見せる。 */
-  startAt?: "chest" | "offer";
+  /**
+   * "offer": クーポンを受け取り済みの人に、値札と特典から見せる。
+   * "opening": ページに置いた宝箱を押して開いたとき。閉じた宝箱で待たず、震えて開くところから始める。
+   */
+  startAt?: "chest" | "opening" | "offer";
   /** 宝箱を開ける前に閉じるボタンの文言。 */
   dismissLabel?: string;
   /** 値札と特典を見せたとき（課金カードの表示計測用）。 */
@@ -294,7 +303,10 @@ export function ResultUpgradeTreasure({
   trustNote,
 }: Props) {
   const [reducedMotion] = useState(prefersReducedMotion);
-  const [phase, setPhase] = useState<Phase>(startAt === "offer" ? "offer" : reducedMotion ? "idle" : "intro");
+  const [phase, setPhase] = useState<Phase>(
+    startAt === "offer" ? "offer"
+      : startAt === "opening" ? (reducedMotion ? "open" : "charging")
+        : reducedMotion ? "idle" : "intro");
   const [priceStep, setPriceStep] = useState<PriceStep>(startAt === "offer" ? "landed" : "tag");
   const [shownPrice, setShownPrice] = useState(startAt === "offer" ? priceJpy : listPriceJpy);
   const onOfferShownRef = useRef(onOfferShown);
@@ -372,20 +384,24 @@ export function ResultUpgradeTreasure({
   useEffect(() => {
     if (offerShown) onOfferShownRef.current?.();
   }, [offerShown]);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<HTMLDivElement>(null);
   const receiveRef = useRef<HTMLButtonElement>(null);
   const laterRef = useRef<HTMLButtonElement>(null);
   const timers = useRef<number[]>([]);
   const frame = useRef<number | null>(null);
   const onCouponReceivedRef = useRef(onCouponReceived);
+  const onChestOpenedRef = useRef(onChestOpened);
   const onCloseRef = useRef(onClose);
   const onDismissRef = useRef(onDismiss);
   const phaseRef = useRef<Phase>(phase);
 
   useEffect(() => {
     onCouponReceivedRef.current = onCouponReceived;
+    onChestOpenedRef.current = onChestOpened;
     onCloseRef.current = onClose;
     onDismissRef.current = onDismiss;
-  }, [onCouponReceived, onClose, onDismiss]);
+  }, [onCouponReceived, onChestOpened, onClose, onDismiss]);
 
   useEffect(() => {
     phaseRef.current = phase;
@@ -402,7 +418,16 @@ export function ResultUpgradeTreasure({
 
   useEffect(() => {
     const pending = timers.current;
-    if (!reducedMotion) {
+    if (startAt === "opening") {
+      // ページの宝箱を押した時点で「開けた」。ここでは続きの、震えて開く動きだけを流す。
+      onChestOpenedRef.current?.();
+      if (!reducedMotion) {
+        pending.push(window.setTimeout(() => {
+          setPhase((current) => (current === "charging" ? "open" : current));
+          try { navigator.vibrate?.([24, 40, 30]); } catch { /* optional */ }
+        }, CARD_OPEN_MS));
+      }
+    } else if (!reducedMotion) {
       pending.push(window.setTimeout(() => setPhase((current) => (current === "intro" ? "idle" : current)), INTRO_MS));
     }
     const previousOverflow = document.body.style.overflow;
@@ -420,7 +445,46 @@ export function ResultUpgradeTreasure({
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = previousOverflow;
     };
-  }, [reducedMotion]);
+  }, [reducedMotion, startAt]);
+
+  // ページに置いた宝箱（小窓）から開いたときは、その小窓がそのまま全画面へ広がるように見せる。
+  // 小窓の中の絵は演出と同じ配置なので、舞台を小窓の位置・大きさから元の位置へ動かし、
+  // 画面全体は小窓の形から外へ切り開く。目印（data-treasure-origin）が無ければ、ふつうに重ねて出す。
+  const fromCard = startAt === "opening" && !reducedMotion;
+  useLayoutEffect(() => {
+    if (!fromCard) return;
+    const overlay = overlayRef.current;
+    const scene = sceneRef.current;
+    const origin = document.querySelector<HTMLElement>("[data-treasure-origin]");
+    const windowEl = origin?.parentElement;
+    if (!overlay || !scene || !origin || !windowEl || typeof scene.animate !== "function") return;
+    const to = scene.getBoundingClientRect();
+    const from = origin.getBoundingClientRect();
+    const frame = windowEl.getBoundingClientRect();
+    if (to.width === 0 || from.width === 0) return;
+    const timing: KeyframeAnimationOptions = { duration: CARD_EXPAND_MS, easing: "cubic-bezier(0.22, 1, 0.36, 1)" };
+    scene.style.transformOrigin = "0 0";
+    const sceneMove = scene.animate(
+      [
+        { transform: `translate(calc(-50% + ${from.left - to.left}px), ${from.top - to.top}px) scale(${from.width / to.width})` },
+        { transform: "translateX(-50%)" },
+      ],
+      timing,
+    );
+    const right = Math.max(0, window.innerWidth - frame.right);
+    const bottom = Math.max(0, window.innerHeight - frame.bottom);
+    const reveal = overlay.animate(
+      [
+        { clipPath: `inset(${Math.max(0, frame.top)}px ${right}px ${bottom}px ${Math.max(0, frame.left)}px round 24px)` },
+        { clipPath: "inset(0px 0px 0px 0px round 0px)" },
+      ],
+      timing,
+    );
+    return () => {
+      sceneMove.cancel();
+      reveal.cancel();
+    };
+  }, [fromCard]);
 
   function openChest() {
     if (phase !== "idle" && phase !== "intro") return;
@@ -505,12 +569,13 @@ export function ResultUpgradeTreasure({
   const chestMotion =
     phase === "intro" ? styles.dropIn
       : phase === "idle" ? styles.idle
-        : phase === "charging" ? styles.charging
+        : phase === "charging" ? (startAt === "opening" ? styles.chargingLong : styles.charging)
           : styles.opened;
 
   return createPortal(
     <div
-      className={`${styles.overlay} ${phase === "closing" ? styles.closing : ""}`}
+      ref={overlayRef}
+      className={`${styles.overlay} ${fromCard ? styles.overlayFromCard : ""} ${phase === "closing" ? styles.closing : ""}`}
       role="dialog"
       aria-modal="true"
       aria-label={offer.dialogLabel}
@@ -537,7 +602,7 @@ export function ResultUpgradeTreasure({
       <div className={styles.sceneBlur} aria-hidden="true">
         <Image src={ROOM_SRC} alt="" fill sizes={ROOM_BLUR_SIZES} />
       </div>
-      <div className={styles.scene}>
+      <div ref={sceneRef} className={styles.scene}>
       <div className={styles.backdrop} aria-hidden="true">
         <Image src={ROOM_SRC} alt="" fill priority sizes={ROOM_SIZES} />
       </div>
@@ -612,13 +677,13 @@ export function ResultUpgradeTreasure({
               className={`${styles.chestImage} ${opened ? "" : styles.hidden}`}
             />
             <div
-              className={`${styles.seam} ${phase === "charging" ? styles.seamCharging : opened ? styles.seamHidden : ""}`}
+              className={`${styles.seam} ${phase === "charging" ? (startAt === "opening" ? styles.seamChargingLong : styles.seamCharging) : opened ? styles.seamHidden : ""}`}
               aria-hidden="true"
             />
           </div>
         </button>
       </div>
-      <div key={landed ? "alice-landed" : "alice"} className={`${styles.alice} ${opened ? styles.aliceHop : ""} ${spillStyle && offerPhase && !spilling ? styles.aliceAway : ""}`} aria-hidden="true">
+      <div key={landed ? "alice-landed" : "alice"} className={`${styles.alice} ${startAt === "opening" && !opened ? styles.alicePresent : ""} ${opened ? styles.aliceHop : ""} ${spillStyle && offerPhase && !spilling ? styles.aliceAway : ""}`} aria-hidden="true">
         <Image src={ALICE_SRC} alt="" fill priority sizes={ALICE_SIZES} />
       </div>
       {phase === "open" && (
@@ -832,7 +897,7 @@ export function ResultUpgradeTreasure({
             )}
           </div>
         </>
-      ) : (
+      ) : startAt === "opening" ? null : (
         <p className={styles.hint} aria-hidden="true">
           宝箱をタップして開けてね
         </p>

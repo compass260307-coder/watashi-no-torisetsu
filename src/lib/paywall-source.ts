@@ -68,6 +68,8 @@ const PAYWALL_SOURCES = new Set([
   "nav_locked_tarot",
   // 未課金の人の下部ナビ「完全版」タブから宝箱を開いた導線 (日本語のみ)。
   "nav_full_access",
+  // 自己診断結果ページの末尾に置いた宝箱を押して開いた導線 (日本語のみ)。
+  "promo_chest",
   ...TAKO_PAYWALL_SOURCES,
 ]);
 
