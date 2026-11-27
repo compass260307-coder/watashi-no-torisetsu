@@ -73,10 +73,10 @@ function sceneVerdict(
             ? "Dalam cinta, kesalahpahaman kecil perlu ditangani dengan hati-hati. "
             : "Dalam cinta, kesabaran membantu hubungan menjadi lebih dalam. ";
       return hi
-        ? "恋愛では、かなり相性がいい。"
+        ? "恋愛では、かなり相性がいいふたりです。"
         : lo
-          ? "恋愛は、すれ違いに気をつけたい。"
-          : "恋愛は、丁寧にいけば深まる。";
+          ? "恋愛では、すれ違いに気をつけたいふたりです。"
+          : "恋愛は、丁寧に向き合うほど深まります。";
     case "friend":
       if (locale === "en")
         return hi
@@ -97,10 +97,10 @@ function sceneVerdict(
             ? "Dalam persahabatan, menikmati perbedaan adalah kuncinya. "
             : "Sebagai teman, kalian dapat menemukan jarak yang nyaman. ";
       return hi
-        ? "友達としては、最高のふたり。"
+        ? "友達としては、最高のふたりです。"
         : lo
-          ? "友情は、違いを面白がれるかがカギ。"
-          : "友達としては、いい距離感。";
+          ? "友情は、違いを面白がれるかがカギです。"
+          : "友達としては、ちょうどいい距離感のふたりです。";
     case "work":
       if (locale === "en")
         return hi
@@ -121,10 +121,10 @@ function sceneVerdict(
             ? "Dalam pekerjaan, pembagian peran yang jelas sangat penting. "
             : "Dengan bekerja bersama, kalian dapat menjadi tim yang kuat. ";
       return hi
-        ? "一緒に動くと、めっちゃ捗る。"
+        ? "一緒に動くと、とても捗ります。"
         : lo
-          ? "作業は、役割分担がカギ。"
-          : "一緒に動けば、いいコンビ。";
+          ? "一緒に働くときは、役割分担がカギです。"
+          : "一緒に動けば、いいコンビになります。";
     case "clash":
       if (locale === "en")
         return hi
@@ -145,10 +145,10 @@ function sceneVerdict(
             ? "Benturan mungkin membutuhkan waktu lebih lama untuk diselesaikan. "
             : "Meski terjadi benturan, kalian dapat menemukan jalan kembali. ";
       return hi
-        ? "すれ違っても、すぐ立て直せる。"
+        ? "すれ違っても、すぐ立て直せます。"
         : lo
-          ? "すれ違うと、少し長引きがち。"
-          : "すれ違っても、ちゃんと戻れる。";
+          ? "すれ違うと、少し長引きやすいふたりです。"
+          : "すれ違っても、ちゃんと元に戻れます。";
   }
 }
 
