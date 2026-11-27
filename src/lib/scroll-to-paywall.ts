@@ -121,7 +121,9 @@ export function scrollToPaywall(
   source: string = "unknown",
   targetId: string = PAYWALL_ID,
   // 鍵つきの友達タブから開くとき、その友達の呼び名（例「ゆかさん」）。宝箱の先頭の特典の説明に使う。
-  options: { friendName?: string } = {},
+  // opening: ページ末尾に置いた宝箱を押したとき。演出を、宝箱が開くところから始める。
+  // entry: 入口の名前を source とは別に残したいとき（ページ末尾の出し分けの計測用）。
+  options: { friendName?: string; opening?: boolean; entry?: string } = {},
 ): void {
   if (typeof document === "undefined") return;
   const normalizedSource = normalizePaywallSource(source);
@@ -133,6 +135,7 @@ export function scrollToPaywall(
       page: trackingPageFromPathname(window.location.pathname),
       product: currentProduct(),
       paywall_version: currentOfferPaywallVersion(),
+      ...(options.entry ? { entry: options.entry } : {}),
     },
   });
 
@@ -142,6 +145,7 @@ export function scrollToPaywall(
     detail: {
       source: normalizedSource,
       ...(options.friendName ? { friendName: options.friendName } : {}),
+      ...(options.opening ? { opening: true } : {}),
     },
     cancelable: true,
   });

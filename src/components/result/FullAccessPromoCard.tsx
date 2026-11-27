@@ -59,6 +59,12 @@ import { useFullAccessStatus } from "@/lib/use-course-navigation-access";
 import { formatFullAccessAmount, jaFullAccessOfferForQuote } from "@/lib/full-access-pricing";
 import { useFullAccessQuote } from "@/lib/use-full-access-quote";
 import { getLastPaywallSource, scrollToPaywall } from "@/lib/scroll-to-paywall";
+import { FullAccessChestCard } from "@/components/result/FullAccessChestCard";
+import {
+  FULL_ACCESS_PROMO_CHEST_TEST_VERSION,
+  fullAccessPromoChestArmFor,
+  type FullAccessPromoChestArm,
+} from "@/lib/full-access-promo-chest-test";
 import { SelfAccessPlanCarousel } from "./SelfAccessPlanCarousel";
 
 // 値引き表記に使うロケール別価格。実課金額はサーバ側のStripe Priceで検証する。
@@ -227,6 +233,7 @@ export function FullAccessPromoCard({
   ctaSource,
   products,
   previewMode = false,
+  previewChestArm,
   previewJapaneseThreeCourse = false,
   previewEntitlements,
   legacyPlanStyle = false,
@@ -254,6 +261,8 @@ export function FullAccessPromoCard({
   products?: readonly AccessProduct[];
   /** ローカルUI確認用。計測・権利確認・Checkoutを実行しない。 */
   previewMode?: boolean;
+  /** 見本表示専用: ページ末尾の出し分け（lib/full-access-promo-chest-test.ts）のどちらを見せるか。未指定は chest。 */
+  previewChestArm?: FullAccessPromoChestArm;
   /** ローカルプレビューでだけ、日本版の旧松竹梅を3コースで表示する。 */
   previewJapaneseThreeCourse?: boolean;
   /** ローカルプレビューでだけ、購入済み権利を模擬して差額表示を確認する。 */
@@ -436,15 +445,37 @@ export function FullAccessPromoCard({
   const priceState = useFullAccessQuote(!previewMode && !usesPlanCarousel && product === "full_access", locale, ownerToken);
   const quote = priceState.quote;
   // 宝箱を開くカード: 見積もりが日本円の完全版の額(¥499 / 価格テストの¥699)以外と分かったとき・取得に失敗したときは従来の価格つきカードに戻す。
-  // 見本表示は見積もりを取らないので、友達診断ページの見本だけ、そのまま宝箱を開くカードとして見せる。
+  // 見本表示は見積もりを取らないので、そのまま宝箱を開くカード（自己診断ページの末尾は宝箱）として見せる。
+  // 見本表示でこの指定を渡すのは、友達診断ページの見本と、ローカルの自己診断ページの課金導線QAだけ。
   const usesTreasureCta =
     opensTreasure &&
     locale === "ja" &&
     usesLegacyFullAccessCard &&
     product === "full_access" &&
     (previewMode
-      ? surface === "tako"
+      ? true
       : !!ownerToken && !priceState.failed && (!quote || jaFullAccessOfferForQuote(quote) !== null));
+  // ページ末尾の出し分け（A/B）: 自己診断結果ページの末尾で、宝箱を開くカードの人だけが対象。
+  // 群が決まるまでの一瞬は従来のカードを出し、表示の記録は群が決まってから送る。
+  const chestTestEligible = usesTreasureCta && surface !== "tako" && !onClose;
+  const [assignedChestArm, setAssignedChestArm] = useState<FullAccessPromoChestArm | null>(null);
+  const chestTestToken = chestTestEligible && !previewMode ? ownerToken : undefined;
+  useEffect(() => {
+    if (!chestTestToken) return;
+    let cancelled = false;
+    void fullAccessPromoChestArmFor(chestTestToken).then((value) => {
+      if (!cancelled) setAssignedChestArm(value);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [chestTestToken]);
+  const chestArm: FullAccessPromoChestArm | null = !chestTestEligible
+    ? null
+    : previewMode
+      ? (previewChestArm ?? "chest")
+      : assignedChestArm;
+  const chestArmPending = chestTestEligible && chestArm === null;
   const salePrice = previewMode ? copy.price.sale
     : quote ? formatFullAccessAmount(quote.market, quote.amountMinor)
     : "—";
@@ -518,6 +549,8 @@ export function FullAccessPromoCard({
   const cardRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (previewMode) return;
+    // 出し分けの対象の人は、群が決まってから記録する（どちらを見たかを必ず付けるため）。
+    if (chestArmPending) return;
     const el = cardRef.current;
     if (!el) return;
     const page = trackingPageFromPathname(window.location.pathname);
@@ -538,6 +571,9 @@ export function FullAccessPromoCard({
           paywall_version: paywallVersion,
           placement: paywallPlacement,
           surface: surface ?? "self",
+          ...(chestArm
+            ? { promo_chest_arm: chestArm, promo_chest_test: FULL_ACCESS_PROMO_CHEST_TEST_VERSION }
+            : {}),
         },
       });
       try {
@@ -563,6 +599,8 @@ export function FullAccessPromoCard({
     io.observe(el);
     return () => io.disconnect();
   }, [
+    chestArm,
+    chestArmPending,
     ownerToken,
     paywallPlacement,
     paywallProduct,
@@ -605,6 +643,20 @@ export function FullAccessPromoCard({
           ebookPeek={characterEbookPeek ?? ebookPeek}
         />
       </div>
+    );
+  }
+
+  // 自己診断結果ページの末尾の chest 群: 説明のカードの代わりに宝箱そのものを置き、押すとそのまま開く (2026-11-27)。
+  // 7つの特典の説明は宝箱の中に任せる。card 群と友達診断ページの末尾は従来のカードのまま。
+  if (chestArm === "chest") {
+    return (
+      <section aria-label={uiText("診断してくれたあなたへのプレゼント")} className="px-4 pt-6 pb-10 md:px-8">
+        <div id={anchorId} ref={cardRef} className="mx-auto w-full max-w-[460px] scroll-mt-[80px]">
+          <FullAccessChestCard
+            onOpen={() => scrollToPaywall("promo_chest", anchorId, { opening: true, entry: "promo_chest" })}
+          />
+        </div>
+      </section>
     );
   }
 
@@ -775,7 +827,12 @@ export function FullAccessPromoCard({
                   type="button"
                   // 友達診断ページでは、このカードから開いたと分かる名前で記録する (従来の購入ボタンと同じ tako_promo_card)。
                   onClick={() =>
-                    scrollToPaywall(surface === "tako" ? "tako_promo_card" : getLastPaywallSource(), anchorId)
+                    scrollToPaywall(
+                      surface === "tako" ? "tako_promo_card" : getLastPaywallSource(),
+                      anchorId,
+                      // 自己診断ページの末尾の出し分け: card 群が押した回数を数えられるよう、入口の名前を残す。
+                      chestArm === "card" ? { entry: "promo_card" } : {},
+                    )
                   }
                   style={{
                     backgroundColor: actionTone.accent,

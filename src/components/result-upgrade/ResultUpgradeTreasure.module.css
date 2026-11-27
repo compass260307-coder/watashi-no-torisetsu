@@ -13,6 +13,11 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* ページの宝箱（小窓）から開いたとき: ふわっと重ねず、小窓の形から切り開く（動きはスクリプトでつける）。 */
+.overlayFromCard {
+  animation: none;
+}
+
 .closing {
   animation: overlay-out 0.32s ease-in both;
 }
@@ -302,6 +307,30 @@
   100% { transform: scale(1.16, 0.86); }
 }
 
+/* ページの宝箱から開いたとき: 広がっている間は静かに浮き、そのあと震えがだんだん強まって開く（2.1秒）。
+   終わりの形は charge と同じにして、開いたあとの settle へそのままつなぐ。 */
+.chargingLong {
+  animation: charge-long 2.1s linear both;
+}
+
+@keyframes charge-long {
+  0% { transform: none; }
+  14% { transform: translateY(-6px) rotate(-1deg); }
+  28% { transform: none; }
+  34% { transform: rotate(-2deg); }
+  40% { transform: rotate(2deg); }
+  46% { transform: rotate(-3deg) scale(1.01); }
+  52% { transform: rotate(3deg) scale(1.02); }
+  58% { transform: rotate(-4deg) scale(1.03); }
+  64% { transform: rotate(4deg) scale(1.04); }
+  70% { transform: rotate(-6deg) scale(1.06); }
+  76% { transform: rotate(6deg) scale(1.08); }
+  82% { transform: rotate(-5deg) scale(1.1); }
+  88% { transform: rotate(4deg) scale(1.12); }
+  94% { transform: rotate(-2deg) scale(1.14, 0.9); }
+  100% { transform: scale(1.16, 0.86); }
+}
+
 .opened {
   animation: settle 0.65s cubic-bezier(0.22, 1.5, 0.36, 1) both;
 }
@@ -331,6 +360,16 @@
 
 .seamCharging {
   animation: seam-charge 0.8s ease-in both;
+}
+
+.seamChargingLong {
+  animation: seam-charge-long 2.1s ease-in both;
+}
+
+@keyframes seam-charge-long {
+  0% { opacity: 0.3; transform: scaleY(1); }
+  28% { opacity: 0.45; transform: scaleY(1); }
+  100% { opacity: 1; transform: scaleY(2.6); filter: blur(7px); }
 }
 
 .seamHidden {
@@ -386,6 +425,11 @@
   filter: drop-shadow(0 12px 16px rgba(4, 8, 20, 0.5));
   transform-origin: 50% 100%;
   animation: alice-in 0.7s cubic-bezier(0.22, 1.4, 0.36, 1) 0.75s both, alice-sway 3.2s ease-in-out 1.6s infinite;
+}
+
+/* ページの宝箱から開いたとき: Aliceはもうそこに居るので、登場の動きを省く。 */
+.alicePresent {
+  animation: alice-sway 3.2s ease-in-out infinite;
 }
 
 .aliceHop {

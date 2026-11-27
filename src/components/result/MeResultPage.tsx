@@ -296,6 +296,10 @@ async function MeResultPageContent({
   // この公開タイプページ自身を共有する。
   // dev の課金導線QA (?previewType&previewLock=1、fromPreview 無し) は従来どおり。
   const publicPreview = previewLocked && sp.fromPreview === "1";
+  // ローカルの課金導線QA (?previewType&previewLock=1) では見積もりを取れないので、ページ末尾の宝箱と
+  // 宝箱の演出を見本表示（計測・決済なし）で出す。本番の表示には影響しない。
+  const devTreasurePreview =
+    process.env.NODE_ENV === "development" && previewLocked && !publicPreview;
   // プレビュー用モックスコア: base16 の OCEA コード (＋/−) と N 軸から High=8 / Low=2 を組む。
   const previewScores: Record<BigFiveDimension, number> | null = previewType
     ? (() => {
@@ -2045,6 +2049,9 @@ async function MeResultPageContent({
             noShadow
             benefitsBeforePrice
             opensTreasure
+            previewMode={devTreasurePreview}
+            // ローカルの見本表示: ?promoChest=card で従来のカード、未指定は宝箱（出し分けの両方を見る用）。
+            previewChestArm={sp.promoChest === "card" ? "card" : "chest"}
           />
         </div>
         {/* ロックCTAはその場で松竹梅の商品カードを表示する。 */}
@@ -2057,6 +2064,7 @@ async function MeResultPageContent({
           locale={locale}
           // 自己診断結果ページからの流入は、導線を問わず全て宝箱にする (2026-11-20 指示)。
           treasureEntry
+          previewMode={devTreasurePreview}
         />
         {/* 一番下まで読んだ人に、友達診断ページと同じ招待カードを1回だけ開く (2026-11-23)。
             日本語・未課金・友達の回答がまだ無い本人だけ。出す条件の続きは ResultInviteCard 側。
