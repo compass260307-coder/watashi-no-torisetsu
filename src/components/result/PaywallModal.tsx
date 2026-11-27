@@ -24,7 +24,8 @@ import { paywallCardMode, type PaywallCardMode } from "@/lib/feature-flags";
 import { jaFullAccessOfferForQuote, type JaFullAccessPriceArm } from "@/lib/full-access-pricing";
 import { useFullAccessQuote } from "@/lib/use-full-access-quote";
 import { FullAccessTreasure } from "./FullAccessTreasure";
-import { fullAccessTreasureLayoutFor, type FullAccessTreasureLayout } from "@/lib/full-access-treasure-layout";
+import { FULL_ACCESS_TREASURE_LAYOUT, type FullAccessTreasureLayout } from "@/lib/full-access-treasure-layout";
+import { fullAccessTreasureMotionFor, type FullAccessTreasureMotion } from "@/lib/full-access-treasure-motion";
 import { preloadTreasureScene } from "@/components/result-upgrade/ResultUpgradeTreasure";
 import { PAYWALL_OPEN_EVENT } from "@/lib/scroll-to-paywall";
 import type { ThirtyTwoGroup } from "@/lib/thirty-two-content/character-32";
@@ -73,6 +74,7 @@ export function PaywallOverlay({
   treasureEntry = false,
   treasurePreviewArm,
   treasurePreviewLayout,
+  treasurePreviewMotion,
   treasureStartOpening = false,
   ...cardProps
 }: PaywallModalProps & {
@@ -85,14 +87,16 @@ export function PaywallOverlay({
   scrollLocked?: boolean;
   /** ローカルのプレビュー専用: 価格テストのどちらの群の値札を宝箱に出すか。 */
   treasurePreviewArm?: JaFullAccessPriceArm;
-  /** ローカルのプレビュー専用: 宝箱の特典の見せ方を指定する（未指定なら本番と同じく owner_token で決まる）。 */
+  /** ローカルのプレビュー専用: 宝箱の特典の見せ方を指定する（未指定なら本番と同じ spill）。 */
   treasurePreviewLayout?: FullAccessTreasureLayout;
+  /** ローカルのプレビュー専用: 並び終わったあとの動きを指定する（未指定なら本番と同じく owner_token で決まる）。 */
+  treasurePreviewMotion?: FullAccessTreasureMotion;
 }) {
   const presentation = useFullAccessTreasurePresentation(cardProps, ctaSource, treasureEntry);
-  // 宝箱の特典の見せ方（A/B）。owner_token から決まるまでの一瞬は、暗い背景だけを出す。
-  const assignedLayout = useFullAccessTreasureLayout(cardProps.ownerToken);
-  const treasureLayout = treasurePreviewLayout ?? assignedLayout;
-  if (presentation.mode === "pending" || (presentation.mode === "treasure" && treasureLayout === null)) {
+  // 並び終わったあとの動き（A/B）。owner_token から決まるまでの一瞬は、暗い背景だけを出す。
+  const assignedMotion = useFullAccessTreasureMotion(cardProps.ownerToken);
+  const treasureMotion = treasurePreviewMotion ?? assignedMotion;
+  if (presentation.mode === "pending" || (presentation.mode === "treasure" && treasureMotion === null)) {
     return createPortal(
       <div
         aria-hidden="true"
@@ -112,7 +116,8 @@ export function PaywallOverlay({
         variant={cardProps.variant}
         previewMode={cardProps.previewMode}
         previewArm={treasurePreviewArm}
-        layout={treasureLayout ?? "stack"}
+        layout={treasurePreviewLayout ?? FULL_ACCESS_TREASURE_LAYOUT}
+        motion={treasureMotion ?? "on"}
         friendName={friendName}
         startOpening={treasureStartOpening}
         priceState={presentation.priceState}
@@ -130,19 +135,19 @@ export function PaywallOverlay({
   );
 }
 
-/** 宝箱の特典の見せ方（A/B の群）。owner_token から計算し終えるまでは null。 */
-function useFullAccessTreasureLayout(ownerToken: string | undefined): FullAccessTreasureLayout | null {
-  const [layout, setLayout] = useState<FullAccessTreasureLayout | null>(null);
+/** 宝箱で7つが並び終わったあとの動き（A/B の群）。owner_token から計算し終えるまでは null。 */
+function useFullAccessTreasureMotion(ownerToken: string | undefined): FullAccessTreasureMotion | null {
+  const [motion, setMotion] = useState<FullAccessTreasureMotion | null>(null);
   useEffect(() => {
     let cancelled = false;
-    void fullAccessTreasureLayoutFor(ownerToken).then((value) => {
-      if (!cancelled) setLayout(value);
+    void fullAccessTreasureMotionFor(ownerToken).then((value) => {
+      if (!cancelled) setMotion(value);
     });
     return () => {
       cancelled = true;
     };
   }, [ownerToken]);
-  return layout;
+  return motion;
 }
 
 // 日本語Webの完全版（日本円の見積もり。¥499 / 価格テストの¥699）で、対象の導線から開いたときだけ、課金カードの代わりに宝箱の演出を出す。
@@ -390,8 +395,10 @@ function PaywallCardOverlay({
 
 export function PaywallModal(
   props: PaywallModalProps & {
-    /** 見本表示専用: 宝箱の特典の見せ方を指定する（未指定なら本番と同じく owner_token で決まる）。 */
+    /** 見本表示専用: 宝箱の特典の見せ方を指定する（未指定なら本番と同じ spill）。 */
     treasurePreviewLayout?: FullAccessTreasureLayout;
+    /** 見本表示専用: 並び終わったあとの動きを指定する（未指定なら本番と同じく owner_token で決まる）。 */
+    treasurePreviewMotion?: FullAccessTreasureMotion;
   },
 ) {
   // open は必ずクライアントの CustomEvent (ユーザークリック) 経由でのみ true になる。

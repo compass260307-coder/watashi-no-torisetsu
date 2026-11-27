@@ -557,7 +557,7 @@ export async function TakoResultPage({
   //   鍵つきの友達タブを押した回数のうち購入ボタンまで進むのは 3.9% だった（上部バーは 20%。11/19〜11/26）。
   // 前後比較の基準（11/19〜11/25診断）: 鍵の対象→購入 5.9%、課金表示を開いた人→決済画面 15%。
   const takoTreasure = locale === "ja";
-  // 見本表示だけ: &layout=spill / &layout=stack で、宝箱の特典の見せ方（A/B）を指定できる。
+  // 見本表示だけ: &layout=spill / &layout=stack で、宝箱の特典の見せ方を指定できる（本番は全員 spill）。
   const previewTreasureLayout =
     previewMode && (sp.layout === "spill" || sp.layout === "stack") ? sp.layout : undefined;
 

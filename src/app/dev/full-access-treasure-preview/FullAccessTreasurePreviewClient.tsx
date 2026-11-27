@@ -32,8 +32,9 @@ export function FullAccessTreasurePreviewClient() {
   const [arm, setArm] = useState<"control" | "test" | "test899">("control");
   const [entry, setEntry] = useState<string>(ENTRIES[0][0]);
   // 特典の見せ方。spill は新しい見せ方（値札のあと宝箱から7つが飛び出す）、stack は従来。
-  // auto は本番と同じく owner_token から決める（このページの owner_token は "preview" で固定）。
-  const [layout, setLayout] = useState<"spill" | "stack" | "auto">("spill");
+  const [layout, setLayout] = useState<"spill" | "stack">("spill");
+  // 並び終わったあとの動き（A/B）。auto は本番と同じく owner_token から決める（このページの owner_token は "preview" で固定）。
+  const [motion, setMotion] = useState<"on" | "off" | "auto">("on");
   const [ambient, setAmbient] = useState<readonly string[]>(["tour", "float", "twinkle"]);
   useEffect(() => {
     document.documentElement.dataset.treasureAmbient = ambient.join(" ");
@@ -74,7 +75,7 @@ export function FullAccessTreasurePreviewClient() {
           ))}
         </div>
         <div className="flex gap-2" role="group" aria-label="特典の見せ方">
-          {([["spill", "新: 7つが飛び出す"], ["stack", "従来"], ["auto", "A/Bの割り当て"]] as const).map(([value, label]) => (
+          {([["spill", "本番: 7つが飛び出す"], ["stack", "以前の見せ方"]] as const).map(([value, label]) => (
             <button
               key={value}
               type="button"
@@ -88,8 +89,23 @@ export function FullAccessTreasurePreviewClient() {
             </button>
           ))}
         </div>
+        <div className="flex gap-2" role="group" aria-label="並び終わったあとの動き（A/B）">
+          {([["on", "動きあり"], ["off", "動きなし"], ["auto", "A/Bの割り当て"]] as const).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={motion === value}
+              onClick={() => setMotion(value)}
+              className={`flex-1 rounded-full border-2 border-[#7A4FA3] px-3 py-2 text-[12px] font-black ${
+                motion === value ? "bg-[#7A4FA3] text-white" : "text-[#7A4FA3]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         <div className="text-left">
-          <p className="text-[12px] font-black text-[#2E2E5C]">並び終わったあとの動き（複数選べます）</p>
+          <p className="text-[12px] font-black text-[#2E2E5C]">動きありの中身（複数選べます）</p>
           <div className="mt-1 grid grid-cols-2 gap-2" role="group" aria-label="並び終わったあとの動き">
             {AMBIENTS.map(([value, label]) => (
               <button
@@ -144,7 +160,8 @@ export function FullAccessTreasurePreviewClient() {
           previewMode
           ctaSource={entry}
           treasurePreviewArm={arm}
-          treasurePreviewLayout={layout === "auto" ? undefined : layout}
+          treasurePreviewLayout={layout}
+          treasurePreviewMotion={motion === "auto" ? undefined : motion}
           onClose={() => setOpen(false)}
         />
       )}
