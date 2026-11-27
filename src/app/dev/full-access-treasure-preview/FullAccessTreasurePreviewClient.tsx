@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PaywallOverlay } from "@/components/result/PaywallModal";
 
 const CHARACTER_SRC = "/characters/cut/jellyfish_N.webp";
@@ -16,6 +16,14 @@ const ENTRIES = [
   ["nav_locked_tarot", "下部ナビの鍵: タロット"],
 ] as const;
 
+// 7つが並び終わったあとも続ける小さな動き（新しい見せ方だけ）。選んだものを html の data-treasure-ambient に書く。
+const AMBIENTS = [
+  ["tour", "① カードが順に光る→ボタン"],
+  ["cta", "② ボタンの光だけ"],
+  ["float", "③ カードが浮く"],
+  ["twinkle", "④ 値段の星"],
+] as const;
+
 // ローカル専用: 計測・Checkoutは実行しない（previewMode）。
 export function FullAccessTreasurePreviewClient() {
   const [run, setRun] = useState(0);
@@ -26,6 +34,13 @@ export function FullAccessTreasurePreviewClient() {
   // 特典の見せ方。spill は新しい見せ方（値札のあと宝箱から7つが飛び出す）、stack は従来。
   // auto は本番と同じく owner_token から決める（このページの owner_token は "preview" で固定）。
   const [layout, setLayout] = useState<"spill" | "stack" | "auto">("spill");
+  const [ambient, setAmbient] = useState<readonly string[]>(["tour", "float", "twinkle"]);
+  useEffect(() => {
+    document.documentElement.dataset.treasureAmbient = ambient.join(" ");
+    return () => {
+      delete document.documentElement.dataset.treasureAmbient;
+    };
+  }, [ambient]);
   function openOverlay(resetCoupon: boolean) {
     if (resetCoupon) {
       try {
@@ -72,6 +87,24 @@ export function FullAccessTreasurePreviewClient() {
               {label}
             </button>
           ))}
+        </div>
+        <div className="text-left">
+          <p className="text-[12px] font-black text-[#2E2E5C]">並び終わったあとの動き（複数選べます）</p>
+          <div className="mt-1 grid grid-cols-2 gap-2" role="group" aria-label="並び終わったあとの動き">
+            {AMBIENTS.map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={ambient.includes(value)}
+                onClick={() => setAmbient((current) => (current.includes(value) ? current.filter((item) => item !== value) : [...current, value]))}
+                className={`rounded-full border-2 border-[#2E8A5B] px-3 py-2 text-[12px] font-black ${
+                  ambient.includes(value) ? "bg-[#2E8A5B] text-white" : "text-[#2E8A5B]"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
         <label className="block text-left text-[12px] font-black text-[#2E2E5C]">
           どこから開いたか
