@@ -108,7 +108,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           {
             "@type": "ListItem",
             position: 2,
-            name: "記事・コラム",
+            name: "記事",
             item: `${BASE_URL}/articles`,
           },
           { "@type": "ListItem", position: 3, name: article.listTitle },
@@ -153,7 +153,7 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
             /
           </span>
           <Link href="/articles" className="hover:underline">
-            記事・コラム
+            記事
           </Link>
         </nav>
 
