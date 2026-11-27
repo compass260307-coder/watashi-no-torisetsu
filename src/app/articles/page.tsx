@@ -16,9 +16,9 @@ const FONT_STACK =
 const NAVY = "#2E2E5C";
 
 export const metadata: Metadata = {
-  title: "記事・コラム",
+  title: "記事",
   description:
-    "ビッグファイブ（Big Five）や性格心理学を、研究にもとづいて解説する、ワタシのトリセツの記事・コラム一覧。性格診断を受ける前の予習にも、結果を深く知るためにも。",
+    "ビッグファイブ（Big Five）や性格心理学を、研究にもとづいて解説する、ワタシのトリセツの記事一覧。性格診断を受ける前の予習にも、結果を深く知るためにも。",
   alternates: localizedAlternates(
     "ja",
     "/articles",
@@ -32,7 +32,7 @@ export const metadata: Metadata = {
     alternateLocale: ["ko_KR", "en_US"],
     url: `${SITE_URL}/articles`,
     siteName: GLOBAL_SITE_NAME,
-    title: "記事・コラム｜ワタシのトリセツ",
+    title: "記事｜ワタシのトリセツ",
     description:
       "ビッグファイブ（Big Five）や性格心理学を、研究にもとづいて解説する記事一覧。",
     images: [{ url: "/ogp-v5.jpg", width: 1200, height: 630 }],
@@ -79,7 +79,7 @@ export default function ArticlesPage() {
                 lineHeight: 1.45,
               }}
             >
-              記事・コラム
+              記事
             </h1>
             <p
               className="mt-4 text-[15px] leading-[2]"
