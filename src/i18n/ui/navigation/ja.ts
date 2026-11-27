@@ -110,18 +110,8 @@ const footer: FooterContent = {
           label: "サービスについて", href: "/about"
         },
         {
-          label: "記事・コラム",
+          label: "記事",
           href: "/articles",
-          // 主要記事への入れ子リンク。フッターは全ページ共通なので、サイト全域からの
-          // 内部リンクになる (クロール促進)。ラベルは短縮形・4本まで。
-          children: [
-            {
-              label: "ビッグファイブとは", href: "/articles/ocean-shindan"
-            },
-            {
-              label: "外向性とは", href: "/articles/gaikousei"
-            },
-          ],
         },
         {
           label: "運営会社",
