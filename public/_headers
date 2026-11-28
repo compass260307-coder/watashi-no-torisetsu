@@ -1,0 +1,4 @@
+# Cloudflare Workers の静的ファイル用の保存期間。next.config.ts の headers() は
+# Workers では静的ファイルに効かないため、URL が更新ごとに変わるものだけここで長期保存にする。
+/_next/static/*
+  Cache-Control: public, max-age=31536000, immutable

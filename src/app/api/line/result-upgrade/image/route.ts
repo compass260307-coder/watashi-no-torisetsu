@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import sharp from "sharp";
 import { hasPremiumBundleAccess } from "@/lib/entitlements";
+import { renderLineUpgradeJpeg } from "@/lib/line-upgrade-image-render";
 import { verifyLineUpgradeImage } from "@/lib/line-upgrade-image-token";
 import { isResultUpgradeReady } from "@/lib/result-upgrade";
 import { loadResultUpgradeForUser } from "@/lib/result-upgrade-server";
@@ -21,9 +21,7 @@ export async function GET(request: Request) {
   if (downloadError || !image || image.size > 10*1024*1024) return new NextResponse(null,{status:404});
   try {
     const preview = url.searchParams.get("size") === "preview";
-    const output = await sharp(Buffer.from(await image.arrayBuffer()),{limitInputPixels:24_000_000})
-      .rotate().resize({width:preview?720:2048,height:preview?720:2048,fit:"inside",withoutEnlargement:true})
-      .flatten({background:"#ffffff"}).jpeg({quality:preview?75:85}).toBuffer();
+    const output = await renderLineUpgradeJpeg(await image.arrayBuffer(), preview);
     if (output.length > (preview?1:10)*1024*1024) return new NextResponse(null,{status:413});
     return new NextResponse(new Uint8Array(output),{headers:{"Content-Type":"image/jpeg","Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff","Referrer-Policy":"no-referrer"}});
   } catch { return new NextResponse(null,{status:404}); }

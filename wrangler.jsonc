@@ -1,0 +1,28 @@
+{
+  // Cloudflare Workers の設定。いちばん上の階層が確認用の環境 (staging)、
+  // env.production が本番。配置は `opennextjs-cloudflare deploy` (本番は `--env production`)。
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "main": "cloudflare/worker.mjs",
+  "name": "watashi-no-torisetsu-staging",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "watashi-no-torisetsu-staging" }],
+  "images": { "binding": "IMAGES" },
+  "browser": { "binding": "BROWSER" },
+  // 課金者だけに配るファイル (自己診断レポートの小説 PDF) を置く非公開のバケット。
+  // 中身は確認用の環境と本番で同じなので、同じバケットを読む。
+  "r2_buckets": [{ "binding": "PRIVATE_FILES", "bucket_name": "watashi-private-files" }],
+  "env": {
+    "production": {
+      "name": "watashi-no-torisetsu",
+      "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+      "services": [{ "binding": "WORKER_SELF_REFERENCE", "service": "watashi-no-torisetsu" }],
+      "images": { "binding": "IMAGES" },
+      "browser": { "binding": "BROWSER" },
+      "r2_buckets": [{ "binding": "PRIVATE_FILES", "bucket_name": "watashi-private-files" }],
+      // vercel.json の crons と同じ時刻 (UTC)。呼び先は cloudflare/worker.mjs の CRON_PATHS。
+      "triggers": { "crons": ["0 * * * *", "20 * * * *", "50 19 * * *"] }
+    }
+  }
+}

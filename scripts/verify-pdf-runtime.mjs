@@ -5,6 +5,13 @@ import { readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+// Cloudflare Workers 向けビルドは Chromium を同梱せず、Cloudflare のブラウザ機能を使う
+// (src/lib/pdf-browser.cloudflare.ts)。同梱の検査は Vercel 向けビルドだけで行う。
+if (process.env.DEPLOY_TARGET === "cloudflare") {
+  console.log("[verify-pdf-runtime] skipped: Cloudflare build uses the browser binding");
+  process.exit(0);
+}
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const binaryDirectory = path.join(root, "node_modules/@sparticuz/chromium/bin");
 const binaries = ["al2023.tar.br", "chromium.br", "fonts.tar.br", "swiftshader.tar.br"];
