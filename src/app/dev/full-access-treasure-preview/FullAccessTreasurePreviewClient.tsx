@@ -33,8 +33,8 @@ export function FullAccessTreasurePreviewClient() {
   const [entry, setEntry] = useState<string>(ENTRIES[0][0]);
   // 特典の見せ方。spill は新しい見せ方（値札のあと宝箱から7つが飛び出す）、stack は従来。
   const [layout, setLayout] = useState<"spill" | "stack">("spill");
-  // 並び終わったあとの動き（A/B）。auto は本番と同じく owner_token から決める（このページの owner_token は "preview" で固定）。
-  const [motion, setMotion] = useState<"on" | "off" | "auto">("on");
+  // 並び終わったあとの動き。off が本番（2026-11-28〜）。on は出し分けで試した動きで、見比べるためだけに残している。
+  const [motion, setMotion] = useState<"on" | "off">("off");
   const [ambient, setAmbient] = useState<readonly string[]>(["tour", "float", "twinkle"]);
   useEffect(() => {
     document.documentElement.dataset.treasureAmbient = ambient.join(" ");
@@ -89,8 +89,8 @@ export function FullAccessTreasurePreviewClient() {
             </button>
           ))}
         </div>
-        <div className="flex gap-2" role="group" aria-label="並び終わったあとの動き（A/B）">
-          {([["on", "動きあり"], ["off", "動きなし"], ["auto", "A/Bの割り当て"]] as const).map(([value, label]) => (
+        <div className="flex gap-2" role="group" aria-label="並び終わったあとの動き（あり・なし）">
+          {([["off", "本番: 動きなし"], ["on", "動きあり"]] as const).map(([value, label]) => (
             <button
               key={value}
               type="button"
@@ -161,7 +161,7 @@ export function FullAccessTreasurePreviewClient() {
           ctaSource={entry}
           treasurePreviewArm={arm}
           treasurePreviewLayout={layout}
-          treasurePreviewMotion={motion === "auto" ? undefined : motion}
+          treasurePreviewMotion={motion}
           onClose={() => setOpen(false)}
         />
       )}

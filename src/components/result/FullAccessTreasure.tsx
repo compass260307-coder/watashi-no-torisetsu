@@ -12,10 +12,7 @@ import {
   type JaFullAccessPriceArm,
 } from "@/lib/full-access-pricing";
 import { FULL_ACCESS_TREASURE_LAYOUT, type FullAccessTreasureLayout } from "@/lib/full-access-treasure-layout";
-import {
-  FULL_ACCESS_TREASURE_MOTION_TEST_VERSION,
-  type FullAccessTreasureMotion,
-} from "@/lib/full-access-treasure-motion";
+import { FULL_ACCESS_TREASURE_MOTION, type FullAccessTreasureMotion } from "@/lib/full-access-treasure-motion";
 import { normalizePaywallSource } from "@/lib/paywall-source";
 import { DIAGNOSIS_COUNT_SNAPSHOT } from "@/lib/proof-stats";
 import { track } from "@/lib/track";
@@ -225,7 +222,7 @@ type Props = {
   previewArm?: JaFullAccessPriceArm;
   /** 特典の見せ方（lib/full-access-treasure-layout.ts）。未指定は本番と同じ spill。stack は確認ページ用。 */
   layout?: FullAccessTreasureLayout;
-  /** 7つが並び終わったあとの動き（A/B の群。lib/full-access-treasure-motion.ts）。未指定は on。 */
+  /** 7つが並び終わったあとの動き（lib/full-access-treasure-motion.ts）。未指定は本番と同じ off。on は確認ページ用。 */
   motion?: FullAccessTreasureMotion;
   /** 鍵つきの友達タブから開いたとき、その友達の呼び名（例「ゆかさん」）。先頭の特典の説明に使う。 */
   friendName?: string;
@@ -248,7 +245,7 @@ export function FullAccessTreasure({
   previewMode = false,
   previewArm = "control",
   layout = FULL_ACCESS_TREASURE_LAYOUT,
-  motion = "on",
+  motion = FULL_ACCESS_TREASURE_MOTION,
   friendName,
   startOpening = false,
   priceState,
@@ -295,7 +292,6 @@ export function FullAccessTreasure({
         source: normalizePaywallSource(ctaSource),
         treasure_layout: layout,
         treasure_motion: motion,
-        treasure_motion_test: FULL_ACCESS_TREASURE_MOTION_TEST_VERSION,
         step,
         start: startAt,
         displayed_price_minor: priceOffer.saleAmount,
@@ -342,7 +338,6 @@ export function FullAccessTreasure({
         presentation: startAt === "offer" ? "treasure_offer" : "treasure",
         treasure_layout: layout,
         treasure_motion: motion,
-        treasure_motion_test: FULL_ACCESS_TREASURE_MOTION_TEST_VERSION,
         displayed_price_minor: priceOffer.saleAmount,
       },
     });
