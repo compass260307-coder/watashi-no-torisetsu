@@ -2,7 +2,7 @@
 
 import { isMotionReduced } from "@/lib/a11y-style";
 import Image, { getImageProps } from "next/image";
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import styles from "./ResultUpgradeTreasure.module.css";
 
@@ -313,7 +313,6 @@ export function ResultUpgradeTreasure({
       : startAt === "opening" ? (reducedMotion ? "open" : "charging")
         : reducedMotion ? "idle" : "intro");
   const [priceStep, setPriceStep] = useState<PriceStep>(startAt === "offer" ? "landed" : "tag");
-  const [shownPrice, setShownPrice] = useState(startAt === "offer" ? priceJpy : listPriceJpy);
   const onOfferShownRef = useRef(onOfferShown);
   const offerShown = phase === "offer";
   const spillStyle = offer.benefitStyle === "spill";
@@ -395,7 +394,6 @@ export function ResultUpgradeTreasure({
   const receiveRef = useRef<HTMLButtonElement>(null);
   const laterRef = useRef<HTMLButtonElement>(null);
   const timers = useRef<number[]>([]);
-  const frame = useRef<number | null>(null);
   const onCouponReceivedRef = useRef(onCouponReceived);
   const onChestOpenedRef = useRef(onChestOpened);
   const onCloseRef = useRef(onClose);
@@ -447,7 +445,6 @@ export function ResultUpgradeTreasure({
     window.addEventListener("keydown", onKey);
     return () => {
       pending.forEach((timer) => window.clearTimeout(timer));
-      if (frame.current !== null) window.cancelAnimationFrame(frame.current);
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = previousOverflow;
     };
@@ -511,23 +508,11 @@ export function ResultUpgradeTreasure({
     try { navigator.vibrate?.(pattern); } catch { /* optional */ }
   }
 
-  // 1,398 から 899 まで、最初は速く最後はゆっくり数える。
-  function countDown() {
-    const started = performance.now();
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - started) / COUNT_MS);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setShownPrice(Math.round(listPriceJpy - (listPriceJpy - priceJpy) * eased));
-      if (t < 1) {
-        frame.current = window.requestAnimationFrame(tick);
-        return;
-      }
-      frame.current = null;
-      setPriceStep("landed");
-      vibrate([20, 50, 36]);
-      later(() => setPhase("offer"), spillStyle ? SPILL_OFFER_AFTER_LAND_MS : OFFER_AFTER_LAND_MS);
-    };
-    frame.current = window.requestAnimationFrame(tick);
+  // 数字が支払額まで数え終わったとき（数えるのは CountingPrice。数えている間は、この部品を描き直さない）。
+  function priceLanded() {
+    setPriceStep("landed");
+    vibrate([20, 50, 36]);
+    later(() => setPhase("offer"), spillStyle ? SPILL_OFFER_AFTER_LAND_MS : OFFER_AFTER_LAND_MS);
   }
 
   // 受け取る: クーポンが値札に貼りつき、通常価格に取り消し線が引かれ、支払額まで数えて止まる。
@@ -536,7 +521,6 @@ export function ResultUpgradeTreasure({
     onCouponReceivedRef.current();
     if (reducedMotion) {
       setPriceStep("landed");
-      setShownPrice(priceJpy);
       setPhase("offer");
       return;
     }
@@ -544,7 +528,7 @@ export function ResultUpgradeTreasure({
     setPriceStep("tag");
     later(() => { setPriceStep("sticker"); vibrate(14); }, STICKER_AT);
     later(() => setPriceStep("strike"), STRIKE_AT);
-    later(() => { setPriceStep("counting"); countDown(); }, COUNT_AT);
+    later(() => setPriceStep("counting"), COUNT_AT);
   }
 
   function closeLater() {
@@ -614,31 +598,7 @@ export function ResultUpgradeTreasure({
       </div>
       <div className={`${styles.backdropShade} ${opened ? styles.backdropShadeOpen : ""}`} aria-hidden="true" />
       <div className={`${styles.rays} ${opened ? styles.raysOn : ""}`} aria-hidden="true" />
-      {opened && !reducedMotion && (
-        <div aria-hidden="true">
-          {CONFETTI.map((piece, index) => (
-            <span
-              key={index}
-              className={styles.confetti}
-              style={{
-                "--x": piece.x,
-                "--size": piece.size,
-                "--duration": piece.duration,
-                "--delay": piece.delay,
-                "--drift": piece.drift,
-                "--rot": piece.rot,
-              } as CSSProperties}
-            >
-              {piece.kind === "star" ? (
-                <FeltStar />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element -- 小さな飾りを多数動かすため、最適化を通さない素の画像にする
-                <img src={piece.kind === "heart" ? HEART_SRC : FLOWER_SRC} alt="" />
-              )}
-            </span>
-          ))}
-        </div>
-      )}
+      {opened && !reducedMotion && <ConfettiLayer />}
       <div className={`${styles.flash} ${opened && !reducedMotion ? styles.flashOn : ""}`} aria-hidden="true" />
 
       {/* 特典が並び終わったら、背景と宝箱を暗く沈めて、値札・一覧・購入ボタンだけを残す。 */}
@@ -756,7 +716,11 @@ export function ResultUpgradeTreasure({
               // spill では、この数字が値札を離れて上へ移る（上の金の数字に引き継ぐ）ので、値札の側は消す。
               style={spillStyle && offerPhase ? { visibility: "hidden" } : undefined}
             >
-              <EmbroideredPrice value={shownPrice} />
+              {landed ? (
+                <EmbroideredPrice value={priceJpy} />
+              ) : (
+                <CountingPrice from={listPriceJpy} to={priceJpy} onDone={priceLanded} />
+              )}
             </div>
           )}
           {stuck && (
@@ -805,29 +769,17 @@ export function ResultUpgradeTreasure({
         </div>
       )}
       </div>
-      {opened && !reducedMotion && SPARKLES.map((sparkle, index) => (
-          <span
-            key={index}
-            className={styles.sparkle}
-            aria-hidden="true"
-            style={{
-              "--dx": sparkle.dx,
-              "--dy": sparkle.dy,
-              "--rot": sparkle.rot,
-              "--size": sparkle.size,
-              "--delay": sparkle.delay,
-            } as CSSProperties}
-          >
-            <FeltStar />
-          </span>
-        ))}
+      {opened && !reducedMotion && <OpenSparkles />}
 
-      {spillStyle && offerPhase && (
+      {/* 一覧は、値札と購入ボタンの画面になる前から見えない状態で置いておく（preload）。
+          切り替わる瞬間に7枚ぶんの配置の計算が重なって、値段が上へ移る動きが引っかかるのを避ける。 */}
+      {spillStyle && (
         <BenefitShelf
           benefits={offer.benefits}
           revealed={spilled}
           instant={reducedMotion || startAt === "offer"}
           hidden={detail !== null}
+          preload={!offerPhase}
           ambient={ambient}
           onPick={setDetail}
         />
@@ -876,8 +828,10 @@ export function ResultUpgradeTreasure({
           )}
           <div className={styles.offerBottom}>
             <div className={`${styles.offerCta} ${ctaShine ? styles.offerCtaShine : ""}`}>
+              {/* 光の筋は、帯を横へ動かして出す（描き直しのいらない動かし方）。並び終わりの1回と、そのあと繰り返すもの。 */}
+              {ctaShine && <span className={styles.offerCtaSweep} aria-hidden="true"><i /></span>}
               {purchaseCta}
-              {ambient && <span className={styles.offerCtaLight} aria-hidden="true" />}
+              {ambient && <span className={styles.offerCtaLight} aria-hidden="true"><i /></span>}
             </div>
             {backLabel ? (
               <div className={styles.offerNotes}>
@@ -1123,11 +1077,12 @@ const PRICE_TWINKLES = [
  * 宝箱から飛び出した特典が、値札の下に並ぶ一覧（benefitStyle: "spill"）。
  * 先頭（その人が開けようとしたもの）を横長の1枚で大きく、残りを3つずつ2段に並べる。押すと、その特典を大きく見られる。
  */
-function BenefitShelf({
+const BenefitShelf = memo(function BenefitShelf({
   benefits,
   revealed,
   instant,
   hidden,
+  preload,
   ambient,
   onPick,
 }: {
@@ -1135,12 +1090,14 @@ function BenefitShelf({
   revealed: number;
   instant: boolean;
   hidden: boolean;
+  /** 値札と購入ボタンの画面になる前。見えない・押せない状態で置いておくだけ。 */
+  preload: boolean;
   /** 並び終わって落ち着いたあと。続けて出す小さな動き（順に光る・ふわふわ浮く）の対象にする。 */
   ambient: boolean;
   onPick: (index: number) => void;
 }) {
   return (
-    <div className={`${styles.shelf} ${hidden ? styles.shelfAway : ""} ${ambient ? styles.shelfAmbient : ""}`} aria-hidden={hidden ? true : undefined}>
+    <div className={`${styles.shelf} ${hidden ? styles.shelfAway : ""} ${preload ? styles.shelfPreload : ""} ${ambient ? styles.shelfAmbient : ""}`} aria-hidden={hidden || preload ? true : undefined}>
       <div className={styles.shelfGrid}>
         {benefits.map((benefit, i) => {
           const from = SHELF_FROM[i % SHELF_FROM.length];
@@ -1181,6 +1138,88 @@ function BenefitShelf({
       )}
     </div>
   );
+});
+
+/** 宝箱が開いたときに舞う紙ふぶき。中身は変わらないので、まわりが描き直されても作り直さない。 */
+const ConfettiLayer = memo(function ConfettiLayer() {
+  return (
+    <div aria-hidden="true">
+      {CONFETTI.map((piece, index) => (
+        <span
+          key={index}
+          className={styles.confetti}
+          style={{
+            "--x": piece.x,
+            "--size": piece.size,
+            "--duration": piece.duration,
+            "--delay": piece.delay,
+            "--drift": piece.drift,
+            "--rot": piece.rot,
+          } as CSSProperties}
+        >
+          {piece.kind === "star" ? (
+            <FeltStar />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element -- 小さな飾りを多数動かすため、最適化を通さない素の画像にする
+            <img src={piece.kind === "heart" ? HEART_SRC : FLOWER_SRC} alt="" />
+          )}
+        </span>
+      ))}
+    </div>
+  );
+});
+
+/** 宝箱が開いたときに飛び散るきらめき。紙ふぶきと同じく、作り直さない。 */
+const OpenSparkles = memo(function OpenSparkles() {
+  return (
+    <>
+      {SPARKLES.map((sparkle, index) => (
+        <span
+          key={index}
+          className={styles.sparkle}
+          aria-hidden="true"
+          style={{
+            "--dx": sparkle.dx,
+            "--dy": sparkle.dy,
+            "--rot": sparkle.rot,
+            "--size": sparkle.size,
+            "--delay": sparkle.delay,
+          } as CSSProperties}
+        >
+          <FeltStar />
+        </span>
+      ))}
+    </>
+  );
+});
+
+/**
+ * 通常価格から支払額まで、最初は速く最後はゆっくり数える数字。
+ * 1コマごとの描き直しをこの数字だけにとどめる（演出全体を毎コマ描き直すと、動きが引っかかる）。
+ */
+function CountingPrice({ from, to, onDone }: { from: number; to: number; onDone: () => void }) {
+  const [value, setValue] = useState(from);
+  const onDoneRef = useRef(onDone);
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
+  useEffect(() => {
+    let frame = 0;
+    const started = performance.now();
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - started) / COUNT_MS);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setValue(Math.round(from - (from - to) * eased));
+      if (t < 1) {
+        frame = window.requestAnimationFrame(tick);
+        return;
+      }
+      onDoneRef.current();
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [from, to]);
+  return <EmbroideredPrice value={value} />;
 }
 
 // 指でスライドを動かすときの設定。

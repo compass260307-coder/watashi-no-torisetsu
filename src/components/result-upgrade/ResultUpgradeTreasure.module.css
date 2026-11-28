@@ -975,23 +975,12 @@
   animation: cta-nudge 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) 0.55s both;
 }
 
-.offerCtaShine::before,
 .offerCtaShine::after {
   content: "";
   position: absolute;
-  inset: 0;
   border-radius: 999px;
   opacity: 0;
   pointer-events: none;
-}
-
-.offerCtaShine::before {
-  background: linear-gradient(105deg, rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0) 62%) no-repeat;
-  background-size: 260% 100%;
-  animation: cta-sweep 0.8s ease-out 0.7s both;
-}
-
-.offerCtaShine::after {
   inset: -4px;
   box-shadow: 0 0 0 3px rgba(255, 240, 184, 0.95), 0 0 30px 10px rgba(255, 214, 120, 0.8);
   animation: cta-ring 0.7s ease-out 0.6s both;
@@ -1003,10 +992,48 @@
   100% { transform: scale(1); }
 }
 
+/* 光の筋は、ボタンの形に切り抜いた枠（span）の中で、ボタンの2.6倍の幅の帯（i）を横へ動かして出す。
+   以前は背景の位置を動かしていて、動いている間ずっと画面を描き直していた（見え方は同じ。帯の位置は
+   背景の位置 130% → -30% と同じになるよう、帯の幅に対して -80% → 18.4615% にしてある）。 */
+.offerCtaSweep,
+.offerCtaLight {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 999px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.offerCtaSweep i,
+.offerCtaLight i {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 260%;
+  height: 100%;
+  background: linear-gradient(105deg, rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, var(--sweep-alpha)) 50%, rgba(255, 255, 255, 0) 62%) no-repeat;
+  transform: translateX(-80%);
+}
+
+.offerCtaSweep {
+  --sweep-alpha: 0.6;
+  animation: cta-sweep 0.8s ease-out 0.7s both;
+}
+
+.offerCtaSweep i {
+  animation: cta-sweep-move 0.8s ease-out 0.7s both;
+}
+
 @keyframes cta-sweep {
-  0% { opacity: 1; background-position: 130% 0; }
+  0% { opacity: 1; }
   90% { opacity: 1; }
-  100% { opacity: 0; background-position: -30% 0; }
+  100% { opacity: 0; }
+}
+
+@keyframes cta-sweep-move {
+  from { transform: translateX(-80%); }
+  to { transform: translateX(18.4615%); }
 }
 
 @keyframes cta-ring {
@@ -1027,23 +1054,26 @@
 }
 
 .offerCtaLight {
-  position: absolute;
-  inset: 0;
-  border-radius: 999px;
-  background: linear-gradient(105deg, rgba(255, 255, 255, 0) 38%, rgba(255, 255, 255, 0.5) 50%, rgba(255, 255, 255, 0) 62%) no-repeat;
-  background-size: 260% 100%;
-  opacity: 0;
-  pointer-events: none;
+  --sweep-alpha: 0.5;
 }
 
 :global(html[data-treasure-ambient~="cta"]) .offerCtaLight {
   animation: cta-sweep-loop 4s ease-out 2.2s infinite;
 }
 
+:global(html[data-treasure-ambient~="cta"]) .offerCtaLight i {
+  animation: cta-sweep-loop-move 4s ease-out 2.2s infinite;
+}
+
 @keyframes cta-sweep-loop {
-  0% { opacity: 1; background-position: 130% 0; }
+  0% { opacity: 1; }
   18% { opacity: 1; }
-  20%, 100% { opacity: 0; background-position: -30% 0; }
+  20%, 100% { opacity: 0; }
+}
+
+@keyframes cta-sweep-loop-move {
+  0% { transform: translateX(-80%); }
+  20%, 100% { transform: translateX(18.4615%); }
 }
 
 /* tour の最後。カード7枚（0.6秒ずつ）が光り終わった直後に走る。 */
@@ -1052,10 +1082,20 @@
   animation: cta-sweep-tour 7s ease-out 4.3s infinite;
 }
 
+:global(html:not([data-treasure-ambient])) .offerCtaLight i,
+:global(html[data-treasure-ambient~="tour"]) .offerCtaLight i {
+  animation: cta-sweep-tour-move 7s ease-out 4.3s infinite;
+}
+
 @keyframes cta-sweep-tour {
-  0% { opacity: 1; background-position: 130% 0; }
+  0% { opacity: 1; }
   10% { opacity: 1; }
-  11.5%, 100% { opacity: 0; background-position: -30% 0; }
+  11.5%, 100% { opacity: 0; }
+}
+
+@keyframes cta-sweep-tour-move {
+  0% { transform: translateX(-80%); }
+  11.5%, 100% { transform: translateX(18.4615%); }
 }
 
 :global(html:not([data-treasure-ambient])) .shelfAmbient .shelfTile::after,
@@ -1955,6 +1995,12 @@
   visibility: hidden;
 }
 
+/* 値札と購入ボタンの画面になる前。配置の計算だけ先に済ませておくために置く（見えない・押せない）。 */
+.shelfPreload {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .shelfIn {
   animation: shelf-in 0.6s cubic-bezier(0.22, 1.2, 0.36, 1) both;
 }
@@ -2249,10 +2295,17 @@
   transition: opacity 0.5s ease;
 }
 
+/* 見えなくなった宝箱のうしろの光は、裏で明滅させ続けない。 */
+.chestGone .glow {
+  animation-play-state: paused;
+}
+
 /* 特典が並び終わったら、Aliceは一覧のうしろに隠れてしまうので下がる。 */
 .aliceAway {
   opacity: 0;
   transition: opacity 0.4s ease;
+  /* 見えなくなったAliceは、裏で揺らし続けない。 */
+  animation-play-state: paused;
 }
 
 .detailClose {
@@ -2287,9 +2340,11 @@
   .shelfIn::after,
   .shelfHint,
   .offerCtaShine,
-  .offerCtaShine::before,
   .offerCtaShine::after,
+  .offerCtaSweep,
+  .offerCtaSweep i,
   .offerCtaLight,
+  .offerCtaLight i,
   .shelfAmbient .shelfTile,
   .shelfAmbient .shelfTile::after,
   .priceTwinkle,
