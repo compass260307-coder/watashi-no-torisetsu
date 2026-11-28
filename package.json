@@ -7,6 +7,7 @@
     "dev:turbo": "next dev",
     "prebuild": "npm run verify:commerce && npm run verify:conversions && node scripts/generate-image-manifest.mjs",
     "build": "next build",
+    "cf:build": "node scripts/cloudflare-build.mjs",
     "postbuild": "node scripts/verify-pdf-runtime.mjs",
     "prebuild:local": "npm run verify:commerce && npm run verify:conversions && node scripts/generate-image-manifest.mjs",
     "build:local": "next build --webpack",
@@ -35,7 +36,9 @@
   "dependencies": {
     "@ai-sdk/anthropic": "4.0.40",
     "@ai-sdk/react": "^4.0.67",
+    "@cloudflare/puppeteer": "^2.0.1",
     "@line/bot-sdk": "^11.2.0",
+    "@opennextjs/cloudflare": "^1.20.19",
     "@sparticuz/chromium": "^149.0.0",
     "@stripe/react-stripe-js": "^6.8.0",
     "@stripe/stripe-js": "^9.13.0",
@@ -65,7 +68,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.169.0"
   },
   "engines": {
     "node": "24.x",

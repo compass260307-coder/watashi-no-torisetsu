@@ -72,3 +72,8 @@ scratchpad/
 /.claude/settings.local.json
 /AGENTS.override.md
 /CLAUDE.local.md
+
+# Cloudflare Workers (OpenNext / wrangler) のビルド成果物とローカル設定
+.open-next/
+.wrangler/
+.dev.vars

@@ -13,6 +13,7 @@ import {
   FULL_ACCESS_PRICE_TEST_VERSION,
 } from "@/lib/access-products";
 import { fullAccessMarketForCountry, type JaFullAccessPriceArm } from "@/lib/full-access-pricing";
+import { hasPlatformRequestCountry, platformRequestCountry } from "@/lib/request-country";
 import { getSession } from "@/lib/session";
 import { supabaseAdmin } from "@/lib/supabase-server";
 
@@ -20,13 +21,12 @@ export type FullAccessBuyer = { id: string; email: string | null; owner_token: s
 
 export function fullAccessMarketForRequest(request: NextRequest) {
   // ローカル開発だけ、DEV_IP_COUNTRY（例: JP）で接続元の国を指定できる。本番ビルドでは無視する。
+  const onPlatform = hasPlatformRequestCountry();
   const devCountry =
-    process.env.NODE_ENV !== "production" && process.env.VERCEL !== "1"
+    process.env.NODE_ENV !== "production" && !onPlatform
       ? process.env.DEV_IP_COUNTRY?.trim().toUpperCase() || null
       : null;
-  return fullAccessMarketForCountry(
-    process.env.VERCEL === "1" ? request.headers.get("x-vercel-ip-country") : devCountry,
-  );
+  return fullAccessMarketForCountry(onPlatform ? platformRequestCountry(request) : devCountry);
 }
 
 export async function resolveFullAccessBuyer(

@@ -13,12 +13,11 @@
 // - ko/en/id の生成結果は Supabase Storage にキャッシュし、内容 (診断完了時刻・
 //   表示名・print 版数) が同じ再ダウンロードは Chromium を起動せず返す。
 
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-server";
 import { hasSelfReportAccess } from "@/lib/entitlements";
 import { launchPdfBrowser } from "@/lib/pdf-browser";
+import { readSelfReportStoryPdf } from "@/lib/self-report-story-pdf";
 import { resolveSiteUrl } from "@/lib/site-url";
 import { getSession } from "@/lib/session";
 import { isUndiagnosedPlaceholderUser } from "@/lib/placeholder-user";
@@ -48,14 +47,7 @@ function isThirtyTwoTypeId(value: string): value is ThirtyTwoTypeId {
 }
 
 async function loadJapaneseStoryPdf(typeId: ThirtyTwoTypeId) {
-  const slug = thirtyTwoCharacterSlug(typeId);
-  const path = join(
-    process.cwd(),
-    "private",
-    "self-report-stories",
-    `${slug}-vertical-story.pdf`,
-  );
-  return readFile(path);
+  return readSelfReportStoryPdf(thirtyTwoCharacterSlug(typeId));
 }
 
 function storyPdfResponse(typeId: ThirtyTwoTypeId, pdf: Buffer) {

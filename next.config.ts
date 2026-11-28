@@ -5,6 +5,8 @@ import { GENERATED_CHARACTER_ASSET_VERSION } from "./src/lib/asset-versions";
 
 const projectRoot = dirname(fileURLToPath(import.meta.url));
 const immutableAssetCacheControl = "public, max-age=31536000, immutable";
+// Cloudflare Workers 向けビルド (DEPLOY_TARGET=cloudflare) かどうか。Vercel のビルドでは false。
+const isCloudflareBuild = process.env.DEPLOY_TARGET === "cloudflare";
 
 const immutableAssetHeaders = [
   {
@@ -37,20 +39,40 @@ const nextConfig: NextConfig = {
   // /report/[token]/pdf・/tako-report/[token]/pdf の headless Chromium。
   // バンドルせず node_modules からそのまま読み込む (バイナリ同梱パッケージのため
   // bundler を通すと壊れる)。
-  serverExternalPackages: ["@sparticuz/chromium", "puppeteer-core"],
+  // Cloudflare では Chromium を同梱せず、ブラウザ機能 (pdf-browser.cloudflare.ts) を使う。
+  serverExternalPackages: isCloudflareBuild ? [] : ["@sparticuz/chromium", "puppeteer-core"],
   // ↑だけでは Lambda への file tracing に bin/ (brotli 圧縮バイナリ) が乗らず、
   // 本番で「input directory .../bin does not exist」で落ちる (2026-07-21 実測。
   // turbopack ビルドで顕在化)。PDF ルートには明示的にバイナリ一式を同梱する。
   outputFileTracingIncludes: {
     // Turbopack の route glob では [token] が文字クラスになるため * で一致させる。
     "/report/*/pdf": [
-      "./node_modules/@sparticuz/chromium/bin/**",
-      "./private/self-report-stories/*-vertical-story.pdf",
+      // Cloudflare では Chromium も小説 PDF も同梱しない (ブラウザ機能と R2 を使う)。
+      ...(isCloudflareBuild
+        ? []
+        : [
+            "./node_modules/@sparticuz/chromium/bin/**",
+            "./private/self-report-stories/*-vertical-story.pdf",
+          ]),
     ],
-    "/tako-report/*/pdf": ["./node_modules/@sparticuz/chromium/bin/**"],
+    ...(isCloudflareBuild
+      ? {}
+      : { "/tako-report/*/pdf": ["./node_modules/@sparticuz/chromium/bin/**"] }),
   },
   turbopack: {
     root: projectRoot,
+    // Cloudflare 向けビルドでだけ、基盤に依存する処理 (PDF ブラウザの起動、接続元の国、
+    // 画像の変換、同梱ファイルの読み込み) を Cloudflare 版に差し替える。
+    ...(isCloudflareBuild
+      ? {
+          resolveAlias: {
+            "@/lib/pdf-browser": "./src/lib/pdf-browser.cloudflare.ts",
+            "@/lib/request-country": "./src/lib/request-country.cloudflare.ts",
+            "@/lib/line-upgrade-image-render": "./src/lib/line-upgrade-image-render.cloudflare.ts",
+            "@/lib/self-report-story-pdf": "./src/lib/self-report-story-pdf.cloudflare.ts",
+          },
+        }
+      : {}),
   },
   experimental: {
     // 小さなJSファイルをまとめ、初回表示のリクエスト数を減らす (既定は 50000)。
@@ -71,6 +93,10 @@ const nextConfig: NextConfig = {
 
   async headers() {
     return [
+      // 確認用の環境 (SITE_NOINDEX=1 でビルド) は、検索エンジンに載せない。
+      ...(process.env.SITE_NOINDEX === "1"
+        ? [{ source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }]
+        : []),
       // ブラウザがページ遷移のたびにサイトアイコンを再検証しないよう、長期保存する。
       // favicon / apple-icon は Next.js が更新ごとのクエリ付きURLを HTML に出力する。
       // /icon-v2.png を差し替える場合は、ファイル名と参照先も同時に更新すること
